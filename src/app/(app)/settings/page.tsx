@@ -96,9 +96,11 @@ export default function SettingsPage() {
             <p className="text-xs text-zinc-500">
               Exports all non-deleted transactions including base amounts, exchange rates, categories, and timestamps.
             </p>
-            <Button variant="outline" className="gap-2 shrink-0">
-              <Download className="h-4 w-4" /> Export CSV
-            </Button>
+            <a href="/api/export-csv" download>
+              <Button variant="outline" className="gap-2 shrink-0">
+                <Download className="h-4 w-4" /> Export CSV
+              </Button>
+            </a>
           </div>
         </CardContent>
       </Card>

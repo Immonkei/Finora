@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney, calculateDailyAllowance } from "@/lib/money";
 import { formatDisplayDate, getDaysLeftInMonth } from "@/lib/dates";
+import { QuickAddDialog } from "@/features/transactions/components/quick-add-dialog";
 
 export default function TodayPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false);
@@ -205,6 +206,11 @@ export default function TodayPage() {
           ))}
         </CardContent>
       </Card>
+
+      <QuickAddDialog
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+      />
     </div>
   );
 }

@@ -9,7 +9,7 @@ export type Json =
 export type TxType = "expense" | "income" | "transfer";
 export type RecurringFrequency = "daily" | "weekly" | "monthly";
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       profiles: {
@@ -40,6 +40,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       accounts: {
         Row: {
@@ -63,6 +64,7 @@ export interface Database {
           currency?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       categories: {
         Row: {
@@ -95,13 +97,14 @@ export interface Database {
           rollover?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       transactions: {
         Row: {
           id: string;
           user_id: string;
           type: TxType;
-          amount: number; // minor units as number or bigint
+          amount: number;
           currency: string;
           exchange_rate: number;
           base_amount: number;
@@ -116,7 +119,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          user_id?: string;
+          user_id: string;
           type: TxType;
           amount: number;
           currency: string;
@@ -148,6 +151,29 @@ export interface Database {
           deleted_at?: string | null;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "transactions_account_id_fkey";
+            columns: ["account_id"];
+            isOneToOne: false;
+            referencedRelation: "accounts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "transactions_to_account_id_fkey";
+            columns: ["to_account_id"];
+            isOneToOne: false;
+            referencedRelation: "accounts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "transactions_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "categories";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       budgets: {
         Row: {
@@ -168,6 +194,7 @@ export interface Database {
           month?: string;
           total_limit?: number;
         };
+        Relationships: [];
       };
       savings_goals: {
         Row: {
@@ -197,6 +224,7 @@ export interface Database {
           deadline?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       recurring_rules: {
         Row: {
@@ -247,6 +275,7 @@ export interface Database {
           active?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       notifications: {
         Row: {
@@ -273,6 +302,7 @@ export interface Database {
           read?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       exchange_rates: {
         Row: {
@@ -299,6 +329,7 @@ export interface Database {
           date?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
@@ -340,5 +371,10 @@ export interface Database {
         }[];
       };
     };
+    Enums: {
+      tx_type: TxType;
+      recurring_frequency: RecurringFrequency;
+    };
+    CompositeTypes: Record<string, never>;
   };
-}
+};

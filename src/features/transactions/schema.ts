@@ -7,9 +7,9 @@ export const createTransactionSchema = z
     type: transactionTypeSchema,
     amount: z.number().positive("Amount must be greater than 0"),
     currency: z.enum(["USD", "KHR"]).default("USD"),
-    account_id: z.string().uuid("Invalid account ID"),
-    to_account_id: z.string().uuid("Invalid destination account ID").optional().nullable(),
-    category_id: z.string().uuid("Invalid category ID").optional().nullable(),
+    account_id: z.string().min(1, "Account ID is required"),
+    to_account_id: z.string().min(1, "Invalid destination account ID").optional().nullable(),
+    category_id: z.string().min(1, "Invalid category ID").optional().nullable(),
     note: z.string().max(255).optional().nullable(),
     occurred_at: z.string().datetime().or(z.date()).default(() => new Date().toISOString()),
   })
