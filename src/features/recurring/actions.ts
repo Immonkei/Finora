@@ -37,6 +37,43 @@ export async function createRecurringRule(
     } = await supabase.auth.getUser();
 
     if (user) {
+      let validAccountId = data.account_id;
+      const { data: userAccounts } = await supabase
+        .from("accounts")
+        .select("id")
+        .eq("user_id", user.id);
+
+      if (userAccounts && userAccounts.length > 0) {
+        const found = userAccounts.find((a) => a.id === validAccountId);
+        if (!found) validAccountId = userAccounts[0].id;
+      } else {
+        const { data: newAccount } = await supabase
+          .from("accounts")
+          .insert({ user_id: user.id, name: "Cash", currency: data.currency })
+          .select("id")
+          .single();
+        if (newAccount) validAccountId = newAccount.id;
+      }
+
+      let validCategoryId = data.category_id || null;
+      if (validCategoryId) {
+        const { data: catExists } = await supabase
+          .from("categories")
+          .select("id")
+          .eq("id", validCategoryId)
+          .eq("user_id", user.id)
+          .single();
+        if (!catExists) {
+          const { data: defaultCat } = await supabase
+            .from("categories")
+            .select("id")
+            .eq("user_id", user.id)
+            .limit(1)
+            .single();
+          validCategoryId = defaultCat?.id || null;
+        }
+      }
+
       const { data: inserted, error } = await supabase
         .from("recurring_rules")
         .insert({
@@ -44,8 +81,8 @@ export async function createRecurringRule(
           type: data.type,
           amount: Number(minorAmount),
           currency: data.currency,
-          account_id: data.account_id,
-          category_id: data.category_id || null,
+          account_id: validAccountId,
+          category_id: validCategoryId,
           note: data.note || null,
           frequency: data.frequency,
           start_date: data.start_date,

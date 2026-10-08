@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/money";
+import { formatDisplayDate } from "@/lib/dates";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 
 interface GoalItem {
   id: string;
@@ -56,7 +58,47 @@ export default function GoalsPage() {
   const [deadlineStr, setDeadlineStr] = React.useState("");
   const [contributionStr, setContributionStr] = React.useState("");
 
-  const handleCreate = (e: React.FormEvent) => {
+  const loadGoals = React.useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: dbGoals } = await supabase
+        .from("savings_goals")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (dbGoals && dbGoals.length > 0) {
+        setGoals(
+          dbGoals.map((g) => ({
+            id: g.id,
+            name: g.name,
+            targetAmountMinor: BigInt(g.target_amount),
+            savedAmountMinor: BigInt(g.saved_amount),
+            deadline: g.deadline ? formatDisplayDate(g.deadline) : "Open",
+            weeklyNeededMinor: BigInt(
+              Math.max(0, Math.round((g.target_amount - g.saved_amount) / 12))
+            ),
+          }))
+        );
+      }
+    } catch {
+      // Fallback
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      loadGoals();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadGoals]);
+
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     const target = parseFloat(targetAmountStr);
     if (!goalName.trim() || isNaN(target) || target <= 0) {
@@ -65,6 +107,35 @@ export default function GoalsPage() {
     }
 
     const targetMinor = BigInt(Math.round(target * 100));
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const { error } = await supabase.from("savings_goals").insert({
+          user_id: user.id,
+          name: goalName.trim(),
+          target_amount: Number(targetMinor),
+          saved_amount: 0,
+          deadline: deadlineStr || null,
+        });
+
+        if (error) {
+          toast.error("Failed to create goal in database", {
+            description: error.message,
+          });
+          return;
+        }
+
+        loadGoals();
+      }
+    } catch {
+      // Fallback
+    }
+
     const newGoal: GoalItem = {
       id: crypto.randomUUID(),
       name: goalName.trim(),
@@ -85,7 +156,7 @@ export default function GoalsPage() {
     });
   };
 
-  const handleContribute = (e: React.FormEvent) => {
+  const handleContribute = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!contributeGoal) return;
     const amount = parseFloat(contributionStr);
@@ -95,19 +166,38 @@ export default function GoalsPage() {
     }
 
     const contributionMinor = BigInt(Math.round(amount * 100));
+    const updatedSaved = contributeGoal.savedAmountMinor + contributionMinor;
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        await supabase
+          .from("savings_goals")
+          .update({ saved_amount: Number(updatedSaved) })
+          .eq("id", contributeGoal.id)
+          .eq("user_id", user.id);
+
+        loadGoals();
+      }
+    } catch {
+      // Fallback
+    }
 
     setGoals((prev) =>
       prev.map((g) =>
         g.id === contributeGoal.id
           ? {
               ...g,
-              savedAmountMinor: g.savedAmountMinor + contributionMinor,
+              savedAmountMinor: updatedSaved,
             }
           : g
       )
     );
 
-    const updatedSaved = contributeGoal.savedAmountMinor + contributionMinor;
     const isCompleted = updatedSaved >= contributeGoal.targetAmountMinor;
 
     setContributeGoal(null);

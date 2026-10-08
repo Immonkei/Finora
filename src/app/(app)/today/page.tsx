@@ -9,51 +9,156 @@ import { formatMoney, calculateDailyAllowance } from "@/lib/money";
 import { formatDisplayDate, getDaysLeftInMonth } from "@/lib/dates";
 import { QuickAddDialog } from "@/features/transactions/components/quick-add-dialog";
 import { useMounted } from "@/lib/hooks";
+import { createClient } from "@/lib/supabase/client";
+
+interface DisplayTx {
+  id: string;
+  note: string;
+  category: string;
+  categoryColor: string;
+  amountMinor: bigint;
+  type: "expense" | "income" | "transfer";
+  time: string;
+}
+
+const DEFAULT_TRANSACTIONS: DisplayTx[] = [
+  {
+    id: "1",
+    note: "Iced Latte & Croissant",
+    category: "Food & Drinks",
+    categoryColor: "#EF4444",
+    amountMinor: BigInt(450),
+    type: "expense",
+    time: "09:15 AM",
+  },
+  {
+    id: "2",
+    note: "Grab Taxi to Office",
+    category: "Transport",
+    categoryColor: "#3B82F6",
+    amountMinor: BigInt(300),
+    type: "expense",
+    time: "10:30 AM",
+  },
+  {
+    id: "3",
+    note: "Lunch with Team",
+    category: "Food & Drinks",
+    categoryColor: "#EF4444",
+    amountMinor: BigInt(700),
+    type: "expense",
+    time: "12:45 PM",
+  },
+];
 
 export default function TodayPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const isMounted = useMounted();
   const currentDate = isMounted ? new Date() : null;
-
-
   const daysLeft = currentDate ? getDaysLeftInMonth(currentDate) : 23;
 
-  // Mock data for initial MVP view before live Supabase sync
-  const monthlyBudgetMinor = BigInt(60000); // $600.00
-  const monthlySpentMinor = BigInt(24000);  // $240.00
-  const remainingBudgetMinor = monthlyBudgetMinor - monthlySpentMinor; // $360.00
-  const dailyAllowanceMinor = calculateDailyAllowance(remainingBudgetMinor, daysLeft);
-  const spentTodayMinor = BigInt(1450); // $14.50
+  const [liveData, setLiveData] = React.useState<{
+    transactions: DisplayTx[];
+    spentTodayMinor: bigint;
+    monthlyBudgetMinor: bigint;
+    monthlySpentMinor: bigint;
+  } | null>(null);
 
-  const todayTransactions = [
-    {
-      id: "1",
-      note: "Iced Latte & Croissant",
-      category: "Food & Drinks",
-      categoryColor: "#EF4444",
-      amountMinor: BigInt(450),
-      type: "expense",
-      time: "09:15 AM",
-    },
-    {
-      id: "2",
-      note: "Grab Taxi to Office",
-      category: "Transport",
-      categoryColor: "#3B82F6",
-      amountMinor: BigInt(300),
-      type: "expense",
-      time: "10:30 AM",
-    },
-    {
-      id: "3",
-      note: "Lunch with Team",
-      category: "Food & Drinks",
-      categoryColor: "#EF4444",
-      amountMinor: BigInt(700),
-      type: "expense",
-      time: "12:45 PM",
-    },
-  ];
+  const loadTodayData = React.useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const endOfDay = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        23,
+        59,
+        59,
+        999
+      ).toISOString();
+
+      const { data: txs } = await supabase
+        .from("transactions")
+        .select("*, categories(name, color)")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .gte("occurred_at", startOfDay)
+        .lte("occurred_at", endOfDay)
+        .order("occurred_at", { ascending: false });
+
+      const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const { data: budget } = await supabase
+        .from("budgets")
+        .select("total_limit")
+        .eq("user_id", user.id)
+        .eq("month", currentMonthStr)
+        .single();
+
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const { data: monthTxs } = await supabase
+        .from("transactions")
+        .select("base_amount")
+        .eq("user_id", user.id)
+        .eq("type", "expense")
+        .is("deleted_at", null)
+        .gte("occurred_at", startOfMonth);
+
+      let spentToday = BigInt(0);
+      const formattedTxs: DisplayTx[] = (txs || []).map((t) => {
+        if (t.type === "expense") spentToday += BigInt(t.base_amount);
+        const cat = Array.isArray(t.categories) ? t.categories[0] : t.categories;
+        return {
+          id: t.id,
+          note: t.note || "Expense",
+          category: cat?.name || "Uncategorized",
+          categoryColor: cat?.color || "#10B981",
+          amountMinor: BigInt(t.amount),
+          type: t.type as "expense" | "income" | "transfer",
+          time: new Date(t.occurred_at).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        };
+      });
+
+      let spentMonth = BigInt(0);
+      (monthTxs || []).forEach((t) => {
+        spentMonth += BigInt(t.base_amount);
+      });
+
+      const budgetMinor = budget ? BigInt(budget.total_limit) : BigInt(60000);
+
+      setLiveData({
+        transactions: formattedTxs,
+        spentTodayMinor: spentToday,
+        monthlyBudgetMinor: budgetMinor,
+        monthlySpentMinor: spentMonth,
+      });
+    } catch {
+      // Fallback
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      loadTodayData();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadTodayData]);
+
+  const monthlyBudgetMinor = liveData ? liveData.monthlyBudgetMinor : BigInt(60000);
+  const monthlySpentMinor = liveData ? liveData.monthlySpentMinor : BigInt(24000);
+  const remainingBudgetMinor = monthlyBudgetMinor - monthlySpentMinor;
+  const dailyAllowanceMinor = calculateDailyAllowance(remainingBudgetMinor, daysLeft);
+  const spentTodayMinor = liveData ? liveData.spentTodayMinor : BigInt(1450);
+  const todayTransactions = liveData ? liveData.transactions : DEFAULT_TRANSACTIONS;
 
   const allowanceUsedPercent =
     dailyAllowanceMinor > 0n
@@ -209,6 +314,7 @@ export default function TodayPage() {
       <QuickAddDialog
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
+        onSuccess={loadTodayData}
       />
     </div>
   );

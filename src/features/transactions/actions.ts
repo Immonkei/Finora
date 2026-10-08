@@ -47,6 +47,50 @@ export async function createTransaction(
         baseAmount = BigInt(Math.round(Number(minorAmount) * exchangeRate * 100)); // convert to USD cents
       }
 
+      // Resolve valid account for user or auto-provision Cash account (FR-A4)
+      let validAccountId = data.account_id;
+      const { data: userAccounts } = await supabase
+        .from("accounts")
+        .select("id")
+        .eq("user_id", user.id);
+
+      if (userAccounts && userAccounts.length > 0) {
+        const found = userAccounts.find((a) => a.id === validAccountId);
+        if (!found) {
+          validAccountId = userAccounts[0].id;
+        }
+      } else {
+        const { data: newAccount } = await supabase
+          .from("accounts")
+          .insert({ user_id: user.id, name: "Cash", currency: data.currency })
+          .select("id")
+          .single();
+        if (newAccount) {
+          validAccountId = newAccount.id;
+        }
+      }
+
+      // Resolve valid category if specified
+      let validCategoryId = data.category_id || null;
+      if (validCategoryId) {
+        const { data: catExists } = await supabase
+          .from("categories")
+          .select("id")
+          .eq("id", validCategoryId)
+          .eq("user_id", user.id)
+          .single();
+
+        if (!catExists) {
+          const { data: defaultCat } = await supabase
+            .from("categories")
+            .select("id")
+            .eq("user_id", user.id)
+            .limit(1)
+            .single();
+          validCategoryId = defaultCat?.id || null;
+        }
+      }
+
       const { data: inserted, error } = await supabase
         .from("transactions")
         .insert({
@@ -56,9 +100,9 @@ export async function createTransaction(
           currency: data.currency,
           exchange_rate: exchangeRate,
           base_amount: Number(baseAmount),
-          account_id: data.account_id,
+          account_id: validAccountId,
           to_account_id: data.to_account_id || null,
-          category_id: data.category_id || null,
+          category_id: validCategoryId,
           note: data.note || null,
           occurred_at:
             typeof data.occurred_at === "string"

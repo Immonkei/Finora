@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 
+import { createClient } from "@/lib/supabase/client";
+
 export default function SettingsPage() {
   const router = useRouter();
   const [currency, setCurrency] = React.useState("USD");
@@ -24,10 +26,83 @@ export default function SettingsPage() {
   const [reminderTime, setReminderTime] = React.useState("20:00");
   const [sharedBudget, setSharedBudget] = React.useState(false);
 
-  const handleSaveSettings = () => {
-    toast.success("Preferences updated", {
-      description: "Your local settings have been saved.",
-    });
+  React.useEffect(() => {
+    async function loadProfile() {
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+          if (profile) {
+            if (profile.main_currency) setCurrency(profile.main_currency);
+            if (profile.timezone) setTimezone(profile.timezone);
+            if (profile.week_starts_on !== undefined && profile.week_starts_on !== null) {
+              setWeekStartsOn(String(profile.week_starts_on));
+            }
+            if (profile.reminder_time) {
+              setReminderTime(profile.reminder_time.slice(0, 5));
+              setRemindersEnabled(true);
+            }
+          }
+        }
+      } catch {
+        // Fallback to local default states
+      }
+    }
+    loadProfile();
+  }, []);
+
+  const handleSaveSettings = async () => {
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            main_currency: currency,
+            timezone,
+            week_starts_on: parseInt(weekStartsOn, 10),
+            reminder_time: remindersEnabled ? `${reminderTime}:00` : null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", user.id);
+
+        if (error) {
+          toast.error("Failed to save settings", { description: error.message });
+          return;
+        }
+      }
+
+      toast.success("Preferences updated", {
+        description: "Your settings have been saved to Supabase.",
+      });
+    } catch (err) {
+      toast.error("Failed to save settings", {
+        description: err instanceof Error ? err.message : "Please try again",
+      });
+    }
+  };
+
+  const handleSignOut = async () => {
+    toast.info("Signing out...");
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push("/login");
+      router.refresh();
+    } catch {
+      router.push("/login");
+    }
   };
 
   return (
@@ -241,10 +316,7 @@ export default function SettingsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                toast.info("Signing out...");
-                router.push("/login");
-              }}
+              onClick={handleSignOut}
               className="gap-2 self-start sm:self-auto"
             >
               <LogOut className="h-4 w-4" /> Sign Out

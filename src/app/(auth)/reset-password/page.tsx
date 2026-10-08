@@ -7,13 +7,39 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+
 export default function ResetPasswordPage() {
   const [email, setEmail] = React.useState("");
   const [submitted, setSubmitted] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setLoading(true);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
+      });
+
+      if (error) {
+        toast.error("Failed to send reset link", { description: error.message });
+        setLoading(false);
+        return;
+      }
+
+      setSubmitted(true);
+      toast.success("Password reset email sent!");
+    } catch (err) {
+      toast.error("An unexpected error occurred", {
+        description: err instanceof Error ? err.message : "Please try again",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,8 +92,8 @@ export default function ResetPasswordPage() {
                   </div>
                 </div>
 
-                <Button type="submit" size="lg" className="w-full mt-2">
-                  Send Reset Link
+                <Button type="submit" size="lg" className="w-full mt-2" disabled={loading}>
+                  {loading ? "Sending..." : "Send Reset Link"}
                 </Button>
               </form>
             )}

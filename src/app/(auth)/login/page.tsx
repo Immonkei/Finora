@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = React.useState("");
@@ -17,8 +20,48 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Client-side authentication logic or server action
-    router.push("/today");
+    
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast.error("Sign in failed", { description: error.message });
+        setLoading(false);
+        return;
+      }
+
+      toast.success("Welcome back!");
+      router.push("/today");
+      router.refresh();
+    } catch (err) {
+      toast.error("An unexpected error occurred", {
+        description: err instanceof Error ? err.message : "Please try again",
+      });
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) {
+        toast.error("Google sign in failed", { description: error.message });
+      }
+    } catch (err) {
+      toast.error("Failed to initialize Google login", {
+        description: err instanceof Error ? err.message : "Please try again",
+      });
+    }
   };
 
   return (
@@ -108,7 +151,7 @@ export default function LoginPage() {
               variant="outline"
               type="button"
               className="w-full gap-2 font-medium"
-              onClick={() => router.push("/today")}
+              onClick={handleGoogleSignIn}
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24">
                 <path

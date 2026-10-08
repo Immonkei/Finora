@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+
 export default function RegisterPage() {
   const router = useRouter();
   const [email, setEmail] = React.useState("");
@@ -17,7 +20,39 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    router.push("/today");
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        toast.error("Registration failed", { description: error.message });
+        setLoading(false);
+        return;
+      }
+
+      if (data.session) {
+        toast.success("Account created successfully!");
+        router.push("/today");
+        router.refresh();
+      } else {
+        toast.success("Account created!", {
+          description: "Please check your email to confirm your account, or sign in.",
+        });
+        router.push("/login");
+      }
+    } catch (err) {
+      toast.error("An unexpected error occurred", {
+        description: err instanceof Error ? err.message : "Please try again",
+      });
+      setLoading(false);
+    }
   };
 
   return (

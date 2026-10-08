@@ -15,7 +15,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/money";
 import { toast } from "sonner";
-import { processDueRecurringRules } from "@/features/recurring/actions";
+import {
+  createRecurringRule,
+  toggleRecurringRule,
+  processDueRecurringRules,
+} from "@/features/recurring/actions";
+import { createClient } from "@/lib/supabase/client";
+import { formatDisplayDate } from "@/lib/dates";
 
 interface RecurringRuleItem {
   id: string;
@@ -81,16 +87,59 @@ export default function RecurringPage() {
     },
   ]);
 
+  const loadRules = React.useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: dbRules } = await supabase
+        .from("recurring_rules")
+        .select("*, categories(name)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (dbRules && dbRules.length > 0) {
+        const formatted: RecurringRuleItem[] = dbRules.map((r) => {
+          const cat = Array.isArray(r.categories) ? r.categories[0] : r.categories;
+          return {
+            id: r.id,
+            name: r.note || "Subscription",
+            amountMinor: BigInt(r.amount),
+            currency: r.currency,
+            frequency: r.frequency as "daily" | "weekly" | "monthly",
+            category: cat?.name || "Housing & Bills",
+            nextRun: formatDisplayDate(r.next_run),
+            active: r.active,
+          };
+        });
+        setRules(formatted);
+      }
+    } catch {
+      // Fallback
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      loadRules();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadRules]);
+
   const activeRules = rules.filter((r) => r.active);
   const totalMonthlyObligation = activeRules.reduce(
     (acc, r) => acc + r.amountMinor,
     BigInt(0)
   );
 
-  const handleToggle = (id: string, currentState: boolean) => {
+  const handleToggle = async (id: string, currentState: boolean) => {
     setRules((prev) =>
       prev.map((r) => (r.id === id ? { ...r, active: !currentState } : r))
     );
+    await toggleRecurringRule(id, !currentState);
     toast.success(
       currentState ? "Rule paused" : "Rule activated",
       {
@@ -110,12 +159,13 @@ export default function RecurringPage() {
       toast.success("Recurring rules checked!", {
         description: `Processed ${res.data?.processedCount || 0} due transaction(s).`,
       });
+      loadRules();
     } else {
       toast.error("Process failed", { description: res.error });
     }
   };
 
-  const handleCreateRule = (e: React.FormEvent) => {
+  const handleCreateRule = async (e: React.FormEvent) => {
     e.preventDefault();
     const num = parseFloat(amountStr);
     if (isNaN(num) || num <= 0) {
@@ -123,25 +173,28 @@ export default function RecurringPage() {
       return;
     }
 
-    const newRule: RecurringRuleItem = {
-      id: crypto.randomUUID(),
-      name: name || "Subscription",
-      amountMinor: BigInt(Math.round(num * 100)),
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const res = await createRecurringRule({
+      type: "expense",
+      amount: num,
       currency: "USD",
       frequency,
-      category,
-      nextRun: "Nov 1, 2026",
-      active: true,
-    };
-
-    setRules([newRule, ...rules]);
-    setIsDialogOpen(false);
-    setName("");
-    setAmountStr("");
-
-    toast.success("Recurring rule created!", {
-      description: `${newRule.name} scheduled for ${newRule.frequency} execution.`,
+      start_date: todayStr,
+      note: name || "Subscription",
+      account_id: "00000000-0000-0000-0000-000000000001",
     });
+
+    if (res.success) {
+      toast.success("Recurring rule created!", {
+        description: `${name || "Subscription"} scheduled in Supabase.`,
+      });
+      setIsDialogOpen(false);
+      setName("");
+      setAmountStr("");
+      loadRules();
+    } else {
+      toast.error("Failed to create rule", { description: res.error });
+    }
   };
 
   return (

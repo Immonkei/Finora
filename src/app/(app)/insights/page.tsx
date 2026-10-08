@@ -15,27 +15,66 @@ import { Badge } from "@/components/ui/badge";
 import { formatMoney, toMinorUnits } from "@/lib/money";
 import { detectSpendingLeaks, type LeakTransaction } from "@/features/reports/leak-detector";
 import { calculateStreaks } from "@/features/reports/streaks";
+import { createClient } from "@/lib/supabase/client";
+
+const DEFAULT_TRANSACTIONS: LeakTransaction[] = [
+  { note: "Iced Latte", baseAmountMinor: BigInt(250), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
+  { note: "Iced Latte", baseAmountMinor: BigInt(250), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
+  { note: "Iced Latte", baseAmountMinor: BigInt(300), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
+  { note: "Iced Latte", baseAmountMinor: BigInt(250), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
+  { note: "Iced Latte", baseAmountMinor: BigInt(250), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
+  { note: "Grab Bike Short Ride", baseAmountMinor: BigInt(150), categoryName: "Transport", categoryColor: "#3B82F6" },
+  { note: "Grab Bike Short Ride", baseAmountMinor: BigInt(150), categoryName: "Transport", categoryColor: "#3B82F6" },
+  { note: "Grab Bike Short Ride", baseAmountMinor: BigInt(180), categoryName: "Transport", categoryColor: "#3B82F6" },
+  { note: "Vending Machine Drink", baseAmountMinor: BigInt(120), categoryName: "Food & Drinks", categoryColor: "#F59E0B" },
+  { note: "Vending Machine Drink", baseAmountMinor: BigInt(120), categoryName: "Food & Drinks", categoryColor: "#F59E0B" },
+];
 
 export default function InsightsPage() {
   const [currencyMode, setCurrencyMode] = React.useState<"USD" | "KHR">("USD");
   const [leakThreshold, setLeakThreshold] = React.useState<number>(5.0);
+  const [liveTransactions, setLiveTransactions] = React.useState<LeakTransaction[] | null>(null);
 
-  // Mock transactions history for Leak Detection
-  const recentTransactions: LeakTransaction[] = [
-    { note: "Iced Latte", baseAmountMinor: BigInt(250), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
-    { note: "Iced Latte", baseAmountMinor: BigInt(250), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
-    { note: "Iced Latte", baseAmountMinor: BigInt(300), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
-    { note: "Iced Latte", baseAmountMinor: BigInt(250), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
-    { note: "Iced Latte", baseAmountMinor: BigInt(250), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
-    { note: "Grab Bike Short Ride", baseAmountMinor: BigInt(150), categoryName: "Transport", categoryColor: "#3B82F6" },
-    { note: "Grab Bike Short Ride", baseAmountMinor: BigInt(150), categoryName: "Transport", categoryColor: "#3B82F6" },
-    { note: "Grab Bike Short Ride", baseAmountMinor: BigInt(180), categoryName: "Transport", categoryColor: "#3B82F6" },
-    { note: "Vending Machine Drink", baseAmountMinor: BigInt(120), categoryName: "Food & Drinks", categoryColor: "#F59E0B" },
-    { note: "Vending Machine Drink", baseAmountMinor: BigInt(120), categoryName: "Food & Drinks", categoryColor: "#F59E0B" },
-  ];
+  React.useEffect(() => {
+    async function loadInsightsData() {
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
 
+        const { data } = await supabase
+          .from("transactions")
+          .select("note, base_amount, categories(name, color)")
+          .eq("user_id", user.id)
+          .eq("type", "expense")
+          .is("deleted_at", null)
+          .order("occurred_at", { ascending: false })
+          .limit(100);
+
+        if (data && data.length > 0) {
+          const mapped: LeakTransaction[] = data.map((t) => {
+            const cat = Array.isArray(t.categories) ? t.categories[0] : t.categories;
+            return {
+              note: t.note || "Expense",
+              baseAmountMinor: BigInt(t.base_amount),
+              categoryName: cat?.name || "Uncategorized",
+              categoryColor: cat?.color || "#EF4444",
+            };
+          });
+          setLiveTransactions(mapped);
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    loadInsightsData();
+  }, []);
+
+  const activeTransactions = liveTransactions ?? DEFAULT_TRANSACTIONS;
   const leaks = detectSpendingLeaks(
-    recentTransactions,
+    activeTransactions,
     toMinorUnits(leakThreshold, "USD")
   );
 

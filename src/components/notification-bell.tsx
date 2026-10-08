@@ -4,6 +4,8 @@ import * as React from "react";
 import { Bell, AlertTriangle, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+import { createClient } from "@/lib/supabase/client";
+
 interface NotificationItem {
   id: string;
   kind: "warning_80" | "limit_100" | "reminder";
@@ -13,39 +15,98 @@ interface NotificationItem {
   read: boolean;
 }
 
+const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
+  {
+    id: "1",
+    kind: "limit_100",
+    title: "Budget Limit Reached (100%)",
+    message: "Housing & Bills has reached 100% of its $50.00 monthly budget limit.",
+    time: "2h ago",
+    read: false,
+  },
+  {
+    id: "2",
+    kind: "warning_80",
+    title: "Budget Warning (80%)",
+    message: "Transport has reached 80% ($48.00 of $60.00 limit). Slow down spending to stay on track.",
+    time: "5h ago",
+    read: false,
+  },
+  {
+    id: "3",
+    kind: "reminder",
+    title: "Evening Logging Reminder",
+    message: "Did you remember to log all of your coffee and snack expenses today?",
+    time: "1d ago",
+    read: true,
+  },
+];
+
 export function NotificationBell() {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [notifications, setNotifications] = React.useState<NotificationItem[]>([
-    {
-      id: "1",
-      kind: "limit_100",
-      title: "Budget Limit Reached (100%)",
-      message: "Housing & Bills has reached 100% of its $50.00 monthly budget limit.",
-      time: "2h ago",
-      read: false,
-    },
-    {
-      id: "2",
-      kind: "warning_80",
-      title: "Budget Warning (80%)",
-      message: "Transport has reached 80% ($48.00 of $60.00 limit). Slow down spending to stay on track.",
-      time: "5h ago",
-      read: false,
-    },
-    {
-      id: "3",
-      kind: "reminder",
-      title: "Evening Logging Reminder",
-      message: "Did you remember to log all of your coffee and snack expenses today?",
-      time: "1d ago",
-      read: true,
-    },
-  ]);
+  const [notifications, setNotifications] = React.useState<NotificationItem[]>(DEFAULT_NOTIFICATIONS);
+
+  React.useEffect(() => {
+    async function loadNotifications() {
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data } = await supabase
+          .from("notifications")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        if (data && data.length > 0) {
+          const mapped: NotificationItem[] = data.map((n) => ({
+            id: n.id,
+            kind: n.kind as "warning_80" | "limit_100" | "reminder",
+            title:
+              n.kind === "limit_100"
+                ? "Budget Limit Reached (100%)"
+                : n.kind === "warning_80"
+                ? "Budget Warning (80%)"
+                : "Logging Reminder",
+            message: n.message,
+            time: new Date(n.created_at).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            read: n.read,
+          }));
+          setNotifications(mapped);
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    loadNotifications();
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from("notifications")
+          .update({ read: true })
+          .eq("user_id", user.id)
+          .eq("read", false);
+      }
+    } catch {
+      // Fallback
+    }
   };
 
   return (

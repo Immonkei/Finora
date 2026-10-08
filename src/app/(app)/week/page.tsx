@@ -16,13 +16,79 @@ import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
 import { generateWeeklyAiReport, type WeeklyAiReport } from "@/features/reports/ai-weekly-report";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
+import { getWeekBounds } from "@/lib/dates";
+
+interface RpcCategorySpending {
+  category_id: string;
+  category_name: string;
+  category_color: string | null;
+  category_icon: string | null;
+  total: number | string;
+}
+
+interface CatItem {
+  name: string;
+  totalMinor: bigint;
+  percent: number;
+  color: string;
+}
 
 export default function WeekPage() {
   const [report, setReport] = React.useState<WeeklyAiReport | null>(null);
   const [isGenerating, setIsGenerating] = React.useState(false);
 
-  const totalWeekSpentMinor = BigInt(11250); // $112.50
-  const lastWeekSpentMinor = BigInt(12800);  // $128.00
+  const [liveWeekSpent, setLiveWeekSpent] = React.useState<bigint | null>(null);
+  const [liveCategories, setLiveCategories] = React.useState<CatItem[] | null>(null);
+
+  React.useEffect(() => {
+    async function loadWeekData() {
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { start, end } = getWeekBounds(new Date(), 1);
+        const { data: catData } = await supabase.rpc("spending_by_category", {
+          p_from: start.toISOString(),
+          p_to: end.toISOString(),
+        });
+
+        if (catData && catData.length > 0) {
+          let weekTotal = BigInt(0);
+          const mappedCats = (catData as unknown as RpcCategorySpending[]).map((c) => {
+            const spent = BigInt(c.total);
+            weekTotal += spent;
+            return {
+              name: c.category_name,
+              totalMinor: spent,
+              percent: 0,
+              color: c.category_color || "#3B82F6",
+            };
+          });
+
+          const withPercents: CatItem[] = mappedCats.slice(0, 3).map((c) => ({
+            ...c,
+            percent:
+              weekTotal > 0n
+                ? Math.round(Number((c.totalMinor * 100n) / weekTotal))
+                : 0,
+          }));
+
+          setLiveCategories(withPercents);
+          setLiveWeekSpent(weekTotal);
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    loadWeekData();
+  }, []);
+
+  const totalWeekSpentMinor = liveWeekSpent ?? BigInt(11250); // $112.50
+  const lastWeekSpentMinor = BigInt(12800); // $128.00
   const differenceMinor = lastWeekSpentMinor - totalWeekSpentMinor;
   const isSpendingLower = differenceMinor > 0n;
 
@@ -36,11 +102,13 @@ export default function WeekPage() {
     { day: "Sun", amountMinor: BigInt(0), display: "$0.00", height: "5%" },
   ];
 
-  const topCategories = [
+  const DEFAULT_TOP_CATEGORIES: CatItem[] = [
     { name: "Food & Drinks", totalMinor: BigInt(5400), percent: 48, color: "#EF4444" },
     { name: "Transport", totalMinor: BigInt(2850), percent: 25, color: "#3B82F6" },
     { name: "Entertainment", totalMinor: BigInt(1800), percent: 16, color: "#EC4899" },
   ];
+
+  const topCategories = liveCategories ?? DEFAULT_TOP_CATEGORIES;
 
   const handleGenerateReport = () => {
     setIsGenerating(true);

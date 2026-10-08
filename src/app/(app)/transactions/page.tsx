@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
+import { formatDisplayDate } from "@/lib/dates";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
+import { deleteTransaction, restoreTransaction } from "@/features/transactions/actions";
 
 interface TxItem {
   id: string;
@@ -73,21 +76,67 @@ export default function TransactionsPage() {
       account: "Cash → Savings",
       amountMinor: BigInt(10000),
       type: "transfer",
-      date: "Oct 4, 2026",
+      date: "Oct 2, 2026",
     },
   ];
 
   const [transactions, setTransactions] = React.useState<TxItem[]>(initialTransactions);
 
-  const handleDelete = (tx: TxItem) => {
+  const loadTransactions = React.useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: txs } = await supabase
+        .from("transactions")
+        .select("*, categories(name, color), accounts(name)")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .order("occurred_at", { ascending: false });
+
+      if (txs && txs.length > 0) {
+        const formatted: TxItem[] = txs.map((t) => {
+          const cat = Array.isArray(t.categories) ? t.categories[0] : t.categories;
+          const acc = Array.isArray(t.accounts) ? t.accounts[0] : t.accounts;
+          return {
+            id: t.id,
+            note: t.note || "Transaction",
+            category: cat?.name || (t.type === "transfer" ? "Transfer" : "Uncategorized"),
+            categoryColor: cat?.color || (t.type === "transfer" ? "#64748B" : "#10B981"),
+            account: acc?.name || "Cash",
+            amountMinor: BigInt(t.amount),
+            type: t.type as "expense" | "income" | "transfer",
+            date: formatDisplayDate(t.occurred_at),
+          };
+        });
+        setTransactions(formatted);
+      }
+    } catch {
+      // Fallback
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      loadTransactions();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadTransactions]);
+
+  const handleDelete = async (tx: TxItem) => {
     setTransactions((prev) => prev.filter((item) => item.id !== tx.id));
+    await deleteTransaction(tx.id);
 
     toast("Transaction deleted", {
       description: `${tx.note} • ${formatMoney(tx.amountMinor, "USD")}`,
       duration: 10000,
       action: {
         label: "Undo",
-        onClick: () => {
+        onClick: async () => {
+          await restoreTransaction(tx.id);
           setTransactions((prev) => [tx, ...prev]);
           toast.success("Transaction restored");
         },
