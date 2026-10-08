@@ -10,6 +10,7 @@ import { formatDisplayDate, getDaysLeftInMonth } from "@/lib/dates";
 import { QuickAddDialog } from "@/features/transactions/components/quick-add-dialog";
 import { useMounted } from "@/lib/hooks";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeTable } from "@/lib/supabase/realtime";
 
 interface DisplayTx {
   id: string;
@@ -152,6 +153,14 @@ export default function TodayPage() {
     }, 0);
     return () => clearTimeout(timer);
   }, [loadTodayData]);
+
+  // Supabase Realtime: sync live transactions across tabs & devices instantly
+  useRealtimeTable({
+    table: "transactions",
+    onUpdate: () => {
+      loadTodayData();
+    },
+  });
 
   const monthlyBudgetMinor = liveData ? liveData.monthlyBudgetMinor : BigInt(60000);
   const monthlySpentMinor = liveData ? liveData.monthlySpentMinor : BigInt(24000);

@@ -153,7 +153,7 @@ export function DesktopSidebar() {
           </button>
           <div className="flex items-center justify-between px-1 text-[11px] text-zinc-400">
             <span>Finora App</span>
-            <span className="font-mono text-[10px] font-semibold text-accent-600 dark:text-accent-400">v1.0.0</span>
+            <span className="font-mono text-[10px] font-semibold text-accent-600 dark:text-accent-400">v1.1.0</span>
           </div>
         </div>
       </aside>

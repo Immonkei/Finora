@@ -5,6 +5,7 @@ import { Bell, AlertTriangle, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeTable } from "@/lib/supabase/realtime";
 
 interface NotificationItem {
   id: string;
@@ -46,47 +47,59 @@ export function NotificationBell() {
   const [isOpen, setIsOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<NotificationItem[]>(DEFAULT_NOTIFICATIONS);
 
-  React.useEffect(() => {
-    async function loadNotifications() {
-      try {
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
+  const loadNotifications = React.useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
 
-        const { data } = await supabase
-          .from("notifications")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(20);
+      const { data } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
 
-        if (data && data.length > 0) {
-          const mapped: NotificationItem[] = data.map((n) => ({
-            id: n.id,
-            kind: n.kind as "warning_80" | "limit_100" | "reminder",
-            title:
-              n.kind === "limit_100"
-                ? "Budget Limit Reached (100%)"
-                : n.kind === "warning_80"
-                ? "Budget Warning (80%)"
-                : "Logging Reminder",
-            message: n.message,
-            time: new Date(n.created_at).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            read: n.read,
-          }));
-          setNotifications(mapped);
-        }
-      } catch {
-        // Fallback
+      if (data && data.length > 0) {
+        const mapped: NotificationItem[] = data.map((n) => ({
+          id: n.id,
+          kind: n.kind as "warning_80" | "limit_100" | "reminder",
+          title:
+            n.kind === "limit_100"
+              ? "Budget Limit Reached (100%)"
+              : n.kind === "warning_80"
+              ? "Budget Warning (80%)"
+              : "Logging Reminder",
+          message: n.message,
+          time: new Date(n.created_at).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          read: n.read,
+        }));
+        setNotifications(mapped);
       }
+    } catch {
+      // Fallback
     }
-    loadNotifications();
   }, []);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      loadNotifications();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadNotifications]);
+
+  // Live Supabase Realtime subscription for alerts and reminders
+  useRealtimeTable({
+    table: "notifications",
+    onUpdate: () => {
+      loadNotifications();
+    },
+  });
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

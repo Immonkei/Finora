@@ -21,6 +21,7 @@ import {
   processDueRecurringRules,
 } from "@/features/recurring/actions";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeTable } from "@/lib/supabase/realtime";
 import { formatDisplayDate } from "@/lib/dates";
 
 interface RecurringRuleItem {
@@ -128,6 +129,14 @@ export default function RecurringPage() {
     }, 0);
     return () => clearTimeout(timer);
   }, [loadRules]);
+
+  // Supabase Realtime: sync recurring rules across tabs & devices
+  useRealtimeTable({
+    table: "recurring_rules",
+    onUpdate: () => {
+      loadRules();
+    },
+  });
 
   const activeRules = rules.filter((r) => r.active);
   const totalMonthlyObligation = activeRules.reduce(

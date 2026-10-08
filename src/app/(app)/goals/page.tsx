@@ -10,6 +10,7 @@ import { formatMoney } from "@/lib/money";
 import { formatDisplayDate } from "@/lib/dates";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeTable } from "@/lib/supabase/realtime";
 
 interface GoalItem {
   id: string;
@@ -97,6 +98,14 @@ export default function GoalsPage() {
     }, 0);
     return () => clearTimeout(timer);
   }, [loadGoals]);
+
+  // Supabase Realtime: sync savings goals across tabs & devices
+  useRealtimeTable({
+    table: "savings_goals",
+    onUpdate: () => {
+      loadGoals();
+    },
+  });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

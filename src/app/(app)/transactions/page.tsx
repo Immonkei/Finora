@@ -10,6 +10,7 @@ import { formatMoney } from "@/lib/money";
 import { formatDisplayDate } from "@/lib/dates";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeTable } from "@/lib/supabase/realtime";
 import { deleteTransaction, restoreTransaction } from "@/features/transactions/actions";
 
 interface TxItem {
@@ -125,6 +126,14 @@ export default function TransactionsPage() {
     }, 0);
     return () => clearTimeout(timer);
   }, [loadTransactions]);
+
+  // Supabase Realtime: sync live transactions across tabs & devices
+  useRealtimeTable({
+    table: "transactions",
+    onUpdate: () => {
+      loadTransactions();
+    },
+  });
 
   const handleDelete = async (tx: TxItem) => {
     setTransactions((prev) => prev.filter((item) => item.id !== tx.id));

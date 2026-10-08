@@ -308,11 +308,11 @@ export default function SettingsPage() {
               <Smartphone className="h-4 w-4 text-brand-600 dark:text-accent-400" /> App &amp; System Version
             </CardTitle>
             <Badge variant="brand" className="text-xs px-2.5">
-              v1.0.0 Stable
+              v1.1.0 Live
             </Badge>
           </div>
           <CardDescription>
-            Progressive Web App (PWA) with offline-ready local cache &amp; home screen install
+            Progressive Web App (PWA) with Supabase Realtime live sync &amp; offline shell
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -321,15 +321,15 @@ export default function SettingsPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs">
             <div>
               <span className="text-zinc-400">Release:</span>
-              <p className="font-semibold text-zinc-800 dark:text-zinc-200">v1.0.0 (Official)</p>
+              <p className="font-semibold text-zinc-800 dark:text-zinc-200">v1.1.0 (Realtime)</p>
             </div>
             <div>
-              <span className="text-zinc-400">Database:</span>
-              <p className="font-semibold text-zinc-800 dark:text-zinc-200">Supabase Postgres</p>
+              <span className="text-zinc-400">Realtime Sync:</span>
+              <p className="font-semibold text-accent-600 dark:text-accent-400">Active (Live WS)</p>
             </div>
             <div>
               <span className="text-zinc-400">Service Worker:</span>
-              <p className="font-semibold text-accent-600 dark:text-accent-400">Active (v1.0.0)</p>
+              <p className="font-semibold text-zinc-800 dark:text-zinc-200">Active (v1.1.0)</p>
             </div>
             <div>
               <span className="text-zinc-400">Multi-Currency:</span>
