@@ -9,9 +9,12 @@ import {
   ShieldAlert,
   LogOut,
   Users,
+  Smartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { PWAInstallCard } from "@/components/pwa-provider";
 import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
@@ -293,6 +296,45 @@ export default function SettingsPage() {
                 <Download className="h-4 w-4" /> Export CSV
               </Button>
             </a>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* App & System Version (v1.0.0 Stable) */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Smartphone className="h-4 w-4 text-brand-600 dark:text-accent-400" /> App &amp; System Version
+            </CardTitle>
+            <Badge variant="brand" className="text-xs px-2.5">
+              v1.0.0 Stable
+            </Badge>
+          </div>
+          <CardDescription>
+            Progressive Web App (PWA) with offline-ready local cache &amp; home screen install
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <PWAInstallCard />
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs">
+            <div>
+              <span className="text-zinc-400">Release:</span>
+              <p className="font-semibold text-zinc-800 dark:text-zinc-200">v1.0.0 (Official)</p>
+            </div>
+            <div>
+              <span className="text-zinc-400">Database:</span>
+              <p className="font-semibold text-zinc-800 dark:text-zinc-200">Supabase Postgres</p>
+            </div>
+            <div>
+              <span className="text-zinc-400">Service Worker:</span>
+              <p className="font-semibold text-accent-600 dark:text-accent-400">Active (v1.0.0)</p>
+            </div>
+            <div>
+              <span className="text-zinc-400">Multi-Currency:</span>
+              <p className="font-semibold text-zinc-800 dark:text-zinc-200">USD &amp; KHR (4,100)</p>
+            </div>
           </div>
         </CardContent>
       </Card>

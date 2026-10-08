@@ -143,7 +143,7 @@ export function DesktopSidebar() {
           })}
         </div>
 
-        <div className="pt-4 border-t border-zinc-200/80 dark:border-zinc-800/80">
+        <div className="pt-4 border-t border-zinc-200/80 dark:border-zinc-800/80 space-y-2">
           <button
             onClick={() => setIsAddOpen(true)}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.98] transition-all"
@@ -151,6 +151,10 @@ export function DesktopSidebar() {
             <Plus className="h-4 w-4 stroke-[2.5]" />
             Quick Add
           </button>
+          <div className="flex items-center justify-between px-1 text-[11px] text-zinc-400">
+            <span>Finora App</span>
+            <span className="font-mono text-[10px] font-semibold text-accent-600 dark:text-accent-400">v1.0.0</span>
+          </div>
         </div>
       </aside>
 

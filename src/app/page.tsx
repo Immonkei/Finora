@@ -21,7 +21,7 @@ export default function Home() {
               <FinoraLogo variant="full" size="md" priority />
             </Link>
             <Badge variant="outline" className="hidden sm:inline-flex text-[10px] border-accent-500/30 text-accent-700 dark:text-accent-300">
-              Personal Finance
+              v1.0.0 Stable &bull; PWA Ready
             </Badge>
           </div>
 
