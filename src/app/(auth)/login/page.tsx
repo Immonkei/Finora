@@ -7,7 +7,7 @@ import { Lock, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-
+import { FinoraLogo } from "@/components/finora-logo";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
@@ -20,7 +20,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithPassword({
@@ -65,22 +65,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-zinc-50/70 dark:bg-[#090E15]">
       <div className="w-full max-w-md space-y-6">
         {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-emerald-600 text-white font-bold text-2xl shadow-lg shadow-emerald-500/20 mb-2">
-            F
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Welcome to Finora
-          </h1>
+        <div className="text-center space-y-3">
+          <Link href="/" className="inline-block transition-transform hover:scale-[1.02]">
+            <FinoraLogo variant="full" size="lg" priority />
+          </Link>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Log in to manage your budget and daily allowance
+            Sign in to manage your budget and daily allowance
           </p>
         </div>
 
-        <Card className="border border-zinc-200 dark:border-zinc-800 shadow-xl bg-white dark:bg-zinc-900">
+        <Card className="border border-zinc-200/80 dark:border-zinc-800/80 shadow-md bg-white dark:bg-[#0F1822]">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-lg">Sign in</CardTitle>
             <CardDescription>
@@ -113,7 +110,7 @@ export default function LoginPage() {
                   </label>
                   <Link
                     href="/reset-password"
-                    className="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                    className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-accent-400"
                   >
                     Forgot password?
                   </Link>
@@ -141,7 +138,7 @@ export default function LoginPage() {
                 <span className="w-full border-t border-zinc-200 dark:border-zinc-800" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white dark:bg-zinc-900 px-2 text-zinc-500">
+                <span className="bg-white dark:bg-[#0F1822] px-2 text-zinc-500">
                   Or continue with
                 </span>
               </div>
@@ -180,7 +177,7 @@ export default function LoginPage() {
           Don&apos;t have an account?{" "}
           <Link
             href="/register"
-            className="font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+            className="font-semibold text-brand-600 hover:text-brand-700 dark:text-accent-400"
           >
             Create one
           </Link>

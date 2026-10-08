@@ -108,7 +108,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <p className="text-xs font-semibold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase">
+        <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
           Preferences
         </p>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -120,7 +120,7 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Globe className="h-4 w-4 text-emerald-600" /> Regional & Localization
+            <Globe className="h-4 w-4 text-brand-600 dark:text-accent-400" /> Regional & Localization
           </CardTitle>
           <CardDescription>
             Choose your display language, primary currency, and calculation timezone
@@ -194,7 +194,7 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Bell className="h-4 w-4 text-emerald-600" /> Daily Reminders & Alerts
+            <Bell className="h-4 w-4 text-brand-600 dark:text-accent-400" /> Daily Reminders & Alerts
           </CardTitle>
           <CardDescription>
             Configure evening expense logging prompts
@@ -218,7 +218,7 @@ export default function SettingsPage() {
                 type="button"
                 onClick={() => setRemindersEnabled(!remindersEnabled)}
                 className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors ${
-                  remindersEnabled ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-700"
+                  remindersEnabled ? "bg-brand-600" : "bg-zinc-300 dark:bg-zinc-700"
                 }`}
               >
                 <div
@@ -236,7 +236,7 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Users className="h-4 w-4 text-emerald-600" /> Shared & Household Budgets
+            <Users className="h-4 w-4 text-brand-600 dark:text-accent-400" /> Shared & Household Budgets
           </CardTitle>
           <CardDescription>
             Collaborate on shared categories with partner or family
@@ -252,7 +252,7 @@ export default function SettingsPage() {
               type="button"
               onClick={() => setSharedBudget(!sharedBudget)}
               className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors self-start sm:self-auto ${
-                sharedBudget ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-700"
+                sharedBudget ? "bg-brand-600" : "bg-zinc-300 dark:bg-zinc-700"
               }`}
             >
               <div
@@ -269,7 +269,7 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Download className="h-4 w-4 text-emerald-600" /> Export Data
+            <Download className="h-4 w-4 text-brand-600 dark:text-accent-400" /> Export Data
           </CardTitle>
           <CardDescription>
             Download your transactions history in CSV format

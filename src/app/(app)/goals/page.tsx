@@ -218,7 +218,7 @@ export default function GoalsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase">
+          <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
             Financial Targets
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -228,7 +228,7 @@ export default function GoalsPage() {
         <Button
           size="lg"
           onClick={() => setIsCreateOpen(true)}
-          className="w-full sm:w-auto shadow-md shadow-emerald-500/10"
+          className="w-full sm:w-auto shadow-md shadow-brand-500/20"
         >
           <Plus className="h-5 w-5 mr-1" />
           Create Goal
@@ -251,8 +251,8 @@ export default function GoalsPage() {
                     <span
                       className={`p-2 rounded-xl ${
                         isDone
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300"
-                          : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400"
+                          ? "bg-accent-100 text-accent-800 dark:bg-accent-950/70 dark:text-accent-300"
+                          : "bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-accent-400"
                       }`}
                     >
                       {isDone ? (
@@ -262,7 +262,7 @@ export default function GoalsPage() {
                       )}
                     </span>
                     <Badge
-                      variant={isDone ? "default" : "outline"}
+                      variant={isDone ? "accent" : "outline"}
                       className="text-xs font-semibold"
                     >
                       {percent}% Saved
@@ -287,7 +287,7 @@ export default function GoalsPage() {
                     <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2.5 overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${
-                          isDone ? "bg-emerald-500" : "bg-emerald-600"
+                          isDone ? "bg-accent-500" : "bg-brand-600"
                         }`}
                         style={{ width: `${percent}%` }}
                       />

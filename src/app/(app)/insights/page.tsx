@@ -115,8 +115,8 @@ export default function InsightsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5" /> Phase 3 Intelligence
+          <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-accent-500" /> Phase 3 Intelligence
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             Spending Insights
@@ -173,7 +173,7 @@ export default function InsightsPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardDescription>No-Spend Days</CardDescription>
-              <Award className="h-5 w-5 text-emerald-600" />
+              <Award className="h-5 w-5 text-accent-500" />
             </div>
             <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1">
               {streakStats.noSpendDaysCount} Days
@@ -299,7 +299,7 @@ export default function InsightsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Globe className="h-4 w-4 text-emerald-600" /> Multi-Currency Valuation
+            <Globe className="h-4 w-4 text-brand-600 dark:text-accent-400" /> Multi-Currency Valuation
           </CardTitle>
           <CardDescription>
             Stored exchange rate transparency for dual-currency economies

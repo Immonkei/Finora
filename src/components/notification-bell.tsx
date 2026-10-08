@@ -140,7 +140,7 @@ export function NotificationBell() {
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                className="text-xs text-brand-600 hover:text-brand-700 dark:text-accent-400 font-medium"
               >
                 Mark all read
               </button>
@@ -161,7 +161,7 @@ export function NotificationBell() {
                   ) : n.kind === "warning_80" ? (
                     <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
                   ) : (
-                    <Bell className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <Bell className="h-4 w-4 text-accent-500 shrink-0 mt-0.5" />
                   )}
                   <div className="flex-1">
                     <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 leading-tight">

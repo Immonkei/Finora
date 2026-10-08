@@ -171,7 +171,7 @@ export function QuickAddDialog({
         {/* Header */}
         <div className="flex items-center justify-between pb-1 border-b border-zinc-100 dark:border-zinc-800">
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+            <span className="p-1.5 rounded-lg bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-accent-400">
               <Sparkles className="h-4 w-4" />
             </span>
             <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
@@ -199,7 +199,7 @@ export function QuickAddDialog({
               className={cn(
                 "px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all",
                 entryMode === "nlp"
-                  ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
+                  ? "bg-white dark:bg-zinc-900 text-brand-600 dark:text-accent-400 shadow-sm"
                   : "text-zinc-500"
               )}
             >
@@ -240,7 +240,7 @@ export function QuickAddDialog({
             <div className="space-y-2">
               <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 flex items-center justify-between">
                 <span>Type naturally: &quot;coffee 2.5&quot; or &quot;taxi 8000 khr&quot;</span>
-                <span className="text-[10px] text-emerald-600 font-bold uppercase">AI Smart Parse</span>
+                <span className="text-[10px] text-accent-600 dark:text-accent-400 font-bold uppercase">AI Smart Parse</span>
               </label>
               <Input
                 ref={nlpInputRef}
@@ -251,9 +251,9 @@ export function QuickAddDialog({
                 autoFocus
               />
               {amountStr && (
-                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-xs flex items-center justify-between text-emerald-900 dark:text-emerald-200">
+                <div className="p-3 bg-brand-50/80 dark:bg-brand-950/40 border border-brand-200/50 dark:border-brand-800/40 rounded-xl text-xs flex items-center justify-between text-brand-900 dark:text-brand-200">
                   <span>Detected: <strong>{currency === "USD" ? "$" : "៛"}{amountStr}</strong> for <strong>{note || "Expense"}</strong></span>
-                  <Badge variant="outline" className="border-emerald-500/40">{currency}</Badge>
+                  <Badge variant="outline" className="border-brand-500/40">{currency}</Badge>
                 </div>
               )}
             </div>
@@ -264,7 +264,7 @@ export function QuickAddDialog({
                 <button
                   type="button"
                   onClick={() => setCurrency(currency === "USD" ? "KHR" : "USD")}
-                  className="text-2xl font-bold text-zinc-400 hover:text-emerald-600 transition-colors select-none"
+                  className="text-2xl font-bold text-zinc-400 hover:text-brand-600 dark:hover:text-accent-400 transition-colors select-none"
                   title="Tap to switch currency"
                 >
                   {currency === "USD" ? "$" : "៛"}
@@ -309,7 +309,7 @@ export function QuickAddDialog({
                       className={cn(
                         "flex items-center gap-2 p-2 rounded-xl border text-left text-xs font-medium transition-all",
                         isSelected
-                          ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 ring-1 ring-emerald-500"
+                          ? "border-brand-600 bg-brand-50/70 text-brand-900 ring-1 ring-brand-500 dark:border-accent-500 dark:bg-brand-950/40 dark:text-accent-200"
                           : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
                       )}
                     >
@@ -361,7 +361,7 @@ export function QuickAddDialog({
           {receiptImage && (
             <div className="flex items-center justify-between p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs">
               <span className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 font-medium truncate">
-                <ImageIcon className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> Receipt photo attached
+                <ImageIcon className="h-3.5 w-3.5 text-accent-500 shrink-0" /> Receipt photo attached
               </span>
               <button
                 type="button"
@@ -384,7 +384,7 @@ export function QuickAddDialog({
             type="submit"
             size="lg"
             disabled={isSubmitting}
-            className="w-full text-base font-semibold shadow-md shadow-emerald-600/20"
+            className="w-full text-base font-semibold shadow-md shadow-brand-600/20"
           >
             {isSubmitting ? "Saving..." : "Save Expense"}
           </Button>

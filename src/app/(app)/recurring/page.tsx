@@ -202,7 +202,7 @@ export default function RecurringPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase">
+          <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
             Subscriptions & Bills
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -216,7 +216,7 @@ export default function RecurringPage() {
             disabled={isProcessing}
             className="gap-2"
           >
-            <Play className="h-4 w-4 text-emerald-600" />
+            <Play className="h-4 w-4 text-brand-600 dark:text-accent-400" />
             {isProcessing ? "Processing..." : "Process Due"}
           </Button>
           <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
@@ -227,20 +227,20 @@ export default function RecurringPage() {
 
       {/* Top Banner Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card className="bg-gradient-to-br from-zinc-900 to-zinc-950 text-white border-0 shadow-md">
+        <Card className="bg-gradient-to-br from-brand-900 to-[#0A1622] text-white border-0 shadow-md">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-zinc-400 uppercase tracking-wider font-semibold">
+              <span className="text-xs text-brand-200 uppercase tracking-wider font-semibold">
                 Monthly Obligation
               </span>
-              <Repeat className="h-4 w-4 text-emerald-400" />
+              <Repeat className="h-4 w-4 text-accent-300" />
             </div>
             <CardTitle className="text-3xl sm:text-4xl font-extrabold text-white mt-1">
               {formatMoney(totalMonthlyObligation, "USD")}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-brand-200/80">
               Total committed across {activeRules.length} active repeating rules
             </p>
           </CardContent>
@@ -250,7 +250,7 @@ export default function RecurringPage() {
           <CardHeader className="pb-2">
             <CardDescription>Automation Status</CardDescription>
             <CardTitle className="text-lg font-bold flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" /> Auto-Logging Enabled
+              <CheckCircle2 className="h-5 w-5 text-accent-500" /> Auto-Logging Enabled
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -279,7 +279,7 @@ export default function RecurringPage() {
                 <div
                   className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold ${
                     rule.active
-                      ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400"
+                      ? "bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-accent-400"
                       : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400"
                   }`}
                 >

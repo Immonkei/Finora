@@ -141,9 +141,9 @@ export default function MonthPage() {
   const isOverspendRisk = forecastMinor > totalMonthlyLimitMinor;
   const percentUsed = Number((spentThisMonthMinor * 100n) / totalMonthlyLimitMinor);
 
-  // Helper for Spec FR-B2: green below 80%, yellow from 80% to 100%, red above 100%
+  // Helper for Spec FR-B2: accent below 80%, yellow from 80% to 100%, red above 100%
   const getBudgetColor = (percent: number) => {
-    if (percent < 80) return "bg-emerald-500";
+    if (percent < 80) return "bg-accent-500";
     if (percent <= 100) return "bg-amber-500";
     return "bg-rose-500";
   };
@@ -151,7 +151,7 @@ export default function MonthPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs font-semibold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase">
+        <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
           Monthly Analytics & Budgets
         </p>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">

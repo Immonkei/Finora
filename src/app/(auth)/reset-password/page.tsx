@@ -2,18 +2,18 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-
+import { FinoraLogo } from "@/components/finora-logo";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = React.useState("");
-  const [submitted, setSubmitted] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+  const [submitted, setSubmitted] = React.useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +22,7 @@ export default function ResetPasswordPage() {
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
+        redirectTo: `${window.location.origin}/login`,
       });
 
       if (error) {
@@ -43,9 +43,12 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-zinc-50/70 dark:bg-[#090E15]">
       <div className="w-full max-w-md space-y-6">
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-3">
+          <Link href="/" className="inline-block transition-transform hover:scale-[1.02]">
+            <FinoraLogo variant="full" size="lg" priority />
+          </Link>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             Reset Password
           </h1>
@@ -54,16 +57,16 @@ export default function ResetPasswordPage() {
           </p>
         </div>
 
-        <Card className="border border-zinc-200 dark:border-zinc-800 shadow-xl bg-white dark:bg-zinc-900">
+        <Card className="border border-zinc-200/80 dark:border-zinc-800/80 shadow-md bg-white dark:bg-[#0F1822]">
           <CardContent className="pt-6">
             {submitted ? (
               <div className="text-center space-y-3 py-4">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-100 dark:bg-accent-950/60 text-accent-700 dark:text-accent-300">
                   <CheckCircle2 className="h-6 w-6" />
                 </div>
                 <h3 className="text-base font-semibold">Check your inbox</h3>
                 <p className="text-xs text-zinc-500">
-                  We sent a password reset link to <span className="font-semibold">{email}</span>.
+                  We sent a password reset link to <span className="font-semibold text-zinc-800 dark:text-zinc-200">{email}</span>.
                 </p>
                 <div className="pt-2">
                   <Link href="/login">
@@ -100,14 +103,14 @@ export default function ResetPasswordPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-zinc-500">
+        <div className="text-center">
           <Link
             href="/login"
-            className="inline-flex items-center gap-1 font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            className="inline-flex items-center text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 gap-1.5 transition-colors"
           >
-            <ArrowLeft className="h-3 w-3" /> Back to login
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to sign in
           </Link>
-        </p>
+        </div>
       </div>
     </div>
   );

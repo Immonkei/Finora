@@ -1,25 +1,75 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+
+  --brand: #1b4d72;
+  --brand-hover: #143c59;
+  --brand-active: #0e2a3e;
+
+  --accent: #4fa3b3;
+  --accent-hover: #398595;
+  --accent-light: #e6f5f8;
 }
 
-@theme inline {
+@theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-brand-50: #f0f6fa;
+  --color-brand-100: #e1edf5;
+  --color-brand-200: #c3daec;
+  --color-brand-300: #93bfde;
+  --color-brand-400: #549bc9;
+  --color-brand-500: #2a6794;
+  --color-brand-600: #1b4d72;
+  --color-brand-700: #143c59;
+  --color-brand-800: #0e2a3e;
+  --color-brand-900: #0a1c2c;
+
+  --color-accent-50: #f0f9fa;
+  --color-accent-100: #e0f2f5;
+  --color-accent-200: #c1e6ec;
+  --color-accent-300: #8ecbd6;
+  --color-accent-400: #64b3c2;
+  --color-accent-500: #4fa3b3;
+  --color-accent-600: #398595;
+  --color-accent-700: #2b6774;
+  --color-accent-800: #1e4953;
+  --color-accent-900: #14333b;
+
+  --color-brand: #1b4d72;
+  --color-brand-hover: #143c59;
+  --color-brand-light: #f0f6fa;
+
+  --color-accent: #4fa3b3;
+  --color-accent-hover: #398595;
+  --color-accent-light: #e6f5f8;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #090e15;
+    --foreground: #f1f5f9;
   }
+}
+
+.dark {
+  --background: #090e15;
+  --foreground: #f1f5f9;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: rgba(79, 163, 179, 0.28);
+  color: inherit;
 }

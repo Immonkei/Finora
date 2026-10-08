@@ -128,7 +128,7 @@ export default function WeekPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase">
+          <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
             Weekly Summary
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -138,9 +138,9 @@ export default function WeekPage() {
         <Button
           onClick={handleGenerateReport}
           disabled={isGenerating}
-          className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md shadow-emerald-600/20"
+          className="gap-2 bg-brand-600 hover:bg-brand-700 text-white shadow-md shadow-brand-600/20"
         >
-          <Sparkles className="h-4 w-4" />
+          <Sparkles className="h-4 w-4 text-accent-300" />
           {isGenerating ? "Analyzing..." : "AI Weekly Report"}
         </Button>
       </div>
@@ -202,9 +202,9 @@ export default function WeekPage() {
                 <span className="text-[10px] text-zinc-500 font-medium hidden sm:block">
                   {d.display}
                 </span>
-                <div className="w-full max-w-[40px] bg-zinc-100 dark:bg-zinc-800 rounded-t-lg h-full flex items-end overflow-hidden">
+                <div className="w-full max-w-[40px] bg-zinc-100 dark:bg-zinc-850 rounded-t-lg h-full flex items-end overflow-hidden">
                   <div
-                    className="w-full bg-emerald-500 hover:bg-emerald-600 transition-all rounded-t-lg"
+                    className="w-full bg-brand-500 hover:bg-brand-600 dark:bg-accent-500 dark:hover:bg-accent-400 transition-all rounded-t-lg"
                     style={{ height: d.height }}
                   />
                 </div>
@@ -280,16 +280,16 @@ export default function WeekPage() {
             </div>
 
             {/* Score Banner */}
-            <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-900 flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-accent-50/80 dark:bg-accent-950/40 border border-accent-200/60 dark:border-accent-900/50 flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                <p className="text-xs font-semibold text-accent-800 dark:text-accent-300">
                   Budget Discipline Score
                 </p>
-                <p className="font-bold text-sm text-emerald-950 dark:text-emerald-100 mt-0.5">
+                <p className="font-bold text-sm text-brand-950 dark:text-zinc-50 mt-0.5">
                   {report.headline}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-xl bg-emerald-600 text-white font-extrabold flex items-center justify-center text-lg shadow-sm">
+              <div className="h-12 w-12 rounded-xl bg-brand-600 text-white font-extrabold flex items-center justify-center text-lg shadow-sm">
                 {report.score}
               </div>
             </div>
@@ -306,7 +306,7 @@ export default function WeekPage() {
               <ul className="space-y-1">
                 {report.highlights.map((h, i) => (
                   <li key={i} className="text-xs text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-accent-500 shrink-0" />
                     <span>{h}</span>
                   </li>
                 ))}

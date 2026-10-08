@@ -174,7 +174,7 @@ export default function TodayPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase">
+          <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
             {displayDateStr}
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -184,7 +184,7 @@ export default function TodayPage() {
         <Button
           size="lg"
           onClick={() => setIsAddOpen(true)}
-          className="w-full sm:w-auto shadow-md shadow-emerald-500/10"
+          className="w-full sm:w-auto shadow-md shadow-brand-500/20"
         >
           <Plus className="h-5 w-5 mr-1" />
           Log Expense
@@ -194,16 +194,16 @@ export default function TodayPage() {
       {/* Hero Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Daily Allowance Card */}
-        <Card className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white border-0 shadow-lg relative overflow-hidden">
+        <Card className="bg-gradient-to-br from-brand-600 via-[#164366] to-brand-900 text-white border-0 shadow-lg relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-10">
             <Sparkles className="h-32 w-32" />
           </div>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <span className="text-emerald-100 text-xs font-semibold uppercase tracking-wider">
+              <span className="text-brand-100 text-xs font-semibold uppercase tracking-wider">
                 Daily Allowance
               </span>
-              <Badge variant="outline" className="border-emerald-300/40 text-emerald-100 text-xs">
+              <Badge variant="outline" className="border-accent-300/40 bg-accent-500/10 text-accent-100 text-xs">
                 {daysLeft} days left
               </Badge>
             </div>
@@ -212,16 +212,16 @@ export default function TodayPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-emerald-100 mb-3">
+            <p className="text-xs text-brand-100/90 mb-3">
               Remaining this month: {formatMoney(remainingBudgetMinor, "USD")}
             </p>
-            <div className="w-full bg-emerald-950/40 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-brand-950/60 rounded-full h-2 overflow-hidden">
               <div
-                className="bg-white h-full rounded-full transition-all duration-500"
+                className="bg-accent-400 h-full rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(100, allowanceUsedPercent)}%` }}
               />
             </div>
-            <div className="flex justify-between text-[11px] text-emerald-100/90 mt-1.5 font-medium">
+            <div className="flex justify-between text-[11px] text-brand-100/80 mt-1.5 font-medium">
               <span>Spent today: {formatMoney(spentTodayMinor, "USD")}</span>
               <span>{allowanceUsedPercent}% of daily budget</span>
             </div>
@@ -254,7 +254,7 @@ export default function TodayPage() {
               <span className="flex items-center gap-1.5">
                 <TrendingUp className="h-3.5 w-3.5 text-zinc-400" /> Month Status
               </span>
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+              <span className="font-semibold text-brand-600 dark:text-accent-400">
                 On Track (40% used)
               </span>
             </div>

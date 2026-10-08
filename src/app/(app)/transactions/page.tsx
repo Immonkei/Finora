@@ -156,7 +156,7 @@ export default function TransactionsPage() {
     <div className="space-y-6">
 
       <div>
-        <p className="text-xs font-semibold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase">
+        <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
           Ledger
         </p>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -234,7 +234,7 @@ export default function TransactionsPage() {
                     <p
                       className={`font-semibold text-sm ${
                         tx.type === "income"
-                          ? "text-emerald-600 dark:text-emerald-400"
+                          ? "text-accent-600 dark:text-accent-400"
                           : "text-zinc-900 dark:text-zinc-100"
                       }`}
                     >
