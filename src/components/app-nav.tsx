@@ -12,6 +12,7 @@ import {
   Settings,
   Plus,
   Repeat,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuickAddDialog } from "@/features/transactions/components/quick-add-dialog";
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { href: "/today", label: "Today", icon: CalendarDays },
   { href: "/week", label: "Week", icon: BarChart3 },
   { href: "/month", label: "Month", icon: PieChart },
+  { href: "/insights", label: "Insights", icon: Sparkles },
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/recurring", label: "Recurring", icon: Repeat },
   { href: "/transactions", label: "Activity", icon: ArrowLeftRight },
