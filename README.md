@@ -22,7 +22,7 @@ Finora is a fast, mobile-friendly personal finance tracking web application buil
 
 ### 1. Install Dependencies
 ```bash
-pnpm install
+npm install
 ```
 
 ### 2. Configure Environment Variables
@@ -39,7 +39,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 ### 3. Run Development Server
 ```bash
-pnpm dev
+npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
@@ -50,7 +50,7 @@ This establishes all core tables (`profiles`, `accounts`, `categories`, `transac
 
 ### 5. Running Tests
 ```bash
-pnpm test
+npm test
 ```
 
 ---
