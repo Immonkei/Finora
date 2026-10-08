@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { transactionTypeSchema } from "@/features/transactions/schema";
+import { transactionTypeSchema } from "../transactions/schema";
 
 export const recurringRuleSchema = z.object({
   type: transactionTypeSchema,
   amount: z.number().positive("Amount must be greater than 0"),
   currency: z.enum(["USD", "KHR"]).default("USD"),
-  account_id: z.string().uuid("Invalid account ID"),
-  category_id: z.string().uuid().optional().nullable(),
+  account_id: z.string().min(1, "Account ID is required"),
+  category_id: z.string().min(1, "Invalid category ID").optional().nullable(),
   note: z.string().max(255).optional().nullable(),
   frequency: z.enum(["daily", "weekly", "monthly"]),
   start_date: z.string(),

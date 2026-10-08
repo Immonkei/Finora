@@ -11,6 +11,7 @@ import {
   ArrowLeftRight,
   Settings,
   Plus,
+  Repeat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuickAddDialog } from "@/features/transactions/components/quick-add-dialog";
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { href: "/week", label: "Week", icon: BarChart3 },
   { href: "/month", label: "Month", icon: PieChart },
   { href: "/goals", label: "Goals", icon: Target },
+  { href: "/recurring", label: "Recurring", icon: Repeat },
   { href: "/transactions", label: "Activity", icon: ArrowLeftRight },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
