@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Target, Plus, Calendar, Sparkles, TrendingUp, CheckCircle2 } from "lucide-react";
+import { Target, Plus, Calendar, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

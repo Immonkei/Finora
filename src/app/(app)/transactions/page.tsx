@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Search, Filter, Trash2, Edit3, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Search, Trash2, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
 import { toast } from "sonner";

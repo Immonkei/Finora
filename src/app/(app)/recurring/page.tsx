@@ -7,10 +7,7 @@ import {
   Play,
   CheckCircle2,
   Calendar,
-  AlertCircle,
-  Sparkles,
   Power,
-  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -18,11 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/money";
 import { toast } from "sonner";
-import {
-  createRecurringRule,
-  toggleRecurringRule,
-  processDueRecurringRules,
-} from "@/features/recurring/actions";
+import { processDueRecurringRules } from "@/features/recurring/actions";
 
 interface RecurringRuleItem {
   id: string;
@@ -331,6 +324,23 @@ export default function RecurringPage() {
                   <option value="monthly">Monthly (e.g. 1st of month)</option>
                   <option value="weekly">Weekly (every 7 days)</option>
                   <option value="daily">Daily</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+                  Category
+                </label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full h-11 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 text-sm"
+                >
+                  <option value="Housing & Bills">Housing & Bills</option>
+                  <option value="Food & Drinks">Food & Drinks</option>
+                  <option value="Transport">Transport</option>
+                  <option value="Entertainment">Entertainment</option>
+                  <option value="Health & Medical">Health & Medical</option>
                 </select>
               </div>
 

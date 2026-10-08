@@ -2,13 +2,14 @@
 
 import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowRight, Lock, Mail, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Lock, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -17,7 +18,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     // Client-side authentication logic or server action
-    window.location.href = "/today";
+    router.push("/today");
   };
 
   return (
@@ -107,7 +108,7 @@ export default function LoginPage() {
               variant="outline"
               type="button"
               className="w-full gap-2 font-medium"
-              onClick={() => (window.location.href = "/today")}
+              onClick={() => router.push("/today")}
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24">
                 <path

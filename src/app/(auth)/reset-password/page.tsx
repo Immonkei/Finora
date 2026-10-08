@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = React.useState("");

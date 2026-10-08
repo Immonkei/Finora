@@ -23,7 +23,6 @@ export function generateWeeklyAiReport(params: {
     spentThisWeekMinor,
     allowanceAverageMinor,
     topLeakTitle = "Coffee & snacks",
-    currency = "USD",
   } = params;
 
   const weeklyTargetMinor = allowanceAverageMinor * 7n;

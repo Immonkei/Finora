@@ -3,11 +3,6 @@
 import * as React from "react";
 import {
   X,
-  Plus,
-  ArrowDownLeft,
-  ArrowUpRight,
-  ArrowLeftRight,
-  Check,
   Utensils,
   ShoppingCart,
   Car,
@@ -67,14 +62,15 @@ export function QuickAddDialog({
   // Auto-focus when dialog opens (Spec FR-T4)
   React.useEffect(() => {
     if (isOpen) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         if (entryMode === "keypad") {
           inputRef.current?.focus();
         } else {
           nlpInputRef.current?.focus();
         }
+        setErrorMessage(null);
       }, 60);
-      setErrorMessage(null);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, entryMode]);
 

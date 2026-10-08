@@ -2,12 +2,14 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Lock, Mail, User, ShieldCheck } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Lock, Mail, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -15,7 +17,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    window.location.href = "/today";
+    router.push("/today");
   };
 
   return (

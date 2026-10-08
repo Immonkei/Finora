@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Bell, AlertTriangle, AlertCircle, CheckCircle2, X } from "lucide-react";
+import { Bell, AlertTriangle, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 
 interface NotificationItem {
   id: string;

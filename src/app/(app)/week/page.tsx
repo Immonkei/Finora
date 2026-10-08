@@ -4,7 +4,6 @@ import * as React from "react";
 import {
   TrendingDown,
   TrendingUp,
-  Calendar,
   Sparkles,
   Bot,
   CheckCircle2,

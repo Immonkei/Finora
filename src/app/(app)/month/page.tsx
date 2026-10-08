@@ -1,18 +1,15 @@
 "use client";
 
-import * as React from "react";
-import { AlertCircle, CheckCircle2, TrendingUp, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney, calculateForecast } from "@/lib/money";
 import { getDaysPassedInMonth, getDaysLeftInMonth } from "@/lib/dates";
+import { useMounted } from "@/lib/hooks";
 
 export default function MonthPage() {
-  const [currentDate, setCurrentDate] = React.useState<Date | null>(null);
+  const isMounted = useMounted();
+  const currentDate = isMounted ? new Date() : null;
 
-  React.useEffect(() => {
-    setCurrentDate(new Date());
-  }, []);
 
   const daysPassed = currentDate ? getDaysPassedInMonth(currentDate) : 8;
   const daysLeft = currentDate ? getDaysLeftInMonth(currentDate) : 23;

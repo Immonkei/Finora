@@ -6,19 +6,13 @@ import {
   Coffee,
   TrendingDown,
   TrendingUp,
-  ArrowRight,
   Sparkles,
-  Zap,
   Globe,
   Award,
-  CheckCircle2,
-  Calendar,
-  AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { formatMoney, fromMinorUnits, toMinorUnits } from "@/lib/money";
+import { formatMoney, toMinorUnits } from "@/lib/money";
 import { detectSpendingLeaks, type LeakTransaction } from "@/features/reports/leak-detector";
 import { calculateStreaks } from "@/features/reports/streaks";
 

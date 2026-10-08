@@ -1,11 +1,8 @@
 import Link from "next/link";
-import Image from "next/image";
 import {
   ArrowRight,
   ShieldCheck,
   Zap,
-  TrendingUp,
-  Target,
   Clock,
   Sparkles,
 } from "lucide-react";

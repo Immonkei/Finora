@@ -49,4 +49,14 @@ describe("Transaction Schemas", () => {
     };
     expect(createTransactionSchema.safeParse(validTransfer).success).toBe(true);
   });
+
+  it("validates transaction filter options", () => {
+    const filter = {
+      type: "expense" as const,
+      currency: "USD" as const,
+      limit: 20,
+    };
+    const result = transactionFilterSchema.safeParse(filter);
+    expect(result.success).toBe(true);
+  });
 });

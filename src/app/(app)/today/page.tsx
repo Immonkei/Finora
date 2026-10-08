@@ -1,21 +1,20 @@
 "use client";
 
 import * as React from "react";
-import { Plus, ArrowUpRight, ArrowDownLeft, Sparkles, TrendingUp, Wallet } from "lucide-react";
+import { Plus, ArrowDownLeft, Sparkles, TrendingUp, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney, calculateDailyAllowance } from "@/lib/money";
 import { formatDisplayDate, getDaysLeftInMonth } from "@/lib/dates";
 import { QuickAddDialog } from "@/features/transactions/components/quick-add-dialog";
+import { useMounted } from "@/lib/hooks";
 
 export default function TodayPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false);
-  const [currentDate, setCurrentDate] = React.useState<Date | null>(null);
+  const isMounted = useMounted();
+  const currentDate = isMounted ? new Date() : null;
 
-  React.useEffect(() => {
-    setCurrentDate(new Date());
-  }, []);
 
   const daysLeft = currentDate ? getDaysLeftInMonth(currentDate) : 23;
 

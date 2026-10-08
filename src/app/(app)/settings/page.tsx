@@ -1,23 +1,21 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   Download,
   Globe,
   Bell,
-  Calendar,
   ShieldAlert,
   LogOut,
   Users,
-  Smartphone,
-  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [currency, setCurrency] = React.useState("USD");
   const [language, setLanguage] = React.useState("en");
   const [timezone, setTimezone] = React.useState("Asia/Phnom_Penh");
@@ -245,7 +243,7 @@ export default function SettingsPage() {
               size="sm"
               onClick={() => {
                 toast.info("Signing out...");
-                window.location.href = "/login";
+                router.push("/login");
               }}
               className="gap-2 self-start sm:self-auto"
             >
