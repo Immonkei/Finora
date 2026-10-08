@@ -19,6 +19,7 @@ export const metadata: Metadata = {
   icons: {
     icon: "/finora-logo.png",
   },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({

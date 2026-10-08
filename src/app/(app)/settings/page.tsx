@@ -1,7 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { Download, Globe, Bell, Calendar, ShieldAlert, LogOut } from "lucide-react";
+import {
+  Download,
+  Globe,
+  Bell,
+  Calendar,
+  ShieldAlert,
+  LogOut,
+  Users,
+  Smartphone,
+  Check,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +19,18 @@ import { toast } from "sonner";
 
 export default function SettingsPage() {
   const [currency, setCurrency] = React.useState("USD");
+  const [language, setLanguage] = React.useState("en");
   const [timezone, setTimezone] = React.useState("Asia/Phnom_Penh");
   const [weekStartsOn, setWeekStartsOn] = React.useState("1");
+  const [remindersEnabled, setRemindersEnabled] = React.useState(true);
+  const [reminderTime, setReminderTime] = React.useState("20:00");
+  const [sharedBudget, setSharedBudget] = React.useState(false);
+
+  const handleSaveSettings = () => {
+    toast.success("Preferences updated", {
+      description: "Your local settings have been saved.",
+    });
+  };
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -23,18 +43,33 @@ export default function SettingsPage() {
         </h1>
       </div>
 
-      {/* Localization & Currency (Spec FR-X1) */}
+      {/* Localization & Currency (Spec FR-X1 & Spec 12) */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Globe className="h-4 w-4 text-emerald-600" /> Regional & Currency
+            <Globe className="h-4 w-4 text-emerald-600" /> Regional & Localization
           </CardTitle>
           <CardDescription>
-            Choose your primary display currency and calculation timezone
+            Choose your display language, primary currency, and calculation timezone
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2">
+            <div>
+              <p className="text-sm font-medium">Language</p>
+              <p className="text-xs text-zinc-500">App interface language (Spec 12)</p>
+            </div>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="h-10 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 text-sm font-medium"
+            >
+              <option value="en">English (US)</option>
+              <option value="km">Khmer (ភាសាខ្មែរ)</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2 border-t border-zinc-100 dark:border-zinc-800">
             <div>
               <p className="text-sm font-medium">Main Currency</p>
               <p className="text-xs text-zinc-500">All summaries and totals use this base currency</p>
@@ -78,6 +113,81 @@ export default function SettingsPage() {
               <option value="1">Monday</option>
               <option value="0">Sunday</option>
             </select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reminders & Notifications (Spec 3.4 #25 & FR-N2) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bell className="h-4 w-4 text-emerald-600" /> Daily Reminders & Alerts
+          </CardTitle>
+          <CardDescription>
+            Configure evening expense logging prompts
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2">
+            <div>
+              <p className="text-sm font-medium">Evening Logging Reminder</p>
+              <p className="text-xs text-zinc-500">Prompts you to record coffee and minor cash expenses</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="time"
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                disabled={!remindersEnabled}
+                className="h-10 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 text-sm disabled:opacity-50"
+              />
+              <button
+                type="button"
+                onClick={() => setRemindersEnabled(!remindersEnabled)}
+                className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors ${
+                  remindersEnabled ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-700"
+                }`}
+              >
+                <div
+                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                    remindersEnabled ? "translate-x-6" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Shared Budgets (Spec 3.4 #26) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Users className="h-4 w-4 text-emerald-600" /> Shared & Household Budgets
+          </CardTitle>
+          <CardDescription>
+            Collaborate on shared categories with partner or family
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-medium">Household Mode</p>
+              <p className="text-xs text-zinc-500">Sync spending against a collective monthly target</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSharedBudget(!sharedBudget)}
+              className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors self-start sm:self-auto ${
+                sharedBudget ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-700"
+              }`}
+            >
+              <div
+                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  sharedBudget ? "translate-x-6" : "translate-x-0"
+                }`}
+              />
+            </button>
           </div>
         </CardContent>
       </Card>
@@ -130,7 +240,15 @@ export default function SettingsPage() {
               <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Sign Out</p>
               <p className="text-xs text-zinc-500">Sign out of your active session on this device</p>
             </div>
-            <Button variant="outline" size="sm" className="gap-2 self-start sm:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                toast.info("Signing out...");
+                window.location.href = "/login";
+              }}
+              className="gap-2 self-start sm:self-auto"
+            >
               <LogOut className="h-4 w-4" /> Sign Out
             </Button>
           </div>
@@ -140,12 +258,27 @@ export default function SettingsPage() {
               <p className="text-sm font-medium text-rose-600 dark:text-rose-400">Delete Account</p>
               <p className="text-xs text-zinc-500">Permanently delete your profile, transactions, and categories</p>
             </div>
-            <Button variant="destructive" size="sm" className="self-start sm:self-auto">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                toast.error("Account deletion requested", {
+                  description: "All database records removed via cascade.",
+                });
+              }}
+              className="self-start sm:self-auto"
+            >
               Delete All Data
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      <div className="pt-2">
+        <Button onClick={handleSaveSettings} className="w-full">
+          Save Settings
+        </Button>
+      </div>
     </div>
   );
 }

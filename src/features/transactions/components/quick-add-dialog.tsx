@@ -15,10 +15,15 @@ import {
   Tv,
   ShoppingBag,
   Sparkles,
+  Camera,
+  Image as ImageIcon,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { createTransaction } from "../actions";
+import { parseNaturalLanguageInput } from "../nlp-parser";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -42,32 +47,80 @@ export function QuickAddDialog({
   onClose,
   onSuccess,
 }: QuickAddDialogProps) {
+  const [entryMode, setEntryMode] = React.useState<"keypad" | "nlp">("keypad");
+  const [nlpText, setNlpText] = React.useState("");
+
   const [type, setType] = React.useState<"expense" | "income" | "transfer">("expense");
   const [amountStr, setAmountStr] = React.useState("");
   const [currency, setCurrency] = React.useState<"USD" | "KHR">("USD");
   const [selectedCategory, setSelectedCategory] = React.useState<string>("cat-1");
   const [note, setNote] = React.useState("");
+  const [receiptImage, setReceiptImage] = React.useState<string | null>(null);
+
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const nlpInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Auto-focus on amount input when dialog opens (Spec FR-T4)
+  // Auto-focus when dialog opens (Spec FR-T4)
   React.useEffect(() => {
     if (isOpen) {
       setTimeout(() => {
-        inputRef.current?.focus();
-      }, 50);
+        if (entryMode === "keypad") {
+          inputRef.current?.focus();
+        } else {
+          nlpInputRef.current?.focus();
+        }
+      }, 60);
       setErrorMessage(null);
     }
-  }, [isOpen]);
+  }, [isOpen, entryMode]);
 
   if (!isOpen) return null;
 
+  // Handle Natural Language Parse on change
+  const handleNlpChange = (text: string) => {
+    setNlpText(text);
+    const parsed = parseNaturalLanguageInput(text);
+    if (parsed) {
+      setAmountStr(parsed.amount.toString());
+      setCurrency(parsed.currency);
+      setNote(parsed.note);
+      const matchedCat = CATEGORIES.find((c) => c.name === parsed.categoryName);
+      if (matchedCat) {
+        setSelectedCategory(matchedCat.id);
+      }
+    }
+  };
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setReceiptImage(url);
+      toast.info("Receipt image attached");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const numAmount = parseFloat(amountStr);
-    if (isNaN(numAmount) || numAmount <= 0) {
+
+    let finalAmount = parseFloat(amountStr);
+    let finalNote = note;
+    let finalCurrency = currency;
+
+    if (entryMode === "nlp" && nlpText) {
+      const parsed = parseNaturalLanguageInput(nlpText);
+      if (parsed) {
+        finalAmount = parsed.amount;
+        finalNote = parsed.note;
+        finalCurrency = parsed.currency;
+      }
+    }
+
+    if (isNaN(finalAmount) || finalAmount <= 0) {
       setErrorMessage("Please enter a valid amount greater than 0");
       return;
     }
@@ -75,14 +128,13 @@ export function QuickAddDialog({
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    // Call createTransaction action
     const res = await createTransaction({
       type,
-      amount: numAmount,
-      currency,
-      account_id: "00000000-0000-0000-0000-000000000001", // Default Cash account ID
+      amount: finalAmount,
+      currency: finalCurrency,
+      account_id: "00000000-0000-0000-0000-000000000001",
       category_id: type === "expense" ? "00000000-0000-0000-0000-000000000002" : undefined,
-      note: note.trim() || undefined,
+      note: finalNote.trim() || undefined,
       occurred_at: new Date().toISOString(),
     });
 
@@ -96,12 +148,14 @@ export function QuickAddDialog({
           ? "Income recorded!"
           : "Transfer completed!",
         {
-          description: `${currency === "USD" ? "$" : "៛"}${numAmount.toFixed(currency === "USD" ? 2 : 0)} ${note ? `• ${note}` : ""}`,
+          description: `${finalCurrency === "USD" ? "$" : "៛"}${finalAmount.toFixed(finalCurrency === "USD" ? 2 : 0)} ${finalNote ? `• ${finalNote}` : ""}${receiptImage ? " (Receipt attached)" : ""}`,
         }
       );
       // Reset form
       setAmountStr("");
       setNote("");
+      setNlpText("");
+      setReceiptImage(null);
       onSuccess?.();
       onClose();
     } else {
@@ -115,7 +169,7 @@ export function QuickAddDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
       <div
-        className="w-full max-w-lg rounded-t-3xl sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 space-y-5 animate-in slide-in-from-bottom duration-200"
+        className="w-full max-w-lg rounded-t-3xl sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 space-y-4 animate-in slide-in-from-bottom duration-200"
         role="dialog"
       >
         {/* Header */}
@@ -128,9 +182,38 @@ export function QuickAddDialog({
               Quick Log
             </h2>
           </div>
+
+          {/* Mode Switcher: Keypad vs NLP */}
+          <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setEntryMode("keypad")}
+              className={cn(
+                "px-2.5 py-1 text-xs font-semibold rounded-lg transition-all",
+                entryMode === "keypad"
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 shadow-sm"
+                  : "text-zinc-500"
+              )}
+            >
+              Keypad
+            </button>
+            <button
+              type="button"
+              onClick={() => setEntryMode("nlp")}
+              className={cn(
+                "px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all",
+                entryMode === "nlp"
+                  ? "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
+                  : "text-zinc-500"
+              )}
+            >
+              <Zap className="h-3 w-3" /> AI Text
+            </button>
+          </div>
+
           <button
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -144,7 +227,7 @@ export function QuickAddDialog({
               type="button"
               onClick={() => setType(t)}
               className={cn(
-                "flex-1 py-2 text-xs font-semibold rounded-lg capitalize transition-all",
+                "flex-1 py-1.5 text-xs font-semibold rounded-lg capitalize transition-all",
                 type === t
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm"
                   : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
@@ -156,41 +239,65 @@ export function QuickAddDialog({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Main Amount Input (Large keypad feel) */}
-          <div className="relative flex items-center justify-center p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800">
-            <div className="flex items-baseline gap-2">
+          {/* Natural Language Mode (Spec 3.4 #21) */}
+          {entryMode === "nlp" ? (
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 flex items-center justify-between">
+                <span>Type naturally: &quot;coffee 2.5&quot; or &quot;taxi 8000 khr&quot;</span>
+                <span className="text-[10px] text-emerald-600 font-bold uppercase">AI Smart Parse</span>
+              </label>
+              <Input
+                ref={nlpInputRef}
+                placeholder="e.g. iced latte 3.50, lunch 12, grab bike 6000 khr"
+                value={nlpText}
+                onChange={(e) => handleNlpChange(e.target.value)}
+                className="text-base py-3"
+                autoFocus
+              />
+              {amountStr && (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-xs flex items-center justify-between text-emerald-900 dark:text-emerald-200">
+                  <span>Detected: <strong>{currency === "USD" ? "$" : "៛"}{amountStr}</strong> for <strong>{note || "Expense"}</strong></span>
+                  <Badge variant="outline" className="border-emerald-500/40">{currency}</Badge>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Keypad Mode (Large numeric focus) */
+            <div className="relative flex items-center justify-center p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800">
+              <div className="flex items-baseline gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrency(currency === "USD" ? "KHR" : "USD")}
+                  className="text-2xl font-bold text-zinc-400 hover:text-emerald-600 transition-colors select-none"
+                  title="Tap to switch currency"
+                >
+                  {currency === "USD" ? "$" : "៛"}
+                </button>
+                <input
+                  ref={inputRef}
+                  type="number"
+                  step={currency === "USD" ? "0.01" : "100"}
+                  min="0"
+                  placeholder="0.00"
+                  value={amountStr}
+                  onChange={(e) => setAmountStr(e.target.value)}
+                  className="w-48 bg-transparent text-center text-4xl sm:text-5xl font-extrabold text-zinc-900 dark:text-zinc-50 focus:outline-none placeholder:text-zinc-300 dark:placeholder:text-zinc-700"
+                  required
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => setCurrency(currency === "USD" ? "KHR" : "USD")}
-                className="text-2xl font-bold text-zinc-400 hover:text-emerald-600 transition-colors select-none"
-                title="Tap to switch currency"
+                className="absolute right-4 text-xs font-semibold px-2 py-1 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
               >
-                {currency === "USD" ? "$" : "៛"}
+                {currency}
               </button>
-              <input
-                ref={inputRef}
-                type="number"
-                step={currency === "USD" ? "0.01" : "100"}
-                min="0"
-                placeholder="0.00"
-                value={amountStr}
-                onChange={(e) => setAmountStr(e.target.value)}
-                className="w-48 bg-transparent text-center text-4xl sm:text-5xl font-extrabold text-zinc-900 dark:text-zinc-50 focus:outline-none placeholder:text-zinc-300 dark:placeholder:text-zinc-700"
-                required
-              />
             </div>
-            <button
-              type="button"
-              onClick={() => setCurrency(currency === "USD" ? "KHR" : "USD")}
-              className="absolute right-4 text-xs font-semibold px-2 py-1 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
-            >
-              {currency}
-            </button>
-          </div>
+          )}
 
           {/* Categories Grid (Large tap targets for 5s logging) */}
           {type === "expense" && (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                 Category
               </label>
@@ -204,19 +311,19 @@ export function QuickAddDialog({
                       type="button"
                       onClick={() => setSelectedCategory(cat.id)}
                       className={cn(
-                        "flex items-center gap-2 p-2.5 rounded-xl border text-left text-xs font-medium transition-all",
+                        "flex items-center gap-2 p-2 rounded-xl border text-left text-xs font-medium transition-all",
                         isSelected
                           ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 ring-1 ring-emerald-500"
                           : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
                       )}
                     >
                       <span
-                        className="w-6 h-6 rounded-lg flex items-center justify-center text-white shrink-0"
+                        className="w-5 h-5 rounded-lg flex items-center justify-center text-white shrink-0"
                         style={{ backgroundColor: cat.color }}
                       >
-                        <Icon className="h-3.5 w-3.5" />
+                        <Icon className="h-3 w-3" />
                       </span>
-                      <span className="truncate">{cat.name}</span>
+                      <span className="truncate text-[11px]">{cat.name}</span>
                     </button>
                   );
                 })}
@@ -224,16 +331,51 @@ export function QuickAddDialog({
             </div>
           )}
 
-          {/* Note Input */}
-          <div className="space-y-1">
+          {/* Note & Receipt Upload Row (Spec 3.4 #22) */}
+          <div className="flex items-center gap-2">
             <Input
-              placeholder="Add note (e.g., Morning Coffee, Grocery run)"
+              placeholder="Note (optional)"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="text-sm"
+              className="text-xs flex-1"
               maxLength={100}
             />
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoSelect}
+            />
+
+            <Button
+              type="button"
+              variant={receiptImage ? "default" : "outline"}
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              title="Attach receipt photo"
+              className="shrink-0 h-10 w-10 rounded-xl"
+            >
+              <Camera className="h-4 w-4" />
+            </Button>
           </div>
+
+          {/* Receipt Preview if attached */}
+          {receiptImage && (
+            <div className="flex items-center justify-between p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs">
+              <span className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 font-medium truncate">
+                <ImageIcon className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> Receipt photo attached
+              </span>
+              <button
+                type="button"
+                onClick={() => setReceiptImage(null)}
+                className="text-rose-500 hover:text-rose-700 text-xs font-semibold px-1"
+              >
+                Remove
+              </button>
+            </div>
+          )}
 
           {errorMessage && (
             <p className="text-xs font-medium text-rose-600 dark:text-rose-400">
