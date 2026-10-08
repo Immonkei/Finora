@@ -39,15 +39,22 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute =
     path.startsWith("/login") ||
     path.startsWith("/register") ||
-    path.startsWith("/reset-password") ||
-    path.startsWith("/auth");
+    path.startsWith("/reset-password");
+
+  const isPublicRoute =
+    path === "/" ||
+    isAuthRoute ||
+    path.startsWith("/auth") ||
+    path.startsWith("/api") ||
+    path === "/manifest.json" ||
+    path === "/favicon.ico";
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   // FR-A3: All app pages require login; unauthenticated users are redirected to login
-  if (!user && !isAuthRoute && path !== "/favicon.ico") {
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
