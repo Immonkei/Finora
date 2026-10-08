@@ -5,6 +5,7 @@ import { Download, Globe, Bell, Calendar, ShieldAlert, LogOut } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
   const [currency, setCurrency] = React.useState("USD");
@@ -96,7 +97,15 @@ export default function SettingsPage() {
             <p className="text-xs text-zinc-500">
               Exports all non-deleted transactions including base amounts, exchange rates, categories, and timestamps.
             </p>
-            <a href="/api/export-csv" download>
+            <a
+              href="/api/export-csv"
+              download
+              onClick={() => {
+                toast.success("Downloading CSV export...", {
+                  description: "Exporting your transactions history.",
+                });
+              }}
+            >
               <Button variant="outline" className="gap-2 shrink-0">
                 <Download className="h-4 w-4" /> Export CSV
               </Button>

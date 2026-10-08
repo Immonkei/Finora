@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Search, Filter, Trash2, Edit3, ArrowDownLeft, ArrowUpRight, Undo2 } from "lucide-react";
+import { Search, Filter, Trash2, Edit3, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
+import { toast } from "sonner";
 
 interface TxItem {
   id: string;
@@ -22,8 +23,6 @@ interface TxItem {
 export default function TransactionsPage() {
   const [search, setSearch] = React.useState("");
   const [filterType, setFilterType] = React.useState<string>("all");
-  const [deletedTx, setDeletedTx] = React.useState<TxItem | null>(null);
-  const [undoTimer, setUndoTimer] = React.useState<number | null>(null);
 
   const initialTransactions: TxItem[] = [
     {
@@ -82,21 +81,18 @@ export default function TransactionsPage() {
 
   const handleDelete = (tx: TxItem) => {
     setTransactions((prev) => prev.filter((item) => item.id !== tx.id));
-    setDeletedTx(tx);
-    // 10 second undo window (Spec FR-T6)
-    if (undoTimer) clearTimeout(undoTimer);
-    const timer = window.setTimeout(() => {
-      setDeletedTx(null);
-    }, 10000);
-    setUndoTimer(timer);
-  };
 
-  const handleUndo = () => {
-    if (deletedTx) {
-      setTransactions((prev) => [deletedTx, ...prev]);
-      setDeletedTx(null);
-      if (undoTimer) clearTimeout(undoTimer);
-    }
+    toast("Transaction deleted", {
+      description: `${tx.note} • ${formatMoney(tx.amountMinor, "USD")}`,
+      duration: 10000,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          setTransactions((prev) => [tx, ...prev]);
+          toast.success("Transaction restored");
+        },
+      },
+    });
   };
 
   const filtered = transactions.filter((tx) => {
@@ -109,21 +105,6 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Toast / Notification for Undo */}
-      {deletedTx && (
-        <div className="fixed bottom-20 md:bottom-8 right-4 left-4 md:left-auto md:w-96 z-50 bg-zinc-900 text-white p-4 rounded-xl shadow-xl flex items-center justify-between animate-in fade-in slide-in-from-bottom-4">
-          <span className="text-sm">Transaction deleted</span>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleUndo}
-            className="text-white border-zinc-700 hover:bg-zinc-800 text-xs gap-1.5"
-          >
-            <Undo2 className="h-3.5 w-3.5" />
-            Undo (10s)
-          </Button>
-        </div>
-      )}
 
       <div>
         <p className="text-xs font-semibold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase">

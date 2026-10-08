@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createTransaction } from "../actions";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface QuickAddDialogProps {
   isOpen: boolean;
@@ -88,6 +89,16 @@ export function QuickAddDialog({
     setIsSubmitting(false);
 
     if (res.success) {
+      toast.success(
+        type === "expense"
+          ? "Expense recorded!"
+          : type === "income"
+          ? "Income recorded!"
+          : "Transfer completed!",
+        {
+          description: `${currency === "USD" ? "$" : "៛"}${numAmount.toFixed(currency === "USD" ? 2 : 0)} ${note ? `• ${note}` : ""}`,
+        }
+      );
       // Reset form
       setAmountStr("");
       setNote("");
@@ -95,6 +106,9 @@ export function QuickAddDialog({
       onClose();
     } else {
       setErrorMessage(res.error || "Failed to save transaction");
+      toast.error("Could not save transaction", {
+        description: res.error,
+      });
     }
   };
 
