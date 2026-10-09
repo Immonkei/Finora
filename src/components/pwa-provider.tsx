@@ -1,9 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { Download, WifiOff } from "lucide-react";
+import { Download, WifiOff, RefreshCw, CloudCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  flushOfflineQueue,
+  subscribeOfflineQueue,
+  getOfflineQueueCountSnapshot,
+  getOfflineQueueServerSnapshot,
+  getOfflineQueue,
+} from "@/lib/offline-queue";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -14,6 +21,8 @@ interface PWAContextType {
   isInstalled: boolean;
   canInstall: boolean;
   isOffline: boolean;
+  queuedCount: number;
+  syncQueue: () => Promise<void>;
   installApp: () => Promise<void>;
 }
 
@@ -21,6 +30,8 @@ const PWAContext = React.createContext<PWAContextType>({
   isInstalled: false,
   canInstall: false,
   isOffline: false,
+  queuedCount: 0,
+  syncQueue: async () => {},
   installApp: async () => {},
 });
 
@@ -48,6 +59,7 @@ function getServerSnapshot() {
 export function PWAProvider({ children }: { children: React.ReactNode }) {
   const [deferredPrompt, setDeferredPrompt] = React.useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = React.useState(false);
+  const [isSyncing, setIsSyncing] = React.useState(false);
 
   const isOnline = React.useSyncExternalStore(
     subscribeOnline,
@@ -55,6 +67,12 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
     getServerSnapshot
   );
   const isOffline = !isOnline;
+
+  const queuedCount = React.useSyncExternalStore(
+    subscribeOfflineQueue,
+    getOfflineQueueCountSnapshot,
+    getOfflineQueueServerSnapshot
+  );
 
   React.useEffect(() => {
     const isStandalone =
@@ -95,6 +113,53 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Auto-sync when reconnecting or on startup if online with pending queue
+  React.useEffect(() => {
+    const handleReconnected = () => {
+      toast.info("Connection restored", {
+        description: "Checking offline transaction queue...",
+      });
+      setTimeout(() => {
+        flushOfflineQueue().catch(console.error);
+      }, 300);
+    };
+
+    window.addEventListener("online", handleReconnected);
+
+    // Initial check on mount
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      const existing = getOfflineQueue();
+      if (existing.length > 0) {
+        flushOfflineQueue(true).catch(console.error);
+      }
+    }
+
+    return () => {
+      window.removeEventListener("online", handleReconnected);
+    };
+  }, []);
+
+  const syncQueue = async () => {
+    if (isOffline) {
+      toast.error("Still offline", {
+        description: "Transactions will upload automatically once internet connection is restored.",
+      });
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const res = await flushOfflineQueue();
+      if (res.total === 0) {
+        toast.info("Queue is empty", {
+          description: "All transactions are fully synchronized with the cloud.",
+        });
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const installApp = async () => {
     if (!deferredPrompt) {
       toast.info("Install option", {
@@ -123,16 +188,41 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
         isInstalled,
         canInstall: !!deferredPrompt && !isInstalled,
         isOffline,
+        queuedCount,
+        syncQueue,
         installApp,
       }}
     >
-      {/* Offline status banner */}
+      {/* Offline Status Banner */}
       {isOffline && (
-        <div className="bg-amber-600 text-white text-xs font-medium px-4 py-1.5 flex items-center justify-center gap-2 sticky top-0 z-50">
-          <WifiOff className="h-3.5 w-3.5" />
-          <span>You are currently offline. Running cached app shell.</span>
+        <div className="bg-amber-600 text-white text-xs font-medium px-4 py-1.5 flex items-center justify-center gap-2 sticky top-0 z-50 shadow-sm animate-in fade-in">
+          <WifiOff className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            You are currently offline. Logged expenses queue locally and auto-sync on reconnect.
+            {queuedCount > 0 && ` (${queuedCount} pending)`}
+          </span>
         </div>
       )}
+
+      {/* Pending Sync Banner when back online */}
+      {!isOffline && queuedCount > 0 && (
+        <div className="bg-brand-600 text-white text-xs font-medium px-4 py-1.5 flex items-center justify-between gap-2 sticky top-0 z-50 shadow-sm animate-in fade-in">
+          <span className="flex items-center gap-1.5">
+            <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${isSyncing ? "animate-spin" : ""}`} />
+            <span>
+              {queuedCount} offline transaction{queuedCount === 1 ? "" : "s"} waiting for cloud upload
+            </span>
+          </span>
+          <button
+            onClick={syncQueue}
+            disabled={isSyncing}
+            className="underline font-semibold hover:text-accent-300 disabled:opacity-50 text-[11px]"
+          >
+            {isSyncing ? "Syncing..." : "Sync Now"}
+          </button>
+        </div>
+      )}
+
       {children}
     </PWAContext.Provider>
   );
@@ -169,6 +259,67 @@ export function PWAInstallCard() {
         className="shrink-0 gap-1.5 bg-brand-600 hover:bg-brand-700 text-white shadow-xs"
       >
         <Download className="h-3.5 w-3.5" /> {canInstall ? "Install App" : "Add to Home Screen"}
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Reusable Offline Sync Status Card (Settings & Dashboard)
+ */
+export function OfflineQueueCard() {
+  const { isOffline, queuedCount, syncQueue } = usePWA();
+  const [syncing, setSyncing] = React.useState(false);
+
+  const handleManualSync = async () => {
+    setSyncing(true);
+    try {
+      await syncQueue();
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          {queuedCount > 0 ? (
+            <RefreshCw className={`h-4 w-4 text-amber-500 ${syncing ? "animate-spin" : ""}`} />
+          ) : (
+            <CloudCheck className="h-4 w-4 text-emerald-500" />
+          )}
+          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            Offline Transaction Queue
+          </p>
+          <span
+            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              queuedCount > 0
+                ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+            }`}
+          >
+            {queuedCount > 0 ? `${queuedCount} Queued` : "All Synced"}
+          </span>
+        </div>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          {isOffline
+            ? "Currently working offline. Transactions will automatically flush once internet connects."
+            : queuedCount > 0
+            ? "Pending offline transactions queued locally ready for Supabase sync."
+            : "Zero pending offline records. Cloud database is fully up to date."}
+        </p>
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={isOffline || syncing || queuedCount === 0}
+        onClick={handleManualSync}
+        className="gap-1.5 shrink-0 self-start sm:self-auto"
+      >
+        <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
+        {syncing ? "Syncing..." : "Sync Now"}
       </Button>
     </div>
   );

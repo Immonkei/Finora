@@ -13,12 +13,15 @@ import {
   Camera,
   Image as ImageIcon,
   Zap,
+  WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { createTransaction } from "../actions";
 import { parseNaturalLanguageInput } from "../nlp-parser";
+import { enqueueOfflineTransaction } from "@/lib/offline-queue";
+import { usePWA } from "@/components/pwa-provider";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -42,6 +45,7 @@ export function QuickAddDialog({
   onClose,
   onSuccess,
 }: QuickAddDialogProps) {
+  const { isOffline } = usePWA();
   const [entryMode, setEntryMode] = React.useState<"keypad" | "nlp">("keypad");
   const [nlpText, setNlpText] = React.useState("");
 
@@ -124,29 +128,24 @@ export function QuickAddDialog({
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    const res = await createTransaction({
-      type,
-      amount: finalAmount,
-      currency: finalCurrency,
-      account_id: "00000000-0000-0000-0000-000000000001",
-      category_id: type === "expense" ? "00000000-0000-0000-0000-000000000002" : undefined,
-      note: finalNote.trim() || undefined,
-      occurred_at: new Date().toISOString(),
-    });
+    // If client is currently offline, queue transaction locally
+    if (isOffline) {
+      enqueueOfflineTransaction({
+        type,
+        amount: finalAmount,
+        currency: finalCurrency,
+        category_id: type === "expense" ? selectedCategory : undefined,
+        note: finalNote.trim() || undefined,
+        occurred_at: new Date().toISOString(),
+      });
 
-    setIsSubmitting(false);
+      setIsSubmitting(false);
+      toast.info("Saved offline", {
+        description: `${finalCurrency === "USD" ? "$" : "៛"}${finalAmount.toFixed(
+          finalCurrency === "USD" ? 2 : 0
+        )} queued. Will automatically sync to cloud when connected.`,
+      });
 
-    if (res.success) {
-      toast.success(
-        type === "expense"
-          ? "Expense recorded!"
-          : type === "income"
-          ? "Income recorded!"
-          : "Transfer completed!",
-        {
-          description: `${finalCurrency === "USD" ? "$" : "៛"}${finalAmount.toFixed(finalCurrency === "USD" ? 2 : 0)} ${finalNote ? `• ${finalNote}` : ""}${receiptImage ? " (Receipt attached)" : ""}`,
-        }
-      );
       // Reset form
       setAmountStr("");
       setNote("");
@@ -154,11 +153,68 @@ export function QuickAddDialog({
       setReceiptImage(null);
       onSuccess?.();
       onClose();
-    } else {
-      setErrorMessage(res.error || "Failed to save transaction");
-      toast.error("Could not save transaction", {
-        description: res.error,
+      return;
+    }
+
+    try {
+      const res = await createTransaction({
+        type,
+        amount: finalAmount,
+        currency: finalCurrency,
+        account_id: "00000000-0000-0000-0000-000000000001",
+        category_id: type === "expense" ? selectedCategory : undefined,
+        note: finalNote.trim() || undefined,
+        occurred_at: new Date().toISOString(),
       });
+
+      setIsSubmitting(false);
+
+      if (res.success) {
+        toast.success(
+          type === "expense"
+            ? "Expense recorded!"
+            : type === "income"
+            ? "Income recorded!"
+            : "Transfer completed!",
+          {
+            description: `${finalCurrency === "USD" ? "$" : "៛"}${finalAmount.toFixed(finalCurrency === "USD" ? 2 : 0)} ${finalNote ? `• ${finalNote}` : ""}${receiptImage ? " (Receipt attached)" : ""}`,
+          }
+        );
+        // Reset form
+        setAmountStr("");
+        setNote("");
+        setNlpText("");
+        setReceiptImage(null);
+        onSuccess?.();
+        onClose();
+      } else {
+        setErrorMessage(res.error || "Failed to save transaction");
+        toast.error("Could not save transaction", {
+          description: res.error,
+        });
+      }
+    } catch {
+      // In case network connection dropped mid-request
+      enqueueOfflineTransaction({
+        type,
+        amount: finalAmount,
+        currency: finalCurrency,
+        category_id: type === "expense" ? selectedCategory : undefined,
+        note: finalNote.trim() || undefined,
+        occurred_at: new Date().toISOString(),
+      });
+
+      setIsSubmitting(false);
+      toast.info("Network disconnected — saved offline", {
+        description: "Transaction queued locally and will sync when back online.",
+      });
+
+      setAmountStr("");
+      setNote("");
+      setNlpText("");
+      setReceiptImage(null);
+      onSuccess?.();
+      onClose();
     }
   };
 
@@ -177,6 +233,11 @@ export function QuickAddDialog({
             <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
               Quick Log
             </h2>
+            {isOffline && (
+              <span className="flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded-full">
+                <WifiOff className="h-3 w-3" /> Offline
+              </span>
+            )}
           </div>
 
           {/* Mode Switcher: Keypad vs NLP */}
@@ -386,7 +447,11 @@ export function QuickAddDialog({
             disabled={isSubmitting}
             className="w-full text-base font-semibold shadow-md shadow-brand-600/20"
           >
-            {isSubmitting ? "Saving..." : "Save Expense"}
+            {isSubmitting
+              ? "Saving..."
+              : isOffline
+              ? "Save Offline (Queued)"
+              : "Save Expense"}
           </Button>
         </form>
       </div>

@@ -21,7 +21,7 @@ export default function Home() {
               <FinoraLogo variant="full" size="md" priority />
             </Link>
             <Badge variant="outline" className="hidden sm:inline-flex text-[10px] border-accent-500/30 text-accent-700 dark:text-accent-300">
-              v1.1.0 Live Realtime &bull; PWA
+              v1.2.0 Live Realtime &bull; Offline PWA
             </Badge>
           </div>
 
