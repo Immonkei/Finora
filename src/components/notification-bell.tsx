@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Bell, AlertTriangle, AlertCircle } from "lucide-react";
+import { Bell, AlertTriangle, AlertCircle, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeTable } from "@/lib/supabase/realtime";
@@ -54,6 +55,39 @@ export function NotificationBell() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+
+      // FR-N2: Check and generate daily evening reminder if due
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("reminder_time")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profile?.reminder_time) {
+        const todayDateStr = new Date().toISOString().slice(0, 10);
+        const currentHours = new Date().getHours();
+        const currentMinutes = new Date().getMinutes();
+        const [remH, remM] = profile.reminder_time.slice(0, 5).split(":").map(Number);
+
+        if (currentHours > remH || (currentHours === remH && currentMinutes >= remM)) {
+          const { data: todayReminder } = await supabase
+            .from("notifications")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("kind", "reminder")
+            .gte("created_at", `${todayDateStr}T00:00:00Z`)
+            .maybeSingle();
+
+          if (!todayReminder) {
+            await supabase.from("notifications").insert({
+              user_id: user.id,
+              kind: "reminder",
+              message: "Evening check-in: Did you log all your expenses today? Tap Quick Add to record cash and coffee spends.",
+              read: false,
+            });
+          }
+        }
+      }
 
       const { data } = await supabase
         .from("notifications")
@@ -122,6 +156,45 @@ export function NotificationBell() {
     }
   };
 
+  const deleteNotification = async (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from("notifications")
+          .delete()
+          .eq("id", id)
+          .eq("user_id", user.id);
+      }
+    } catch {
+      // Fallback
+    }
+  };
+
+  const sendTestNotification = async () => {
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("notifications").insert({
+          user_id: user.id,
+          kind: "warning_80",
+          message: `Live Realtime Test: Budget monitoring active. Current time ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
+          read: false,
+        });
+        toast.success("Test alert sent to Supabase!");
+      }
+    } catch {
+      toast.error("Failed to trigger alert");
+    }
+  };
+
   return (
     <div className="relative">
       <button
@@ -161,35 +234,69 @@ export function NotificationBell() {
           </div>
 
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-80 overflow-y-auto space-y-2">
-            {notifications.map((n) => (
-              <div
-                key={n.id}
-                className={`pt-2.5 pb-2 text-left space-y-1 ${
-                  !n.read ? "opacity-100" : "opacity-70"
-                }`}
-              >
-                <div className="flex items-start gap-2">
-                  {n.kind === "limit_100" ? (
-                    <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
-                  ) : n.kind === "warning_80" ? (
-                    <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                  ) : (
-                    <Bell className="h-4 w-4 text-accent-500 shrink-0 mt-0.5" />
-                  )}
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 leading-tight">
-                      {n.title}
-                    </p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-snug">
-                      {n.message}
-                    </p>
-                    <span className="text-[10px] text-zinc-400 mt-1 block">
-                      {n.time}
-                    </span>
+            {notifications.length === 0 ? (
+              <div className="py-6 text-center text-xs text-zinc-500 space-y-2">
+                <p>No notifications right now.</p>
+                <button
+                  type="button"
+                  onClick={sendTestNotification}
+                  className="text-brand-600 dark:text-accent-400 font-semibold text-xs hover:underline"
+                >
+                  Send test alert to Supabase
+                </button>
+              </div>
+            ) : (
+              notifications.map((n) => (
+                <div
+                  key={n.id}
+                  className={`pt-2.5 pb-2 text-left space-y-1 ${
+                    !n.read ? "opacity-100" : "opacity-70"
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    {n.kind === "limit_100" ? (
+                      <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                    ) : n.kind === "warning_80" ? (
+                      <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                    ) : (
+                      <Bell className="h-4 w-4 text-accent-500 shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 leading-tight">
+                          {n.title}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => deleteNotification(n.id)}
+                          className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-0.5 rounded"
+                          title="Dismiss"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-snug">
+                        {n.message}
+                      </p>
+                      <span className="text-[10px] text-zinc-400 mt-1 block">
+                        {n.time}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
+          </div>
+
+          <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-[11px] text-zinc-400">
+            <span>Supabase Realtime Live</span>
+            <button
+              type="button"
+              onClick={sendTestNotification}
+              className="text-brand-600 dark:text-accent-400 hover:underline font-medium"
+            >
+              Trigger Test Alert
+            </button>
           </div>
         </div>
       )}

@@ -138,6 +138,13 @@ export async function createTransaction(
         }
       }
 
+      let finalNote = data.note || null;
+      if (data.receipt_url) {
+        finalNote = finalNote
+          ? `${finalNote} [receipt:${data.receipt_url}]`
+          : `[receipt:${data.receipt_url}]`;
+      }
+
       const { data: inserted, error } = await supabase
         .from("transactions")
         .insert({
@@ -150,7 +157,7 @@ export async function createTransaction(
           account_id: validAccountId,
           to_account_id: data.type === "transfer" ? validToAccountId : null,
           category_id: data.type === "expense" ? validCategoryId : null,
-          note: data.note || null,
+          note: finalNote,
           occurred_at:
             typeof data.occurred_at === "string"
               ? data.occurred_at
@@ -161,6 +168,88 @@ export async function createTransaction(
 
       if (error) {
         return { success: false, error: error.message };
+      }
+
+      // FR-N1: Automatic In-App Notification when budget reaches 80% or 100%
+      if (data.type === "expense") {
+        try {
+          const now = new Date();
+          const currentMonthStr = `${now.getFullYear()}-${String(
+            now.getMonth() + 1
+          ).padStart(2, "0")}-01`;
+          const { data: budget } = await supabase
+            .from("budgets")
+            .select("total_limit")
+            .eq("user_id", user.id)
+            .eq("month", currentMonthStr)
+            .maybeSingle();
+
+          const budgetLimit = budget?.total_limit || 60000;
+          const startOfMonth = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            1
+          ).toISOString();
+
+          const { data: monthTxs } = await supabase
+            .from("transactions")
+            .select("base_amount")
+            .eq("user_id", user.id)
+            .eq("type", "expense")
+            .is("deleted_at", null)
+            .gte("occurred_at", startOfMonth);
+
+          let totalSpent = 0;
+          (monthTxs || []).forEach((t) => {
+            totalSpent += t.base_amount;
+          });
+
+          const percent = (totalSpent / budgetLimit) * 100;
+
+          if (percent >= 100) {
+            const { data: existing } = await supabase
+              .from("notifications")
+              .select("id")
+              .eq("user_id", user.id)
+              .eq("kind", "limit_100")
+              .gte("created_at", startOfMonth)
+              .maybeSingle();
+
+            if (!existing) {
+              await supabase.from("notifications").insert({
+                user_id: user.id,
+                kind: "limit_100",
+                message: `Budget Limit Reached: You have reached 100% of your $${(
+                  budgetLimit / 100
+                ).toFixed(0)} monthly budget ($${(totalSpent / 100).toFixed(
+                  2
+                )} spent).`,
+                read: false,
+              });
+            }
+          } else if (percent >= 80) {
+            const { data: existing } = await supabase
+              .from("notifications")
+              .select("id")
+              .eq("user_id", user.id)
+              .eq("kind", "warning_80")
+              .gte("created_at", startOfMonth)
+              .maybeSingle();
+
+            if (!existing) {
+              await supabase.from("notifications").insert({
+                user_id: user.id,
+                kind: "warning_80",
+                message: `Budget Alert (80%): You have reached ${Math.round(
+                  percent
+                )}% of your $${(budgetLimit / 100).toFixed(0)} monthly budget limit.`,
+                read: false,
+              });
+            }
+          }
+        } catch {
+          // Non-blocking notification evaluation
+        }
       }
 
       revalidatePath("/today");
@@ -250,4 +339,22 @@ export async function restoreTransaction(id: string): Promise<ActionResult> {
       error: err instanceof Error ? err.message : "Failed to restore",
     };
   }
+}
+
+/**
+ * Extracts attached receipt photo URL and clean note text (Spec 3.4 #22).
+ */
+export async function parseReceiptUrl(note: string | null | undefined): Promise<{
+  cleanNote: string;
+  receiptUrl: string | null;
+}> {
+  if (!note) return { cleanNote: "", receiptUrl: null };
+  const match = note.match(/\[receipt:(https?:\/\/[^\]]+)\]/);
+  if (match) {
+    return {
+      cleanNote: note.replace(match[0], "").trim(),
+      receiptUrl: match[1],
+    };
+  }
+  return { cleanNote: note, receiptUrl: null };
 }

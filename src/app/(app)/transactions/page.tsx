@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Search, Trash2, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Search, Trash2, ArrowDownLeft, ArrowUpRight, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +22,7 @@ interface TxItem {
   amountMinor: bigint;
   type: "expense" | "income" | "transfer";
   date: string;
+  receiptUrl?: string | null;
 }
 
 export default function TransactionsPage() {
@@ -102,15 +103,22 @@ export default function TransactionsPage() {
         const formatted: TxItem[] = txs.map((t) => {
           const cat = Array.isArray(t.categories) ? t.categories[0] : t.categories;
           const acc = Array.isArray(t.accounts) ? t.accounts[0] : t.accounts;
+          const rawNote = t.note || "Transaction";
+          const match = rawNote.match(/\[receipt:(https?:\/\/[^\]]+)\]/);
+          const cleanNote = rawNote.replace(/\[receipt:[^\]]+\]/, "").trim();
+          const receiptUrl =
+            (t as { receipt_url?: string }).receipt_url || (match ? match[1] : null);
+
           return {
             id: t.id,
-            note: t.note || "Transaction",
+            note: cleanNote || "Transaction",
             category: cat?.name || (t.type === "transfer" ? "Transfer" : "Uncategorized"),
             categoryColor: cat?.color || (t.type === "transfer" ? "#64748B" : "#10B981"),
             account: acc?.name || "Cash",
             amountMinor: BigInt(t.amount),
             type: t.type as "expense" | "income" | "transfer",
             date: formatDisplayDate(t.occurred_at),
+            receiptUrl,
           };
         });
         setTransactions(formatted);
@@ -235,6 +243,20 @@ export default function TransactionsPage() {
                       <span className="text-xs text-zinc-400">{tx.account}</span>
                       <span className="text-zinc-300 dark:text-zinc-700">•</span>
                       <span className="text-xs text-zinc-400">{tx.date}</span>
+                      {tx.receiptUrl && (
+                        <>
+                          <span className="text-zinc-300 dark:text-zinc-700">•</span>
+                          <a
+                            href={tx.receiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 dark:text-accent-400 hover:underline"
+                            title="View receipt image in Supabase Storage"
+                          >
+                            <ImageIcon className="h-3 w-3" /> Receipt
+                          </a>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -96,6 +96,26 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSendTestAlert = async () => {
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("notifications").insert({
+          user_id: user.id,
+          kind: "warning_80",
+          message: `Live Realtime Alert: Budget monitoring test broadcast at ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
+          read: false,
+        });
+        toast.success("Test alert dispatched via Supabase Realtime!");
+      }
+    } catch {
+      toast.error("Failed to send test alert");
+    }
+  };
+
   const handleSignOut = async () => {
     toast.info("Signing out...");
     try {
@@ -231,6 +251,22 @@ export default function SettingsPage() {
                 />
               </button>
             </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2 border-t border-zinc-100 dark:border-zinc-800">
+            <div>
+              <p className="text-sm font-medium">Test Realtime Notification</p>
+              <p className="text-xs text-zinc-500">Sends a live test alert to the notification bell via Supabase Realtime</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSendTestAlert}
+              className="gap-1.5 self-start sm:self-auto"
+            >
+              <Bell className="h-3.5 w-3.5 text-accent-500" /> Send Test Alert
+            </Button>
           </div>
         </CardContent>
       </Card>

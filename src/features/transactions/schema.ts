@@ -11,6 +11,7 @@ export const createTransactionSchema = z
     to_account_id: z.string().min(1, "Invalid destination account ID").optional().nullable(),
     category_id: z.string().min(1, "Invalid category ID").optional().nullable(),
     note: z.string().max(255).optional().nullable(),
+    receipt_url: z.string().optional().nullable(),
     occurred_at: z.string().datetime().or(z.date()).default(() => new Date().toISOString()),
   })
   .refine(

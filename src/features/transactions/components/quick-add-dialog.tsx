@@ -73,6 +73,8 @@ export function QuickAddDialog({
   const [selectedCategory, setSelectedCategory] = React.useState<string>(DEFAULT_CATEGORIES[0].id);
   const [note, setNote] = React.useState("");
   const [receiptImage, setReceiptImage] = React.useState<string | null>(null);
+  const [remoteReceiptUrl, setRemoteReceiptUrl] = React.useState<string | null>(null);
+  const [isUploadingReceipt, setIsUploadingReceipt] = React.useState(false);
 
   // Load user's actual categories from Supabase on mount
   React.useEffect(() => {
@@ -149,12 +151,37 @@ export function QuickAddDialog({
     }
   };
 
-  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setReceiptImage(url);
-      toast.info("Receipt image attached");
+      const localUrl = URL.createObjectURL(file);
+      setReceiptImage(localUrl);
+
+      if (!isOffline) {
+        setIsUploadingReceipt(true);
+        toast.info("Uploading receipt to cloud storage...");
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+          const res = await fetch("/api/upload-receipt", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
+          if (data.success && data.url) {
+            setRemoteReceiptUrl(data.url);
+            toast.success("Receipt saved in Supabase Storage!");
+          } else {
+            toast.error("Receipt upload failed", { description: data.error });
+          }
+        } catch {
+          toast.error("Could not upload receipt image");
+        } finally {
+          setIsUploadingReceipt(false);
+        }
+      } else {
+        toast.info("Receipt attached locally (offline mode)");
+      }
     }
   };
 
@@ -218,6 +245,7 @@ export function QuickAddDialog({
         account_id: "00000000-0000-0000-0000-000000000001",
         category_id: type === "expense" ? selectedCategory : undefined,
         note: finalNote.trim() || undefined,
+        receipt_url: remoteReceiptUrl || undefined,
         occurred_at: new Date().toISOString(),
       });
 
@@ -231,7 +259,7 @@ export function QuickAddDialog({
             ? "Income recorded!"
             : "Transfer completed!",
           {
-            description: `${finalCurrency === "USD" ? "$" : "៛"}${finalAmount.toFixed(finalCurrency === "USD" ? 2 : 0)} ${finalNote ? `• ${finalNote}` : ""}${receiptImage ? " (Receipt attached)" : ""}`,
+            description: `${finalCurrency === "USD" ? "$" : "៛"}${finalAmount.toFixed(finalCurrency === "USD" ? 2 : 0)} ${finalNote ? `• ${finalNote}` : ""}${remoteReceiptUrl || receiptImage ? " (Receipt attached)" : ""}`,
           }
         );
         // Reset form
@@ -239,6 +267,7 @@ export function QuickAddDialog({
         setNote("");
         setNlpText("");
         setReceiptImage(null);
+        setRemoteReceiptUrl(null);
         onSuccess?.();
         onClose();
       } else {
@@ -476,11 +505,19 @@ export function QuickAddDialog({
           {receiptImage && (
             <div className="flex items-center justify-between p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs">
               <span className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 font-medium truncate">
-                <ImageIcon className="h-3.5 w-3.5 text-accent-500 shrink-0" /> Receipt photo attached
+                <ImageIcon className="h-3.5 w-3.5 text-accent-500 shrink-0" />
+                {isUploadingReceipt
+                  ? "Uploading to Supabase Storage..."
+                  : remoteReceiptUrl
+                  ? "Receipt stored in Supabase"
+                  : "Receipt photo attached"}
               </span>
               <button
                 type="button"
-                onClick={() => setReceiptImage(null)}
+                onClick={() => {
+                  setReceiptImage(null);
+                  setRemoteReceiptUrl(null);
+                }}
                 className="text-rose-500 hover:text-rose-700 text-xs font-semibold px-1"
               >
                 Remove
