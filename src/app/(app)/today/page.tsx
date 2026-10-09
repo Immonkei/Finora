@@ -100,7 +100,7 @@ export default function TodayPage() {
         .select("total_limit")
         .eq("user_id", user.id)
         .eq("month", currentMonthStr)
-        .single();
+        .maybeSingle();
 
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const { data: monthTxs } = await supabase

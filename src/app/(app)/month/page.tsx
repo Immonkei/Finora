@@ -93,31 +93,29 @@ export default function MonthPage() {
           .select("total_limit")
           .eq("user_id", user.id)
           .eq("month", currentMonthStr)
-          .single();
+          .maybeSingle();
 
         const limit = budget ? BigInt(budget.total_limit) : BigInt(60000);
 
-        if (catData && catData.length > 0) {
-          let totalSpent = BigInt(0);
-          const mapped: CatBudgetItem[] = (catData as unknown as RpcCategorySpending[]).map((c) => {
-            const spent = BigInt(c.total);
-            totalSpent += spent;
-            const catLimit = BigInt(15000);
-            const pct = Number((spent * 100n) / catLimit);
-            return {
-              name: c.category_name,
-              spentMinor: spent,
-              limitMinor: catLimit,
-              percent: Math.round(pct * 10) / 10,
-            };
-          });
+        let totalSpent = BigInt(0);
+        const mapped: CatBudgetItem[] = ((catData as unknown as RpcCategorySpending[]) || []).map((c) => {
+          const spent = BigInt(c.total);
+          totalSpent += spent;
+          const catLimit = BigInt(15000);
+          const pct = Number((spent * 100n) / catLimit);
+          return {
+            name: c.category_name,
+            spentMinor: spent,
+            limitMinor: catLimit,
+            percent: Math.round(pct * 10) / 10,
+          };
+        });
 
-          setLiveData({
-            spentThisMonthMinor: totalSpent,
-            totalMonthlyLimitMinor: limit,
-            categoryBudgets: mapped,
-          });
-        }
+        setLiveData({
+          spentThisMonthMinor: totalSpent,
+          totalMonthlyLimitMinor: limit,
+          categoryBudgets: mapped.length > 0 ? mapped : DEFAULT_CATEGORY_BUDGETS,
+        });
       } catch {
         // Fallback
       }

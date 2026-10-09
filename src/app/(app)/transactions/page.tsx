@@ -98,7 +98,7 @@ export default function TransactionsPage() {
         .is("deleted_at", null)
         .order("occurred_at", { ascending: false });
 
-      if (txs && txs.length > 0) {
+      if (txs) {
         const formatted: TxItem[] = txs.map((t) => {
           const cat = Array.isArray(t.categories) ? t.categories[0] : t.categories;
           const acc = Array.isArray(t.accounts) ? t.accounts[0] : t.accounts;

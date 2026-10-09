@@ -133,7 +133,7 @@ export async function getTodaySummary(): Promise<TodaySummaryData> {
       .select("total_limit")
       .eq("user_id", user.id)
       .eq("month", currentMonthStr)
-      .single();
+      .maybeSingle();
 
     const monthlyBudgetMinor = budget ? BigInt(budget.total_limit) : BigInt(60000);
 

@@ -56,9 +56,9 @@ export default function WeekPage() {
           p_to: end.toISOString(),
         });
 
-        if (catData && catData.length > 0) {
+        if (catData) {
           let weekTotal = BigInt(0);
-          const mappedCats = (catData as unknown as RpcCategorySpending[]).map((c) => {
+          const mappedCats = ((catData as unknown as RpcCategorySpending[]) || []).map((c) => {
             const spent = BigInt(c.total);
             weekTotal += spent;
             return {

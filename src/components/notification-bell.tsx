@@ -62,7 +62,7 @@ export function NotificationBell() {
         .order("created_at", { ascending: false })
         .limit(20);
 
-      if (data && data.length > 0) {
+      if (data) {
         const mapped: NotificationItem[] = data.map((n) => ({
           id: n.id,
           kind: n.kind as "warning_80" | "limit_100" | "reminder",

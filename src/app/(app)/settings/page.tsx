@@ -41,7 +41,7 @@ export default function SettingsPage() {
             .from("profiles")
             .select("*")
             .eq("id", user.id)
-            .single();
+            .maybeSingle();
           if (profile) {
             if (profile.main_currency) setCurrency(profile.main_currency);
             if (profile.timezone) setTimezone(profile.timezone);
@@ -71,14 +71,14 @@ export default function SettingsPage() {
       if (user) {
         const { error } = await supabase
           .from("profiles")
-          .update({
+          .upsert({
+            id: user.id,
             main_currency: currency,
             timezone,
             week_starts_on: parseInt(weekStartsOn, 10),
             reminder_time: remindersEnabled ? `${reminderTime}:00` : null,
             updated_at: new Date().toISOString(),
-          })
-          .eq("id", user.id);
+          });
 
         if (error) {
           toast.error("Failed to save settings", { description: error.message });

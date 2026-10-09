@@ -14,6 +14,9 @@ import {
   Image as ImageIcon,
   Zap,
   WifiOff,
+  HeartPulse,
+  Banknote,
+  Briefcase,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +25,7 @@ import { createTransaction } from "../actions";
 import { parseNaturalLanguageInput } from "../nlp-parser";
 import { enqueueOfflineTransaction } from "@/lib/offline-queue";
 import { usePWA } from "@/components/pwa-provider";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -31,7 +35,20 @@ interface QuickAddDialogProps {
   onSuccess?: () => void;
 }
 
-const CATEGORIES = [
+const ICON_MAP: Record<string, typeof Utensils> = {
+  utensils: Utensils,
+  "shopping-cart": ShoppingCart,
+  car: Car,
+  home: Home,
+  tv: Tv,
+  "shopping-bag": ShoppingBag,
+  "heart-pulse": HeartPulse,
+  banknote: Banknote,
+  briefcase: Briefcase,
+  sparkles: Sparkles,
+};
+
+const DEFAULT_CATEGORIES = [
   { id: "cat-1", name: "Food & Drinks", color: "#EF4444", icon: Utensils },
   { id: "cat-2", name: "Groceries", color: "#F59E0B", icon: ShoppingCart },
   { id: "cat-3", name: "Transport", color: "#3B82F6", icon: Car },
@@ -46,15 +63,50 @@ export function QuickAddDialog({
   onSuccess,
 }: QuickAddDialogProps) {
   const { isOffline } = usePWA();
+  const [categoriesList, setCategoriesList] = React.useState(DEFAULT_CATEGORIES);
   const [entryMode, setEntryMode] = React.useState<"keypad" | "nlp">("keypad");
   const [nlpText, setNlpText] = React.useState("");
 
   const [type, setType] = React.useState<"expense" | "income" | "transfer">("expense");
   const [amountStr, setAmountStr] = React.useState("");
   const [currency, setCurrency] = React.useState<"USD" | "KHR">("USD");
-  const [selectedCategory, setSelectedCategory] = React.useState<string>("cat-1");
+  const [selectedCategory, setSelectedCategory] = React.useState<string>(DEFAULT_CATEGORIES[0].id);
   const [note, setNote] = React.useState("");
   const [receiptImage, setReceiptImage] = React.useState<string | null>(null);
+
+  // Load user's actual categories from Supabase on mount
+  React.useEffect(() => {
+    async function loadCategories() {
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user) {
+          const { data: dbCats } = await supabase
+            .from("categories")
+            .select("id, name, color, icon")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: true });
+
+          if (dbCats && dbCats.length > 0) {
+            const mapped = dbCats.map((c) => ({
+              id: c.id,
+              name: c.name,
+              color: c.color || "#3B82F6",
+              icon: (c.icon && ICON_MAP[c.icon]) || Sparkles,
+            }));
+            setCategoriesList(mapped);
+            setSelectedCategory(mapped[0].id);
+          }
+        }
+      } catch {
+        // Fallback to default categories
+      }
+    }
+    loadCategories();
+  }, []);
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
@@ -88,7 +140,9 @@ export function QuickAddDialog({
       setAmountStr(parsed.amount.toString());
       setCurrency(parsed.currency);
       setNote(parsed.note);
-      const matchedCat = CATEGORIES.find((c) => c.name === parsed.categoryName);
+      const matchedCat = categoriesList.find(
+        (c) => c.name.toLowerCase() === parsed.categoryName.toLowerCase()
+      );
       if (matchedCat) {
         setSelectedCategory(matchedCat.id);
       }
@@ -359,7 +413,7 @@ export function QuickAddDialog({
                 Category
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {CATEGORIES.map((cat) => {
+                {categoriesList.map((cat) => {
                   const Icon = cat.icon;
                   const isSelected = selectedCategory === cat.id;
                   return (

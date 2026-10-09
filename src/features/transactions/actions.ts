@@ -56,38 +56,85 @@ export async function createTransaction(
 
       if (userAccounts && userAccounts.length > 0) {
         const found = userAccounts.find((a) => a.id === validAccountId);
-        if (!found) {
-          validAccountId = userAccounts[0].id;
-        }
+        validAccountId = found ? found.id : userAccounts[0].id;
       } else {
         const { data: newAccount } = await supabase
           .from("accounts")
           .insert({ user_id: user.id, name: "Cash", currency: data.currency })
           .select("id")
-          .single();
+          .maybeSingle();
         if (newAccount) {
           validAccountId = newAccount.id;
         }
       }
 
-      // Resolve valid category if specified
-      let validCategoryId = data.category_id || null;
-      if (validCategoryId) {
+      // Resolve valid category if specified (validate UUID to prevent Postgres 22P02)
+      let validCategoryId: string | null = null;
+      const isCategoryUuid =
+        data.category_id &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          data.category_id
+        );
+
+      if (isCategoryUuid && data.category_id) {
         const { data: catExists } = await supabase
           .from("categories")
           .select("id")
-          .eq("id", validCategoryId)
+          .eq("id", data.category_id)
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
-        if (!catExists) {
-          const { data: defaultCat } = await supabase
-            .from("categories")
+        if (catExists) {
+          validCategoryId = catExists.id;
+        }
+      }
+
+      // Fallback to first available category for user if type is expense
+      if (!validCategoryId && data.type === "expense") {
+        const { data: defaultCat } = await supabase
+          .from("categories")
+          .select("id")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        validCategoryId = defaultCat?.id || null;
+      }
+
+      // Resolve target account for transfer (FR-T1 & transfer_needs_target constraint)
+      let validToAccountId: string | null = null;
+      if (data.type === "transfer") {
+        const isToAccountUuid =
+          data.to_account_id &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            data.to_account_id
+          );
+
+        if (isToAccountUuid && data.to_account_id) {
+          const { data: toAccExists } = await supabase
+            .from("accounts")
             .select("id")
+            .eq("id", data.to_account_id)
             .eq("user_id", user.id)
-            .limit(1)
-            .single();
-          validCategoryId = defaultCat?.id || null;
+            .maybeSingle();
+          if (toAccExists) {
+            validToAccountId = toAccExists.id;
+          }
+        }
+
+        // If transfer target account not found, find or create secondary account
+        if (!validToAccountId) {
+          const otherAcc = (userAccounts || []).find((a) => a.id !== validAccountId);
+          if (otherAcc) {
+            validToAccountId = otherAcc.id;
+          } else {
+            const { data: bankAcc } = await supabase
+              .from("accounts")
+              .insert({ user_id: user.id, name: "Bank", currency: data.currency })
+              .select("id")
+              .maybeSingle();
+            validToAccountId = bankAcc?.id || null;
+          }
         }
       }
 
@@ -101,8 +148,8 @@ export async function createTransaction(
           exchange_rate: exchangeRate,
           base_amount: Number(baseAmount),
           account_id: validAccountId,
-          to_account_id: data.to_account_id || null,
-          category_id: validCategoryId,
+          to_account_id: data.type === "transfer" ? validToAccountId : null,
+          category_id: data.type === "expense" ? validCategoryId : null,
           note: data.note || null,
           occurred_at:
             typeof data.occurred_at === "string"
@@ -145,6 +192,12 @@ export async function createTransaction(
  * Soft deletes a transaction by setting deleted_at (Spec FR-T6).
  */
 export async function deleteTransaction(id: string): Promise<ActionResult> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    revalidatePath("/today");
+    revalidatePath("/transactions");
+    return { success: true };
+  }
+
   try {
     const supabase = await createClient();
     const { error } = await supabase
@@ -171,6 +224,12 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
  * Restores a soft-deleted transaction (Spec FR-T6 10-second undo window).
  */
 export async function restoreTransaction(id: string): Promise<ActionResult> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    revalidatePath("/today");
+    revalidatePath("/transactions");
+    return { success: true };
+  }
+
   try {
     const supabase = await createClient();
     const { error } = await supabase

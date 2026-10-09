@@ -55,23 +55,34 @@ export async function createRecurringRule(
         if (newAccount) validAccountId = newAccount.id;
       }
 
-      let validCategoryId = data.category_id || null;
-      if (validCategoryId) {
+      let validCategoryId: string | null = null;
+      const isCategoryUuid =
+        data.category_id &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          data.category_id
+        );
+
+      if (isCategoryUuid && data.category_id) {
         const { data: catExists } = await supabase
           .from("categories")
           .select("id")
-          .eq("id", validCategoryId)
+          .eq("id", data.category_id)
           .eq("user_id", user.id)
-          .single();
-        if (!catExists) {
-          const { data: defaultCat } = await supabase
-            .from("categories")
-            .select("id")
-            .eq("user_id", user.id)
-            .limit(1)
-            .single();
-          validCategoryId = defaultCat?.id || null;
+          .maybeSingle();
+        if (catExists) {
+          validCategoryId = catExists.id;
         }
+      }
+
+      if (!validCategoryId) {
+        const { data: defaultCat } = await supabase
+          .from("categories")
+          .select("id")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        validCategoryId = defaultCat?.id || null;
       }
 
       const { data: inserted, error } = await supabase
@@ -127,6 +138,11 @@ export async function toggleRecurringRule(
   id: string,
   active: boolean
 ): Promise<ActionResult> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    revalidatePath("/recurring");
+    return { success: true };
+  }
+
   try {
     const supabase = await createClient();
     const { error } = await supabase

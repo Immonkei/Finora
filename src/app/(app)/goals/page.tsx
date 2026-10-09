@@ -73,7 +73,7 @@ export default function GoalsPage() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (dbGoals && dbGoals.length > 0) {
+      if (dbGoals) {
         setGoals(
           dbGoals.map((g) => ({
             id: g.id,

@@ -102,7 +102,7 @@ export default function RecurringPage() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (dbRules && dbRules.length > 0) {
+      if (dbRules) {
         const formatted: RecurringRuleItem[] = dbRules.map((r) => {
           const cat = Array.isArray(r.categories) ? r.categories[0] : r.categories;
           return {
