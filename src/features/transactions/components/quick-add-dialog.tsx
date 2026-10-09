@@ -75,6 +75,14 @@ export function QuickAddDialog({
   const [receiptImage, setReceiptImage] = React.useState<string | null>(null);
   const [remoteReceiptUrl, setRemoteReceiptUrl] = React.useState<string | null>(null);
   const [isUploadingReceipt, setIsUploadingReceipt] = React.useState(false);
+  const [isScanningReceipt, setIsScanningReceipt] = React.useState(false);
+  const [scannedSummary, setScannedSummary] = React.useState<{
+    merchant?: string;
+    amount?: number;
+    category?: string;
+    confidence?: number;
+    source?: string;
+  } | null>(null);
 
   // Load user's actual categories from Supabase on mount
   React.useEffect(() => {
@@ -159,25 +167,62 @@ export function QuickAddDialog({
 
       if (!isOffline) {
         setIsUploadingReceipt(true);
-        toast.info("Uploading receipt to cloud storage...");
+        setIsScanningReceipt(true);
+        setScannedSummary(null);
+        toast.info("Scanning receipt with AI...");
+
         try {
           const formData = new FormData();
           formData.append("file", file);
-          const res = await fetch("/api/upload-receipt", {
+          const res = await fetch("/api/scan-receipt", {
             method: "POST",
             body: formData,
           });
           const data = await res.json();
-          if (data.success && data.url) {
-            setRemoteReceiptUrl(data.url);
-            toast.success("Receipt saved in Supabase Storage!");
+
+          if (data.success) {
+            if (data.receiptUrl) {
+              setRemoteReceiptUrl(data.receiptUrl);
+            }
+
+            // Auto-fill extracted fields
+            if (data.amount && data.amount > 0) {
+              setAmountStr(data.amount.toString());
+            }
+            if (data.currency) {
+              setCurrency(data.currency);
+            }
+            if (data.merchant) {
+              setNote(data.merchant);
+            }
+            if (data.category) {
+              const matchedCat = categoriesList.find(
+                (c) => c.name.toLowerCase() === data.category.toLowerCase()
+              );
+              if (matchedCat) {
+                setSelectedCategory(matchedCat.id);
+              }
+            }
+
+            setScannedSummary({
+              merchant: data.merchant,
+              amount: data.amount,
+              category: data.category,
+              confidence: data.confidence,
+              source: data.source,
+            });
+
+            toast.success("✨ Receipt auto-filled!", {
+              description: `${data.merchant || "Store"} • ${data.currency === "USD" ? "$" : "៛"}${data.amount || 0}`,
+            });
           } else {
-            toast.error("Receipt upload failed", { description: data.error });
+            toast.error("Receipt scan failed", { description: data.error });
           }
         } catch {
-          toast.error("Could not upload receipt image");
+          toast.error("Could not scan receipt image");
         } finally {
           setIsUploadingReceipt(false);
+          setIsScanningReceipt(false);
         }
       } else {
         toast.info("Receipt attached locally (offline mode)");
@@ -323,7 +368,7 @@ export function QuickAddDialog({
             )}
           </div>
 
-          {/* Mode Switcher: Keypad vs NLP */}
+          {/* Mode Switcher: Keypad vs NLP vs Scan */}
           <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
             <button
               type="button"
@@ -332,7 +377,7 @@ export function QuickAddDialog({
                 "px-2.5 py-1 text-xs font-semibold rounded-lg transition-all",
                 entryMode === "keypad"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 shadow-sm"
-                  : "text-zinc-500"
+                  : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-300"
               )}
             >
               Keypad
@@ -344,10 +389,18 @@ export function QuickAddDialog({
                 "px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all",
                 entryMode === "nlp"
                   ? "bg-white dark:bg-zinc-900 text-brand-600 dark:text-accent-400 shadow-sm"
-                  : "text-zinc-500"
+                  : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-300"
               )}
             >
               <Zap className="h-3 w-3" /> AI Text
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 text-zinc-500 hover:text-brand-600 dark:hover:text-accent-400 transition-all cursor-pointer"
+              title="Snap or upload a receipt to auto-fill"
+            >
+              <Camera className="h-3 w-3" /> Scan AI
             </button>
           </div>
 
@@ -432,6 +485,32 @@ export function QuickAddDialog({
               >
                 {currency}
               </button>
+            </div>
+          )}
+
+          {/* AI Receipt Scanning Status & Banner */}
+          {isScanningReceipt && (
+            <div className="p-3 bg-accent-50/80 dark:bg-accent-950/40 border border-accent-200 dark:border-accent-800/60 rounded-xl text-xs flex items-center gap-2.5 text-accent-900 dark:text-accent-200 animate-pulse">
+              <Sparkles className="h-4 w-4 text-accent-500 shrink-0 animate-spin" />
+              <span>Scanning receipt with AI: reading store, amount, and category...</span>
+            </div>
+          )}
+
+          {scannedSummary && !isScanningReceipt && (
+            <div className="p-3 bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-xs flex items-center justify-between text-emerald-900 dark:text-emerald-200 animate-in fade-in">
+              <div className="flex items-center gap-2 truncate">
+                <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="truncate">
+                  ✨ Auto-filled: <strong>{scannedSummary.merchant}</strong> •{" "}
+                  <strong className="tabular-nums">
+                    {currency === "USD" ? "$" : "៛"}{scannedSummary.amount}
+                  </strong>{" "}
+                  • {scannedSummary.category}
+                </span>
+              </div>
+              <Badge variant="outline" className="border-emerald-500/40 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0 ml-2">
+                {scannedSummary.source === "gemini_vision" ? "Gemini AI" : "Smart OCR"}
+              </Badge>
             </div>
           )}
 
