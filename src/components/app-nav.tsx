@@ -35,7 +35,7 @@ export function MobileNavBar() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-zinc-200/90 bg-white/95 backdrop-blur-md dark:border-zinc-800/90 dark:bg-zinc-950/95 md:hidden safe-area-pb">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-zinc-200/80 bg-white/90 backdrop-blur-lg dark:border-zinc-800/80 dark:bg-[#0c131c]/90 md:hidden safe-area-pb">
         <div className="flex h-16 items-center justify-around px-2 relative">
           <Link
             href="/today"
@@ -67,7 +67,7 @@ export function MobileNavBar() {
           <div className="flex flex-1 items-center justify-center -mt-5">
             <button
               onClick={() => setIsAddOpen(true)}
-              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-lg shadow-brand-600/30 hover:bg-brand-700 active:scale-95 transition-all"
+              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-lg shadow-brand-600/35 hover:bg-brand-700 active:scale-95 transition-all ring-4 ring-white dark:ring-[#0c131c]"
               aria-label="Add transaction"
             >
               <Plus className="h-6 w-6 stroke-[2.5]" />
@@ -116,7 +116,7 @@ export function DesktopSidebar() {
 
   return (
     <>
-      <aside className="hidden md:flex w-64 flex-col border-r border-zinc-200/80 bg-white/60 p-5 dark:border-zinc-800/80 dark:bg-zinc-950/60 min-h-screen backdrop-blur-xs">
+      <aside className="hidden md:flex w-64 flex-col border-r border-zinc-200/80 bg-white/75 p-5 dark:border-zinc-800/80 dark:bg-[#0c131c]/75 min-h-screen backdrop-blur-md">
         <Link href="/today" className="flex items-center px-2 py-3 mb-6 transition-opacity hover:opacity-90">
           <FinoraLogo variant="full" size="md" priority />
         </Link>
@@ -132,8 +132,8 @@ export function DesktopSidebar() {
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all",
                   isActive
-                    ? "bg-brand-600 text-white shadow-xs font-semibold"
-                    : "text-zinc-600 hover:bg-brand-50/70 hover:text-brand-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
+                    ? "bg-brand-600 text-white shadow-sm font-semibold"
+                    : "text-zinc-600 hover:bg-brand-50/70 hover:text-brand-900 dark:text-zinc-400 dark:hover:bg-zinc-900/80 dark:hover:text-zinc-100"
                 )}
               >
                 <Icon className={cn("h-4 w-4", isActive ? "text-accent-300" : "text-zinc-500 dark:text-zinc-400")} />
@@ -146,7 +146,7 @@ export function DesktopSidebar() {
         <div className="pt-4 border-t border-zinc-200/80 dark:border-zinc-800/80 space-y-2">
           <button
             onClick={() => setIsAddOpen(true)}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.98] transition-all"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-brand-600/25 hover:bg-brand-700 active:scale-[0.98] transition-all cursor-pointer"
           >
             <Plus className="h-4 w-4 stroke-[2.5]" />
             Quick Add

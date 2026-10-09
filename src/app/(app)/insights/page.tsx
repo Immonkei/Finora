@@ -150,32 +150,32 @@ export default function InsightsPage() {
 
       {/* Streaks Banner (Spec 3.3 #20) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-gradient-to-br from-amber-500 to-orange-600 text-white border-0 shadow-md">
+        <Card className="bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 text-white border-0 shadow-lg relative overflow-hidden">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-amber-100 uppercase tracking-wider">
+              <span className="text-[11px] font-bold text-amber-100 uppercase tracking-wider">
                 Under-Budget Streak
               </span>
               <Flame className="h-5 w-5 text-amber-200" />
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-white mt-1">
+            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
               {streakStats.currentUnderBudgetStreak} Days
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-amber-100">
+            <p className="text-xs text-amber-100/90 font-medium">
               Personal best: {streakStats.longestStreak} consecutive days
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardDescription>No-Spend Days</CardDescription>
+              <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">No-Spend Days</CardDescription>
               <Award className="h-5 w-5 text-accent-500" />
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1">
+            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
               {streakStats.noSpendDaysCount} Days
             </CardTitle>
           </CardHeader>
@@ -186,21 +186,21 @@ export default function InsightsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardDescription>Period Delta</CardDescription>
+              <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Period Delta</CardDescription>
               {isMonthSaved ? (
-                <Badge variant="default" className="text-[10px] gap-1">
+                <Badge variant="default" className="text-[10px] font-semibold gap-1 bg-emerald-600 hover:bg-emerald-700">
                   <TrendingDown className="h-3 w-3" /> -{percentChange}%
                 </Badge>
               ) : (
-                <Badge variant="destructive" className="text-[10px] gap-1">
+                <Badge variant="destructive" className="text-[10px] font-semibold gap-1">
                   <TrendingUp className="h-3 w-3" /> +{percentChange}%
                 </Badge>
               )}
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1">
+            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
               {formatInsightMoney(monthlySavingsMinor)}
             </CardTitle>
           </CardHeader>

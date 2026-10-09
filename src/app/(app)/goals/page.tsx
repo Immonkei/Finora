@@ -253,7 +253,7 @@ export default function GoalsPage() {
           const isDone = g.savedAmountMinor >= g.targetAmountMinor;
 
           return (
-            <Card key={g.id} className="relative overflow-hidden flex flex-col justify-between">
+            <Card key={g.id} className="relative overflow-hidden flex flex-col justify-between border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
               <div>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
@@ -272,7 +272,7 @@ export default function GoalsPage() {
                     </span>
                     <Badge
                       variant={isDone ? "accent" : "outline"}
-                      className="text-xs font-semibold"
+                      className="text-xs font-semibold tabular-nums"
                     >
                       {percent}% Saved
                     </Badge>
@@ -286,10 +286,10 @@ export default function GoalsPage() {
                 <CardContent className="space-y-3">
                   <div>
                     <div className="flex justify-between items-baseline mb-1">
-                      <span className="text-2xl font-extrabold text-zinc-900 dark:text-zinc-50">
+                      <span className="text-2xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight">
                         {formatMoney(g.savedAmountMinor, "USD")}
                       </span>
-                      <span className="text-xs text-zinc-400">
+                      <span className="text-xs text-zinc-400 tabular-nums">
                         of {formatMoney(g.targetAmountMinor, "USD")}
                       </span>
                     </div>

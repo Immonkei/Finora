@@ -203,52 +203,52 @@ export default function TodayPage() {
       {/* Hero Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Daily Allowance Card */}
-        <Card className="bg-gradient-to-br from-brand-600 via-[#164366] to-brand-900 text-white border-0 shadow-lg relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 opacity-10">
+        <Card className="bg-gradient-to-br from-brand-600 via-[#164366] to-[#0a1e2f] text-white border border-brand-500/30 shadow-xl shadow-brand-950/20 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
             <Sparkles className="h-32 w-32" />
           </div>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <span className="text-brand-100 text-xs font-semibold uppercase tracking-wider">
+              <span className="text-brand-100/90 text-[11px] font-bold uppercase tracking-wider">
                 Daily Allowance
               </span>
-              <Badge variant="outline" className="border-accent-300/40 bg-accent-500/10 text-accent-100 text-xs">
+              <Badge variant="outline" className="border-accent-300/40 bg-accent-500/15 text-accent-100 text-xs font-semibold backdrop-blur-xs">
                 {daysLeft} days left
               </Badge>
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-white mt-1">
+            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
               {formatMoney(dailyAllowanceMinor, "USD")}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-brand-100/90 mb-3">
-              Remaining this month: {formatMoney(remainingBudgetMinor, "USD")}
+            <p className="text-xs text-brand-100/80 mb-3 tabular-nums">
+              Remaining this month: <span className="font-semibold text-white">{formatMoney(remainingBudgetMinor, "USD")}</span>
             </p>
-            <div className="w-full bg-brand-950/60 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-brand-950/70 rounded-full h-2 overflow-hidden ring-1 ring-white/10">
               <div
-                className="bg-accent-400 h-full rounded-full transition-all duration-500"
+                className="bg-accent-400 h-full rounded-full transition-all duration-500 shadow-xs shadow-accent-300/50"
                 style={{ width: `${Math.min(100, allowanceUsedPercent)}%` }}
               />
             </div>
-            <div className="flex justify-between text-[11px] text-brand-100/80 mt-1.5 font-medium">
-              <span>Spent today: {formatMoney(spentTodayMinor, "USD")}</span>
-              <span>{allowanceUsedPercent}% of daily budget</span>
+            <div className="flex justify-between text-[11px] text-brand-100/80 mt-2 font-medium">
+              <span className="tabular-nums">Spent today: {formatMoney(spentTodayMinor, "USD")}</span>
+              <span className="tabular-nums">{allowanceUsedPercent}% of daily budget</span>
             </div>
           </CardContent>
         </Card>
 
         {/* Spent Today Overview */}
-        <Card>
+        <Card className="border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm bg-white/90 dark:bg-zinc-900/70 backdrop-blur-xs">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <span className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider">
+              <span className="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold uppercase tracking-wider">
                 Total Spent Today
               </span>
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs font-semibold">
                 {todayTransactions.length} items
               </Badge>
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1">
+            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
               {formatMoney(spentTodayMinor, "USD")}
             </CardTitle>
           </CardHeader>
@@ -257,7 +257,7 @@ export default function TodayPage() {
               <span className="flex items-center gap-1.5">
                 <Wallet className="h-3.5 w-3.5 text-zinc-400" /> Primary Account
               </span>
-              <span className="font-medium text-zinc-900 dark:text-zinc-100">Cash (USD)</span>
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100">Cash (USD)</span>
             </div>
             <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
               <span className="flex items-center gap-1.5">
@@ -311,7 +311,7 @@ export default function TodayPage() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
+                <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 tabular-nums tracking-tight">
                   -{formatMoney(tx.amountMinor, "USD")}
                 </p>
               </div>

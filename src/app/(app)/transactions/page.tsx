@@ -263,7 +263,7 @@ export default function TransactionsPage() {
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <p
-                      className={`font-semibold text-sm ${
+                      className={`font-semibold text-sm tabular-nums tracking-tight ${
                         tx.type === "income"
                           ? "text-accent-600 dark:text-accent-400"
                           : "text-zinc-900 dark:text-zinc-100"
@@ -272,7 +272,7 @@ export default function TransactionsPage() {
                       {tx.type === "income" ? "+" : "-"}
                       {formatMoney(tx.amountMinor, "USD")}
                     </p>
-                    <Badge variant="secondary" className="text-[10px] uppercase">
+                    <Badge variant="secondary" className="text-[10px] uppercase font-semibold">
                       {tx.type}
                     </Badge>
                   </div>
@@ -280,7 +280,7 @@ export default function TransactionsPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => handleDelete(tx)}
-                    className="text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                    className="text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 dark:text-zinc-500 dark:hover:text-rose-400 dark:hover:bg-rose-500/20"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

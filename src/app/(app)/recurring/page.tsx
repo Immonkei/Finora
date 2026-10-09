@@ -236,15 +236,15 @@ export default function RecurringPage() {
 
       {/* Top Banner Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card className="bg-gradient-to-br from-brand-900 to-[#0A1622] text-white border-0 shadow-md">
+        <Card className="bg-gradient-to-br from-brand-900 via-[#0e2a3e] to-[#081420] text-white border border-brand-800/60 shadow-lg">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-brand-200 uppercase tracking-wider font-semibold">
+              <span className="text-[11px] text-brand-200/90 uppercase tracking-wider font-bold">
                 Monthly Obligation
               </span>
               <Repeat className="h-4 w-4 text-accent-300" />
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-white mt-1">
+            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
               {formatMoney(totalMonthlyObligation, "USD")}
             </CardTitle>
           </CardHeader>
@@ -255,10 +255,10 @@ export default function RecurringPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
-            <CardDescription>Automation Status</CardDescription>
-            <CardTitle className="text-lg font-bold flex items-center gap-2">
+            <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Automation Status</CardDescription>
+            <CardTitle className="text-lg font-bold flex items-center gap-2 mt-1">
               <CheckCircle2 className="h-5 w-5 text-accent-500" /> Auto-Logging Enabled
             </CardTitle>
           </CardHeader>

@@ -16,8 +16,8 @@
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   --color-brand-50: #f0f6fa;
   --color-brand-100: #e1edf5;
@@ -67,9 +67,39 @@ body {
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
 }
 
 ::selection {
   background-color: rgba(79, 163, 179, 0.28);
   color: inherit;
+}
+
+/* Polished Tabular Numbers for Currency and Metrics */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* High-craft Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+}
+
+/* Themed Carets */
+* {
+  caret-color: var(--color-brand-600);
+}
+.dark * {
+  caret-color: var(--color-accent-400);
 }

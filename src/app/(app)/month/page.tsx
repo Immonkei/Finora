@@ -159,24 +159,24 @@ export default function MonthPage() {
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
+        <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
-            <CardDescription>Spent So Far</CardDescription>
-            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50">
+            <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Spent So Far</CardDescription>
+            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(spentThisMonthMinor, "USD")}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">
               Budget: {formatMoney(totalMonthlyLimitMinor, "USD")} ({percentUsed}%)
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
-            <CardDescription>Daily Average</CardDescription>
-            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50">
+            <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Daily Average</CardDescription>
+            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(averagePerDayMinor, "USD")}
             </CardTitle>
           </CardHeader>
@@ -187,17 +187,17 @@ export default function MonthPage() {
           </CardContent>
         </Card>
 
-        <Card className={isOverspendRisk ? "border-rose-200 dark:border-rose-900" : ""}>
+        <Card className={`border-zinc-200/80 dark:border-zinc-800/80 shadow-xs ${isOverspendRisk ? "border-rose-300 dark:border-rose-900/80 ring-1 ring-rose-500/20" : ""}`}>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardDescription>Month Forecast</CardDescription>
+              <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Month Forecast</CardDescription>
               {isOverspendRisk ? (
-                <Badge variant="destructive" className="text-[10px]">At Risk</Badge>
+                <Badge variant="destructive" className="text-[10px] font-semibold">At Risk</Badge>
               ) : (
-                <Badge variant="default" className="text-[10px]">On Track</Badge>
+                <Badge variant="default" className="text-[10px] font-semibold bg-emerald-600 hover:bg-emerald-700">On Track</Badge>
               )}
             </div>
-            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50">
+            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(forecastMinor, "USD")}
             </CardTitle>
           </CardHeader>
@@ -212,15 +212,15 @@ export default function MonthPage() {
       </div>
 
       {/* Overall Budget Progress */}
-      <Card>
+      <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-semibold">Total Monthly Budget</CardTitle>
-            <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+            <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
               {percentUsed}%
             </span>
           </div>
-          <CardDescription>
+          <CardDescription className="tabular-nums">
             {formatMoney(spentThisMonthMinor, "USD")} of {formatMoney(totalMonthlyLimitMinor, "USD")} spent
           </CardDescription>
         </CardHeader>
@@ -232,14 +232,14 @@ export default function MonthPage() {
             />
           </div>
           <div className="flex justify-between items-center text-xs text-zinc-500 dark:text-zinc-400 mt-2 font-medium">
-            <span>Remaining: {formatMoney(totalMonthlyLimitMinor - spentThisMonthMinor, "USD")}</span>
-            <span>{daysLeft} days remaining</span>
+            <span className="tabular-nums">Remaining: {formatMoney(totalMonthlyLimitMinor - spentThisMonthMinor, "USD")}</span>
+            <span className="tabular-nums">{daysLeft} days remaining</span>
           </div>
         </CardContent>
       </Card>
 
       {/* Category Budgets */}
-      <Card>
+      <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
         <CardHeader>
           <CardTitle className="text-base font-semibold">Category Budgets</CardTitle>
           <CardDescription>
@@ -254,7 +254,7 @@ export default function MonthPage() {
                   {cat.name}
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums tracking-tight">
                     {formatMoney(cat.spentMinor, "USD")} / {formatMoney(cat.limitMinor, "USD")}
                   </span>
                   <Badge
@@ -265,7 +265,7 @@ export default function MonthPage() {
                         ? "warning"
                         : "secondary"
                     }
-                    className="text-[10px]"
+                    className="text-[10px] tabular-nums"
                   >
                     {cat.percent}%
                   </Badge>

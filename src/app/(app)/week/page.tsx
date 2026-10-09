@@ -147,10 +147,10 @@ export default function WeekPage() {
 
       {/* Week Overview Card */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card>
+        <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
-            <CardDescription>Total Spent (Mon - Sun)</CardDescription>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50">
+            <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Total Spent (Mon - Sun)</CardDescription>
+            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(totalWeekSpentMinor, "USD")}
             </CardTitle>
           </CardHeader>
@@ -158,7 +158,7 @@ export default function WeekPage() {
             <div className="flex items-center gap-2 text-xs">
               <Badge
                 variant={isSpendingLower ? "default" : "destructive"}
-                className="flex items-center gap-1"
+                className={`flex items-center gap-1 font-semibold ${isSpendingLower ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
               >
                 {isSpendingLower ? (
                   <TrendingDown className="h-3 w-3" />
@@ -167,17 +167,17 @@ export default function WeekPage() {
                 )}
                 12.1%
               </Badge>
-              <span className="text-zinc-500 dark:text-zinc-400">
+              <span className="text-zinc-500 dark:text-zinc-400 tabular-nums">
                 vs last week ({formatMoney(lastWeekSpentMinor, "USD")})
               </span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
-            <CardDescription>Daily Average</CardDescription>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50">
+            <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Daily Average</CardDescription>
+            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(totalWeekSpentMinor / 7n, "USD")}
             </CardTitle>
           </CardHeader>
