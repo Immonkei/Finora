@@ -16,6 +16,7 @@ import { formatMoney, toMinorUnits } from "@/lib/money";
 import { detectSpendingLeaks, type LeakTransaction } from "@/features/reports/leak-detector";
 import { calculateStreaks } from "@/features/reports/streaks";
 import { createClient } from "@/lib/supabase/client";
+import { CategoryDonutChart, transformCategoryChartData } from "@/components/charts";
 
 const DEFAULT_TRANSACTIONS: LeakTransaction[] = [
   { note: "Iced Latte", baseAmountMinor: BigInt(250), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
@@ -109,6 +110,24 @@ export default function InsightsPage() {
     }
     return formatMoney(minorUnits, "USD");
   };
+
+  const totalLeakMinor = React.useMemo(() => {
+    return leaks.reduce((acc, l) => {
+      const converted = currencyMode === "KHR" ? l.totalMinor * 40n : l.totalMinor;
+      return acc + converted;
+    }, 0n);
+  }, [leaks, currencyMode]);
+
+  const leakChartData = React.useMemo(() => {
+    return transformCategoryChartData(
+      leaks.map((l) => ({
+        name: l.title,
+        spentMinor: currencyMode === "KHR" ? l.totalMinor * 40n : l.totalMinor,
+        color: l.categoryColor,
+      })),
+      currencyMode
+    );
+  }, [leaks, currencyMode]);
 
   return (
     <div className="space-y-6">
@@ -242,55 +261,71 @@ export default function InsightsPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           {leaks.length === 0 ? (
             <p className="text-sm text-zinc-500 p-4 text-center">
               No repeated spending leaks detected below this threshold!
             </p>
           ) : (
-            leaks.map((leak) => (
-              <div
-                key={leak.title}
-                className="p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-sm"
-                    style={{ backgroundColor: leak.categoryColor }}
-                  >
-                    <Coffee className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
-                        {leak.title}
-                      </p>
-                      <Badge variant="secondary" className="text-[10px]">
-                        {leak.count}x repeated
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                      Category: {leak.category}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-t-0 pt-2 sm:pt-0">
-                  <div className="text-left sm:text-right">
-                    <p className="text-xs text-zinc-400">Monthly Total</p>
-                    <p className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
-                      {formatInsightMoney(leak.totalMinor)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-zinc-400">Annual Projection</p>
-                    <p className="font-extrabold text-sm text-rose-600 dark:text-rose-400">
-                      {formatInsightMoney(leak.projectedAnnualMinor)} / yr
-                    </p>
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="lg:col-span-5 flex flex-col items-center justify-center p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/40 dark:bg-zinc-900/40">
+                <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-2 self-start">
+                  Leak Distribution Share
+                </p>
+                <CategoryDonutChart
+                  data={leakChartData}
+                  totalSpentMinor={totalLeakMinor}
+                  currency={currencyMode}
+                  className="w-full"
+                />
               </div>
-            ))
+
+              <div className="lg:col-span-7 space-y-3">
+                {leaks.map((leak) => (
+                  <div
+                    key={leak.title}
+                    className="p-3.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-sm shrink-0"
+                        style={{ backgroundColor: leak.categoryColor }}
+                      >
+                        <Coffee className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 truncate">
+                            {leak.title}
+                          </p>
+                          <Badge variant="secondary" className="text-[10px] shrink-0">
+                            {leak.count}x repeated
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
+                          Category: {leak.category}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-t-0 pt-2 sm:pt-0 shrink-0">
+                      <div className="text-left sm:text-right">
+                        <p className="text-xs text-zinc-400">Monthly Total</p>
+                        <p className="font-bold text-sm text-zinc-900 dark:text-zinc-100 tabular-nums">
+                          {formatInsightMoney(leak.totalMinor)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-zinc-400">Annual Projection</p>
+                        <p className="font-extrabold text-sm text-rose-600 dark:text-rose-400 tabular-nums">
+                          {formatInsightMoney(leak.projectedAnnualMinor)} / yr
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

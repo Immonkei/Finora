@@ -7,6 +7,12 @@ import { formatMoney, calculateForecast } from "@/lib/money";
 import { getDaysPassedInMonth, getDaysLeftInMonth } from "@/lib/dates";
 import { useMounted } from "@/lib/hooks";
 import { createClient } from "@/lib/supabase/client";
+import {
+  BudgetPaceAreaChart,
+  CategoryDonutChart,
+  generateBudgetPaceData,
+  transformCategoryChartData,
+} from "@/components/charts";
 
 interface RpcCategorySpending {
   category_id: string;
@@ -21,6 +27,7 @@ interface CatBudgetItem {
   spentMinor: bigint;
   limitMinor: bigint;
   percent: number;
+  color?: string | null;
 }
 
 const DEFAULT_CATEGORY_BUDGETS: CatBudgetItem[] = [
@@ -29,24 +36,28 @@ const DEFAULT_CATEGORY_BUDGETS: CatBudgetItem[] = [
     spentMinor: BigInt(12500),
     limitMinor: BigInt(20000),
     percent: 62.5,
+    color: "#4fa3b3",
   },
   {
     name: "Transport",
     spentMinor: BigInt(4800),
     limitMinor: BigInt(6000),
     percent: 80.0,
+    color: "#1b4d72",
   },
   {
     name: "Housing & Bills",
     spentMinor: BigInt(5000),
     limitMinor: BigInt(5000),
     percent: 100.0,
+    color: "#f59e0b",
   },
   {
     name: "Entertainment",
     spentMinor: BigInt(1700),
     limitMinor: BigInt(4000),
     percent: 42.5,
+    color: "#8b5cf6",
   },
 ];
 
@@ -108,6 +119,7 @@ export default function MonthPage() {
             spentMinor: spent,
             limitMinor: catLimit,
             percent: Math.round(pct * 10) / 10,
+            color: c.category_color,
           };
         });
 
@@ -125,6 +137,12 @@ export default function MonthPage() {
 
   const daysPassed = currentDate ? getDaysPassedInMonth(currentDate) : 8;
   const daysLeft = currentDate ? getDaysLeftInMonth(currentDate) : 23;
+  const daysInMonth = currentDate
+    ? new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
+    : 31;
+  const monthName = currentDate
+    ? currentDate.toLocaleDateString("en-US", { month: "short" })
+    : "Oct";
 
   const totalMonthlyLimitMinor = liveData ? liveData.totalMonthlyLimitMinor : BigInt(60000);
   const spentThisMonthMinor = liveData ? liveData.spentThisMonthMinor : BigInt(24000);
@@ -145,6 +163,24 @@ export default function MonthPage() {
     if (percent <= 100) return "bg-amber-500";
     return "bg-rose-500";
   };
+
+  const paceData = generateBudgetPaceData({
+    daysInMonth,
+    currentDay: daysPassed,
+    spentSoFarMinor: spentThisMonthMinor,
+    totalBudgetMinor: totalMonthlyLimitMinor,
+    currency: "USD",
+    monthName,
+  });
+
+  const donutData = transformCategoryChartData(
+    categoryBudgets.map((c) => ({
+      name: c.name,
+      spentMinor: c.spentMinor,
+      color: c.color,
+    })),
+    "USD"
+  );
 
   return (
     <div className="space-y-6">
@@ -211,6 +247,31 @@ export default function MonthPage() {
         </Card>
       </div>
 
+      {/* Spending Pace Trajectory Area Chart */}
+      <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
+        <CardHeader className="pb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div>
+              <CardTitle className="text-base font-semibold">Spending Pace Trajectory</CardTitle>
+              <CardDescription>
+                Cumulative spending vs ideal linear pace and end-of-month projection
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2 mt-1 sm:mt-0">
+              <Badge
+                variant={isOverspendRisk ? "destructive" : "secondary"}
+                className={`text-[11px] font-bold ${!isOverspendRisk ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80" : ""}`}
+              >
+                {isOverspendRisk ? "Ahead of Pace (Risk)" : "On Ideal Pace"}
+              </Badge>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-2">
+          <BudgetPaceAreaChart data={paceData} currency="USD" />
+        </CardContent>
+      </Card>
+
       {/* Overall Budget Progress */}
       <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
         <CardHeader className="pb-3">
@@ -238,49 +299,69 @@ export default function MonthPage() {
         </CardContent>
       </Card>
 
-      {/* Category Budgets */}
-      <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Category Budgets</CardTitle>
-          <CardDescription>
-            Green (&lt;80%), Yellow (80-100%), Red (&gt;100%)
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {categoryBudgets.map((cat) => (
-            <div key={cat.name} className="space-y-1.5">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium text-zinc-800 dark:text-zinc-200">
-                  {cat.name}
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums tracking-tight">
-                    {formatMoney(cat.spentMinor, "USD")} / {formatMoney(cat.limitMinor, "USD")}
+      {/* Category Breakdown & Budgets Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Interactive Recharts Category Donut Chart */}
+        <Card className="lg:col-span-6 border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">Category Breakdown</CardTitle>
+            <CardDescription>
+              Hover slices to inspect detailed category share
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CategoryDonutChart
+              data={donutData}
+              totalSpentMinor={spentThisMonthMinor}
+              currency="USD"
+            />
+          </CardContent>
+        </Card>
+
+        {/* Category Budget Limits with Alerts */}
+        <Card className="lg:col-span-6 border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">Category Budgets</CardTitle>
+            <CardDescription>
+              Green (&lt;80%), Yellow (80-100%), Red (&gt;100%)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {categoryBudgets.map((cat) => (
+              <div key={cat.name} className="space-y-1.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                    {cat.name}
                   </span>
-                  <Badge
-                    variant={
-                      cat.percent >= 100
-                        ? "destructive"
-                        : cat.percent >= 80
-                        ? "warning"
-                        : "secondary"
-                    }
-                    className="text-[10px] tabular-nums"
-                  >
-                    {cat.percent}%
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums tracking-tight">
+                      {formatMoney(cat.spentMinor, "USD")} / {formatMoney(cat.limitMinor, "USD")}
+                    </span>
+                    <Badge
+                      variant={
+                        cat.percent >= 100
+                          ? "destructive"
+                          : cat.percent >= 80
+                          ? "warning"
+                          : "secondary"
+                      }
+                      className="text-[10px] tabular-nums"
+                    >
+                      {cat.percent}%
+                    </Badge>
+                  </div>
+                </div>
+                <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${getBudgetColor(cat.percent)}`}
+                    style={{ width: `${Math.min(100, cat.percent)}%` }}
+                  />
                 </div>
               </div>
-              <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${getBudgetColor(cat.percent)}`}
-                  style={{ width: `${Math.min(100, cat.percent)}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
