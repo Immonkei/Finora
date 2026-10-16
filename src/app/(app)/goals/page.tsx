@@ -23,32 +23,7 @@ interface GoalItem {
 }
 
 export default function GoalsPage() {
-  const [goals, setGoals] = React.useState<GoalItem[]>([
-    {
-      id: "1",
-      name: "Emergency Fund",
-      targetAmountMinor: BigInt(200000), // $2,000.00
-      savedAmountMinor: BigInt(125000),  // $1,250.00
-      deadline: "Dec 31, 2026",
-      weeklyNeededMinor: BigInt(6250),   // $62.50 / week
-    },
-    {
-      id: "2",
-      name: "New Laptop",
-      targetAmountMinor: BigInt(120000), // $1,200.00
-      savedAmountMinor: BigInt(48000),   // $480.00
-      deadline: "Nov 30, 2026",
-      weeklyNeededMinor: BigInt(9000),   // $90.00 / week
-    },
-    {
-      id: "3",
-      name: "Vacation Trip (Siem Reap)",
-      targetAmountMinor: BigInt(50000),  // $500.00
-      savedAmountMinor: BigInt(35000),   // $350.00
-      deadline: "Jan 15, 2027",
-      weeklyNeededMinor: BigInt(1150),   // $11.50 / week
-    },
-  ]);
+  const [goals, setGoals] = React.useState<GoalItem[]>([]);
 
   // Dialog states
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
@@ -262,7 +237,25 @@ export default function GoalsPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {goals.length === 0 ? (
+        <Card className="p-12 text-center border-dashed border-zinc-200 dark:border-zinc-800">
+          <div className="flex flex-col items-center justify-center space-y-3">
+            <span className="p-3 rounded-2xl bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-accent-400">
+              <Target className="h-6 w-6" />
+            </span>
+            <div className="space-y-1">
+              <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">No savings goals yet</h3>
+              <p className="text-sm text-zinc-500 max-w-sm">
+                Set a financial milestone like an emergency fund or travel budget, and track your progress weekly.
+              </p>
+            </div>
+            <Button onClick={() => setIsCreateOpen(true)} size="sm" className="mt-2">
+              <Plus className="h-4 w-4 mr-1" /> Create Goal
+            </Button>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {goals.map((g) => {
           const percent = Math.min(
             100,
@@ -346,7 +339,8 @@ export default function GoalsPage() {
             </Card>
           );
         })}
-      </div>
+        </div>
+      )}
 
       {/* Create Goal Modal */}
       {isCreateOpen && (

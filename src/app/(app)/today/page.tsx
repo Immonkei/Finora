@@ -28,35 +28,7 @@ interface DisplayTx {
   time: string;
 }
 
-const DEFAULT_TRANSACTIONS: DisplayTx[] = [
-  {
-    id: "1",
-    note: "Iced Latte & Croissant",
-    category: "Food & Drinks",
-    categoryColor: "#EF4444",
-    amountMinor: BigInt(450),
-    type: "expense",
-    time: "09:15 AM",
-  },
-  {
-    id: "2",
-    note: "Grab Taxi to Office",
-    category: "Transport",
-    categoryColor: "#3B82F6",
-    amountMinor: BigInt(300),
-    type: "expense",
-    time: "10:30 AM",
-  },
-  {
-    id: "3",
-    note: "Lunch with Team",
-    category: "Food & Drinks",
-    categoryColor: "#EF4444",
-    amountMinor: BigInt(700),
-    type: "expense",
-    time: "12:45 PM",
-  },
-];
+const DEFAULT_TRANSACTIONS: DisplayTx[] = [];
 
 export default function TodayPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false);
@@ -142,7 +114,7 @@ export default function TodayPage() {
         spentMonth += BigInt(t.base_amount);
       });
 
-      const budgetMinor = budget ? BigInt(budget.total_limit) : BigInt(60000);
+      const budgetMinor = budget ? BigInt(budget.total_limit) : 0n;
 
       setLiveData({
         transactions: formattedTxs,
@@ -210,17 +182,24 @@ export default function TodayPage() {
     setIsEditOpen(true);
   };
 
-  const monthlyBudgetMinor = liveData ? liveData.monthlyBudgetMinor : BigInt(60000);
-  const monthlySpentMinor = liveData ? liveData.monthlySpentMinor : BigInt(24000);
-  const remainingBudgetMinor = monthlyBudgetMinor - monthlySpentMinor;
-  const dailyAllowanceMinor = calculateDailyAllowance(remainingBudgetMinor, daysLeft);
-  const spentTodayMinor = liveData ? liveData.spentTodayMinor : BigInt(1450);
-  const todayTransactions = liveData ? liveData.transactions : DEFAULT_TRANSACTIONS;
+  const monthlyBudgetMinor = liveData ? liveData.monthlyBudgetMinor : 0n;
+  const monthlySpentMinor = liveData ? liveData.monthlySpentMinor : 0n;
+  const remainingBudgetMinor =
+    monthlyBudgetMinor > monthlySpentMinor ? monthlyBudgetMinor - monthlySpentMinor : 0n;
+  const dailyAllowanceMinor =
+    monthlyBudgetMinor > 0n ? calculateDailyAllowance(remainingBudgetMinor, daysLeft) : 0n;
+  const spentTodayMinor = liveData ? liveData.spentTodayMinor : 0n;
+  const todayTransactions = liveData ? liveData.transactions : [];
 
   const allowanceUsedPercent =
     dailyAllowanceMinor > 0n
       ? Math.min(100, Math.round(Number((spentTodayMinor * 100n) / dailyAllowanceMinor)))
-      : 100;
+      : 0;
+
+  const monthStatusText =
+    monthlyBudgetMinor > 0n
+      ? `${Math.round(Number((monthlySpentMinor * 100n) / monthlyBudgetMinor))}% used`
+      : "No limit set";
 
   const displayDateStr = currentDate
     ? formatDisplayDate(currentDate, "EEEE, MMMM d")
@@ -312,7 +291,7 @@ export default function TodayPage() {
                 <TrendingUp className="h-3.5 w-3.5 text-zinc-400" /> Month Status
               </span>
               <span className="font-semibold text-brand-600 dark:text-accent-400">
-                On Track (40% used)
+                {monthStatusText}
               </span>
             </div>
           </CardContent>
@@ -333,7 +312,17 @@ export default function TodayPage() {
           </Badge>
         </CardHeader>
         <CardContent className="divide-y divide-zinc-100 dark:divide-zinc-800 p-0">
-          {todayTransactions.map((tx) => (
+          {todayTransactions.length === 0 ? (
+            <div className="p-10 text-center text-sm text-zinc-500 space-y-2">
+              <p className="font-medium text-zinc-700 dark:text-zinc-300">
+                No expenses logged today.
+              </p>
+              <p className="text-xs text-zinc-400">
+                Tap &quot;Log Expense&quot; above or Quick Add below to record your spending.
+              </p>
+            </div>
+          ) : (
+            todayTransactions.map((tx) => (
             <div
               key={tx.id}
               className="flex items-center justify-between p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors"
@@ -386,7 +375,8 @@ export default function TodayPage() {
                 </div>
               </div>
             </div>
-          ))}
+          ))
+        )}
         </CardContent>
       </Card>
 

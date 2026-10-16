@@ -45,48 +45,7 @@ export default function RecurringPage() {
   const [frequency, setFrequency] = React.useState<"daily" | "weekly" | "monthly">("monthly");
   const [category, setCategory] = React.useState("Housing & Bills");
 
-  const [rules, setRules] = React.useState<RecurringRuleItem[]>([
-    {
-      id: "rec-1",
-      name: "Apartment Rent",
-      amountMinor: BigInt(25000), // $250.00
-      currency: "USD",
-      frequency: "monthly",
-      category: "Housing & Bills",
-      nextRun: "Nov 1, 2026",
-      active: true,
-    },
-    {
-      id: "rec-2",
-      name: "High-Speed Fiber Internet",
-      amountMinor: BigInt(3000), // $30.00
-      currency: "USD",
-      frequency: "monthly",
-      category: "Housing & Bills",
-      nextRun: "Nov 5, 2026",
-      active: true,
-    },
-    {
-      id: "rec-3",
-      name: "Spotify Premium & Cloud",
-      amountMinor: BigInt(1099), // $10.99
-      currency: "USD",
-      frequency: "monthly",
-      category: "Entertainment",
-      nextRun: "Oct 15, 2026",
-      active: true,
-    },
-    {
-      id: "rec-4",
-      name: "Gym & Fitness Membership",
-      amountMinor: BigInt(2000), // $20.00
-      currency: "USD",
-      frequency: "monthly",
-      category: "Health & Medical",
-      nextRun: "Oct 20, 2026",
-      active: false,
-    },
-  ]);
+  const [rules, setRules] = React.useState<RecurringRuleItem[]>([]);
 
   const loadRules = React.useCallback(async () => {
     try {
@@ -279,7 +238,17 @@ export default function RecurringPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="divide-y divide-zinc-100 dark:divide-zinc-800 p-0">
-          {rules.map((rule) => (
+          {rules.length === 0 ? (
+            <div className="p-12 text-center text-sm text-zinc-500 space-y-2">
+              <p className="font-medium text-zinc-700 dark:text-zinc-300">
+                No recurring rules set up yet.
+              </p>
+              <p className="text-xs text-zinc-400">
+                Add subscriptions or monthly bills like rent and wifi to automate your bookkeeping.
+              </p>
+            </div>
+          ) : (
+            rules.map((rule) => (
             <div
               key={rule.id}
               className="flex items-center justify-between p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors"
@@ -334,7 +303,8 @@ export default function RecurringPage() {
                 </Button>
               </div>
             </div>
-          ))}
+          ))
+        )}
         </CardContent>
       </Card>
 

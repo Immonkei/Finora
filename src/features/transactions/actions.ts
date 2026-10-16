@@ -182,27 +182,28 @@ export async function createTransaction(
             .eq("month", currentMonthStr)
             .maybeSingle();
 
-          const budgetLimit = budget?.total_limit || 60000;
-          const startOfMonth = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            1
-          ).toISOString();
+          if (budget?.total_limit && budget.total_limit > 0) {
+            const budgetLimit = budget.total_limit;
+            const startOfMonth = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              1
+            ).toISOString();
 
-          const { data: monthTxs } = await supabase
-            .from("transactions")
-            .select("base_amount")
-            .eq("user_id", user.id)
-            .eq("type", "expense")
-            .is("deleted_at", null)
-            .gte("occurred_at", startOfMonth);
+            const { data: monthTxs } = await supabase
+              .from("transactions")
+              .select("base_amount")
+              .eq("user_id", user.id)
+              .eq("type", "expense")
+              .is("deleted_at", null)
+              .gte("occurred_at", startOfMonth);
 
-          let totalSpent = 0;
-          (monthTxs || []).forEach((t) => {
-            totalSpent += t.base_amount;
-          });
+            let totalSpent = 0;
+            (monthTxs || []).forEach((t) => {
+              totalSpent += t.base_amount;
+            });
 
-          const percent = (totalSpent / budgetLimit) * 100;
+            const percent = (totalSpent / budgetLimit) * 100;
 
           if (percent >= 100) {
             const { data: existing } = await supabase
@@ -244,6 +245,7 @@ export async function createTransaction(
                 read: false,
               });
             }
+          }
           }
         } catch {
           // Non-blocking notification evaluation

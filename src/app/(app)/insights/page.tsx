@@ -18,23 +18,14 @@ import { calculateStreaks } from "@/features/reports/streaks";
 import { createClient } from "@/lib/supabase/client";
 import { CategoryDonutChart, transformCategoryChartData } from "@/components/charts";
 
-const DEFAULT_TRANSACTIONS: LeakTransaction[] = [
-  { note: "Iced Latte", baseAmountMinor: BigInt(250), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
-  { note: "Iced Latte", baseAmountMinor: BigInt(250), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
-  { note: "Iced Latte", baseAmountMinor: BigInt(300), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
-  { note: "Iced Latte", baseAmountMinor: BigInt(250), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
-  { note: "Iced Latte", baseAmountMinor: BigInt(250), categoryName: "Food & Drinks", categoryColor: "#EF4444" },
-  { note: "Grab Bike Short Ride", baseAmountMinor: BigInt(150), categoryName: "Transport", categoryColor: "#3B82F6" },
-  { note: "Grab Bike Short Ride", baseAmountMinor: BigInt(150), categoryName: "Transport", categoryColor: "#3B82F6" },
-  { note: "Grab Bike Short Ride", baseAmountMinor: BigInt(180), categoryName: "Transport", categoryColor: "#3B82F6" },
-  { note: "Vending Machine Drink", baseAmountMinor: BigInt(120), categoryName: "Food & Drinks", categoryColor: "#F59E0B" },
-  { note: "Vending Machine Drink", baseAmountMinor: BigInt(120), categoryName: "Food & Drinks", categoryColor: "#F59E0B" },
-];
-
 export default function InsightsPage() {
   const [currencyMode, setCurrencyMode] = React.useState<"USD" | "KHR">("USD");
   const [leakThreshold, setLeakThreshold] = React.useState<number>(5.0);
   const [liveTransactions, setLiveTransactions] = React.useState<LeakTransaction[] | null>(null);
+  const [liveStreakDays, setLiveStreakDays] = React.useState<{ date: string; spentMinor: bigint; allowanceMinor: bigint }[]>([]);
+  const [liveThisMonthSpent, setLiveThisMonthSpent] = React.useState<bigint>(0n);
+  const [liveLastMonthSpent, setLiveLastMonthSpent] = React.useState<bigint>(0n);
+  const [liveMonthlyBudget, setLiveMonthlyBudget] = React.useState<bigint>(0n);
 
   React.useEffect(() => {
     async function loadInsightsData() {
@@ -45,16 +36,31 @@ export default function InsightsPage() {
         } = await supabase.auth.getUser();
         if (!user) return;
 
+        const now = new Date();
+        const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+
+        // 1. Current Budget
+        const { data: budget } = await supabase
+          .from("budgets")
+          .select("total_limit")
+          .eq("user_id", user.id)
+          .eq("month", currentMonthStr)
+          .maybeSingle();
+
+        const budgetLimit = budget ? BigInt(budget.total_limit) : 0n;
+        setLiveMonthlyBudget(budgetLimit);
+
+        // 2. Transactions for Leaks & Streaks
         const { data } = await supabase
           .from("transactions")
-          .select("note, base_amount, categories(name, color)")
+          .select("note, base_amount, occurred_at, categories(name, color)")
           .eq("user_id", user.id)
           .eq("type", "expense")
           .is("deleted_at", null)
           .order("occurred_at", { ascending: false })
           .limit(100);
 
-        if (data && data.length > 0) {
+        if (data) {
           const mapped: LeakTransaction[] = data.map((t) => {
             const cat = Array.isArray(t.categories) ? t.categories[0] : t.categories;
             return {
@@ -65,41 +71,101 @@ export default function InsightsPage() {
             };
           });
           setLiveTransactions(mapped);
+
+          // Calculate last 7 days streaks
+          const daysMap: Record<string, bigint> = {};
+          const dailyTargetMinor = budgetLimit > 0n ? budgetLimit / 30n : 1500n;
+
+          for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const key = d.toISOString().slice(0, 10);
+            daysMap[key] = 0n;
+          }
+
+          data.forEach((t) => {
+            const dateKey = t.occurred_at.slice(0, 10);
+            if (daysMap[dateKey] !== undefined) {
+              daysMap[dateKey] += BigInt(t.base_amount);
+            }
+          });
+
+          const builtDays = Object.entries(daysMap).map(([date, spentMinor]) => ({
+            date,
+            spentMinor,
+            allowanceMinor: dailyTargetMinor,
+          }));
+
+          setLiveStreakDays(builtDays);
+        } else {
+          setLiveTransactions([]);
+          setLiveStreakDays([]);
         }
+
+        // 3. Monthly comparisons
+        const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999).toISOString();
+
+        const { data: thisMonthTxs } = await supabase
+          .from("transactions")
+          .select("base_amount")
+          .eq("user_id", user.id)
+          .eq("type", "expense")
+          .is("deleted_at", null)
+          .gte("occurred_at", startOfThisMonth);
+
+        let thisTotal = 0n;
+        if (thisMonthTxs) {
+          thisMonthTxs.forEach((t) => {
+            thisTotal += BigInt(t.base_amount);
+          });
+        }
+        setLiveThisMonthSpent(thisTotal);
+
+        const { data: lastMonthTxs } = await supabase
+          .from("transactions")
+          .select("base_amount")
+          .eq("user_id", user.id)
+          .eq("type", "expense")
+          .is("deleted_at", null)
+          .gte("occurred_at", startOfLastMonth)
+          .lte("occurred_at", endOfLastMonth);
+
+        let lastTotal = 0n;
+        if (lastMonthTxs) {
+          lastMonthTxs.forEach((t) => {
+            lastTotal += BigInt(t.base_amount);
+          });
+        }
+        setLiveLastMonthSpent(lastTotal);
       } catch {
-        // Fallback
+        setLiveTransactions([]);
+        setLiveStreakDays([]);
+        setLiveThisMonthSpent(0n);
+        setLiveLastMonthSpent(0n);
+        setLiveMonthlyBudget(0n);
       }
     }
     loadInsightsData();
   }, []);
 
-  const activeTransactions = liveTransactions ?? DEFAULT_TRANSACTIONS;
+  const activeTransactions = liveTransactions ?? [];
   const leaks = detectSpendingLeaks(
     activeTransactions,
     toMinorUnits(leakThreshold, "USD")
   );
 
-  // Streak history
-  const streakDays = [
-    { date: "2026-10-02", spentMinor: BigInt(1200), allowanceMinor: BigInt(1500) },
-    { date: "2026-10-03", spentMinor: BigInt(0), allowanceMinor: BigInt(1500) },
-    { date: "2026-10-04", spentMinor: BigInt(850), allowanceMinor: BigInt(1500) },
-    { date: "2026-10-05", spentMinor: BigInt(1400), allowanceMinor: BigInt(1500) },
-    { date: "2026-10-06", spentMinor: BigInt(0), allowanceMinor: BigInt(1500) },
-    { date: "2026-10-07", spentMinor: BigInt(950), allowanceMinor: BigInt(1500) },
-    { date: "2026-10-08", spentMinor: BigInt(1450), allowanceMinor: BigInt(1565) },
-  ];
+  const streakStats = calculateStreaks(liveStreakDays);
 
-  const streakStats = calculateStreaks(streakDays);
-
-  // Period comparisons
-  const thisMonthSpent = BigInt(24000); // $240.00
-  const lastMonthSpent = BigInt(27500); // $275.00
+  const thisMonthSpent = liveThisMonthSpent;
+  const lastMonthSpent = liveLastMonthSpent;
   const monthlySavingsMinor = lastMonthSpent - thisMonthSpent;
-  const isMonthSaved = monthlySavingsMinor > 0n;
-  const percentChange = Math.abs(
-    Math.round(Number((monthlySavingsMinor * 100n) / lastMonthSpent))
-  );
+  const isMonthSaved = monthlySavingsMinor >= 0n;
+  const percentChange =
+    lastMonthSpent > 0n
+      ? Math.abs(Math.round(Number((monthlySavingsMinor * 100n) / lastMonthSpent)))
+      : 0;
 
   // Currency multiplier (1 USD = 4,000 KHR)
   const formatInsightMoney = (minorUnits: bigint) => {
@@ -209,7 +275,11 @@ export default function InsightsPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Period Delta</CardDescription>
-              {isMonthSaved ? (
+              {lastMonthSpent === 0n ? (
+                <Badge variant="secondary" className="text-[10px] font-semibold">
+                  New Baseline
+                </Badge>
+              ) : isMonthSaved ? (
                 <Badge variant="default" className="text-[10px] font-semibold gap-1 bg-emerald-600 hover:bg-emerald-700">
                   <TrendingDown className="h-3 w-3" /> -{percentChange}%
                 </Badge>
@@ -220,12 +290,16 @@ export default function InsightsPage() {
               )}
             </div>
             <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
-              {formatInsightMoney(monthlySavingsMinor)}
+              {formatInsightMoney(monthlySavingsMinor >= 0n ? monthlySavingsMinor : -monthlySavingsMinor)}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              {isMonthSaved ? "Saved compared to last month" : "Increase vs last month"}
+              {lastMonthSpent === 0n
+                ? "First active month tracking"
+                : isMonthSaved
+                ? "Saved compared to last month"
+                : "Increase vs last month"}
             </p>
           </CardContent>
         </Card>
@@ -358,13 +432,19 @@ export default function InsightsPage() {
             <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2">
               <div className="flex justify-between items-center text-xs text-zinc-500">
                 <span>Monthly Budget in Dual-Currency</span>
-                <Badge variant="secondary" className="text-[10px]">$600 Limit</Badge>
+                <Badge variant="secondary" className="text-[10px]">
+                  {liveMonthlyBudget > 0n
+                    ? `${formatMoney(liveMonthlyBudget, "USD")} Limit`
+                    : "No Budget Set"}
+                </Badge>
               </div>
               <p className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                2,400,000 ៛ (KHR)
+                {formatMoney(liveMonthlyBudget * 40n, "KHR")}
               </p>
               <p className="text-xs text-zinc-500">
-                Remaining daily allowance in KHR: ~62,600 ៛ / day.
+                {liveMonthlyBudget > 0n
+                  ? `Daily allowance target in KHR: ~${formatMoney((liveMonthlyBudget * 40n) / 30n, "KHR")} / day.`
+                  : "Set a monthly budget to see your daily allowance calculated in Cambodian Riel."}
               </p>
             </div>
           </div>

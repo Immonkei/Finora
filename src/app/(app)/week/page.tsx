@@ -49,7 +49,17 @@ export default function WeekPage() {
   const [isGenerating, setIsGenerating] = React.useState(false);
 
   const [liveWeekSpent, setLiveWeekSpent] = React.useState<bigint | null>(null);
+  const [liveLastWeekSpent, setLiveLastWeekSpent] = React.useState<bigint | null>(null);
   const [liveCategories, setLiveCategories] = React.useState<CatItem[] | null>(null);
+  const [liveDailyMap, setLiveDailyMap] = React.useState<Record<string, bigint>>({
+    Mon: 0n,
+    Tue: 0n,
+    Wed: 0n,
+    Thu: 0n,
+    Fri: 0n,
+    Sat: 0n,
+    Sun: 0n,
+  });
 
   React.useEffect(() => {
     async function loadWeekData() {
@@ -61,13 +71,15 @@ export default function WeekPage() {
         if (!user) return;
 
         const { start, end } = getWeekBounds(new Date(), 1);
+
+        // 1. Spending by Category RPC
         const { data: catData } = await supabase.rpc("spending_by_category", {
           p_from: start.toISOString(),
           p_to: end.toISOString(),
         });
 
+        let weekTotal = BigInt(0);
         if (catData) {
-          let weekTotal = BigInt(0);
           const mappedCats = ((catData as unknown as RpcCategorySpending[]) || []).map((c) => {
             const spent = BigInt(c.total);
             weekTotal += spent;
@@ -89,27 +101,81 @@ export default function WeekPage() {
 
           setLiveCategories(withPercents);
           setLiveWeekSpent(weekTotal);
+        } else {
+          setLiveCategories([]);
+          setLiveWeekSpent(0n);
         }
+
+        // 2. Day-by-day transactions this week
+        const { data: weekTxs } = await supabase
+          .from("transactions")
+          .select("occurred_at, base_amount")
+          .eq("user_id", user.id)
+          .eq("type", "expense")
+          .is("deleted_at", null)
+          .gte("occurred_at", start.toISOString())
+          .lte("occurred_at", end.toISOString());
+
+        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const dMap: Record<string, bigint> = {
+          Mon: 0n,
+          Tue: 0n,
+          Wed: 0n,
+          Thu: 0n,
+          Fri: 0n,
+          Sat: 0n,
+          Sun: 0n,
+        };
+
+        if (weekTxs) {
+          weekTxs.forEach((tx) => {
+            const d = new Date(tx.occurred_at);
+            const name = dayNames[d.getDay()];
+            if (dMap[name] !== undefined) {
+              dMap[name] += BigInt(tx.base_amount);
+            }
+          });
+        }
+        setLiveDailyMap(dMap);
+
+        // 3. Last week's spending total
+        const lastWeekStart = new Date(start);
+        lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+        const lastWeekEnd = new Date(end);
+        lastWeekEnd.setDate(lastWeekEnd.getDate() - 7);
+
+        const { data: lastWeekTxs } = await supabase
+          .from("transactions")
+          .select("base_amount")
+          .eq("user_id", user.id)
+          .eq("type", "expense")
+          .is("deleted_at", null)
+          .gte("occurred_at", lastWeekStart.toISOString())
+          .lte("occurred_at", lastWeekEnd.toISOString());
+
+        let lastTotal = 0n;
+        if (lastWeekTxs) {
+          lastWeekTxs.forEach((t) => {
+            lastTotal += BigInt(t.base_amount);
+          });
+        }
+        setLiveLastWeekSpent(lastTotal);
       } catch {
-        // Fallback
+        // Fallback to empty states
+        setLiveCategories([]);
+        setLiveWeekSpent(0n);
+        setLiveLastWeekSpent(0n);
       }
     }
     loadWeekData();
   }, []);
 
-  const totalWeekSpentMinor = liveWeekSpent ?? BigInt(11250); // $112.50
-  const lastWeekSpentMinor = BigInt(12800); // $128.00
+  const totalWeekSpentMinor = liveWeekSpent ?? 0n;
+  const lastWeekSpentMinor = liveLastWeekSpent ?? 0n;
   const differenceMinor = lastWeekSpentMinor - totalWeekSpentMinor;
-  const isSpendingLower = differenceMinor > 0n;
+  const isSpendingLower = differenceMinor >= 0n;
 
-  const DEFAULT_TOP_CATEGORIES: CatItem[] = [
-    { name: "Food & Drinks", totalMinor: BigInt(5400), percent: 48, color: "#4fa3b3" },
-    { name: "Transport", totalMinor: BigInt(2850), percent: 25, color: "#1b4d72" },
-    { name: "Entertainment", totalMinor: BigInt(1800), percent: 16, color: "#8b5cf6" },
-    { name: "Groceries", totalMinor: BigInt(1200), percent: 11, color: "#10b981" },
-  ];
-
-  const topCategories = liveCategories ?? DEFAULT_TOP_CATEGORIES;
+  const topCategories = liveCategories ?? [];
   const dailyAverageMinor = totalWeekSpentMinor / 7n;
 
   // Day-by-day Recharts Bar Chart Data
@@ -125,13 +191,13 @@ export default function WeekPage() {
     };
 
     const rawDays = [
-      { day: "Mon", fullDate: "Monday", amountMinor: BigInt(1850) },
-      { day: "Tue", fullDate: "Tuesday", amountMinor: BigInt(2200) },
-      { day: "Wed", fullDate: "Wednesday", amountMinor: BigInt(1400) },
-      { day: "Thu", fullDate: "Thursday", amountMinor: BigInt(1450) },
-      { day: "Fri", fullDate: "Friday", amountMinor: BigInt(2650) },
-      { day: "Sat", fullDate: "Saturday", amountMinor: BigInt(1700) },
-      { day: "Sun", fullDate: "Sunday", amountMinor: BigInt(0) },
+      { day: "Mon", fullDate: "Monday", amountMinor: liveDailyMap.Mon || 0n },
+      { day: "Tue", fullDate: "Tuesday", amountMinor: liveDailyMap.Tue || 0n },
+      { day: "Wed", fullDate: "Wednesday", amountMinor: liveDailyMap.Wed || 0n },
+      { day: "Thu", fullDate: "Thursday", amountMinor: liveDailyMap.Thu || 0n },
+      { day: "Fri", fullDate: "Friday", amountMinor: liveDailyMap.Fri || 0n },
+      { day: "Sat", fullDate: "Saturday", amountMinor: liveDailyMap.Sat || 0n },
+      { day: "Sun", fullDate: "Sunday", amountMinor: liveDailyMap.Sun || 0n },
     ];
 
     let maxAmount = 0n;
@@ -147,7 +213,7 @@ export default function WeekPage() {
       isToday: todayDayOfWeek !== null && dayIndexMap[d.day] === todayDayOfWeek,
       isHighest: d.amountMinor === maxAmount && maxAmount > 0n,
     }));
-  }, [todayDayOfWeek]);
+  }, [todayDayOfWeek, liveDailyMap]);
 
   const highestDay = React.useMemo(() => {
     return weeklyChartPoints.find((p) => p.isHighest);
@@ -164,18 +230,53 @@ export default function WeekPage() {
     );
   }, [topCategories]);
 
-  const handleGenerateReport = () => {
+  const handleGenerateReport = async () => {
     setIsGenerating(true);
-    setTimeout(() => {
-      const generated = generateWeeklyAiReport({
-        spentThisWeekMinor: totalWeekSpentMinor,
-        allowanceAverageMinor: BigInt(1565),
-        topLeakTitle: "Iced Latte",
+    try {
+      const res = await fetch("/api/weekly-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          spentThisWeekMinor: totalWeekSpentMinor.toString(),
+          allowanceAverageMinor: dailyAverageMinor.toString(),
+          currency: "USD",
+          topCategories: topCategories.map((c) => ({
+            name: c.name,
+            amountMinor: c.totalMinor.toString(),
+            percent: c.percent,
+          })),
+          highestDay: highestDay
+            ? {
+                day: highestDay.fullDate || highestDay.day,
+                amountMinor: highestDay.amountMinor.toString(),
+              }
+            : null,
+        }),
       });
-      setReport(generated);
+
+      if (res.ok) {
+        const data = await res.json();
+        setReport(data.report);
+        if (data.source === "gemini") {
+          toast.success("Gemini AI Weekly Report generated!");
+        } else {
+          toast.success("AI Weekly Report generated!");
+        }
+      } else {
+        throw new Error("Weekly report API request failed");
+      }
+    } catch {
+      const fallback = generateWeeklyAiReport({
+        spentThisWeekMinor: totalWeekSpentMinor,
+        allowanceAverageMinor: dailyAverageMinor > 0n ? dailyAverageMinor : 1500n,
+        topLeakTitle: topCategories[0]?.name || "Expenses",
+        currency: "USD",
+      });
+      setReport(fallback);
+      toast.success("AI Weekly Report generated (offline mode)");
+    } finally {
       setIsGenerating(false);
-      toast.success("AI Weekly Report generated!");
-    }, 400);
+    }
   };
 
   return (
@@ -219,7 +320,9 @@ export default function WeekPage() {
                 ) : (
                   <TrendingUp className="h-3 w-3" />
                 )}
-                12.1%
+                {lastWeekSpentMinor > 0n
+                  ? `${Math.abs(Math.round(Number((differenceMinor * 100n) / lastWeekSpentMinor)))}%`
+                  : "0%"}
               </Badge>
               <span className="text-zinc-500 dark:text-zinc-400 tabular-nums">
                 vs last week ({formatMoney(lastWeekSpentMinor, "USD")})
@@ -273,11 +376,22 @@ export default function WeekPage() {
             <CardDescription>Interactive proportional distribution</CardDescription>
           </CardHeader>
           <CardContent>
-            <CategoryDonutChart
-              data={donutData}
-              totalSpentMinor={totalWeekSpentMinor}
-              currency="USD"
-            />
+            {topCategories.length === 0 ? (
+              <div className="py-12 text-center text-sm text-zinc-500">
+                <p className="font-medium text-zinc-700 dark:text-zinc-300">
+                  No expenses logged this week.
+                </p>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Expenses will appear here in interactive proportional slices.
+                </p>
+              </div>
+            ) : (
+              <CategoryDonutChart
+                data={donutData}
+                totalSpentMinor={totalWeekSpentMinor}
+                currency="USD"
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -287,36 +401,47 @@ export default function WeekPage() {
             <CardDescription>Ranked ranking of highest spending buckets</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {topCategories.map((cat) => (
-              <div key={cat.name} className="space-y-1.5">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: cat.color }}
-                    />
-                    <span className="font-medium text-zinc-800 dark:text-zinc-200">
-                      {cat.name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
-                      {formatMoney(cat.totalMinor, "USD")}
-                    </span>
-                    <span className="text-xs text-zinc-400 tabular-nums">({cat.percent}%)</span>
-                  </div>
-                </div>
-                <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-300"
-                    style={{
-                      width: `${cat.percent}%`,
-                      backgroundColor: cat.color,
-                    }}
-                  />
-                </div>
+            {topCategories.length === 0 ? (
+              <div className="py-12 text-center text-sm text-zinc-500">
+                <p className="font-medium text-zinc-700 dark:text-zinc-300">
+                  No categories to display.
+                </p>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Categories will rank automatically as you log expenses.
+                </p>
               </div>
-            ))}
+            ) : (
+              topCategories.map((cat) => (
+                <div key={cat.name} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: cat.color }}
+                      />
+                      <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                        {cat.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                        {formatMoney(cat.totalMinor, "USD")}
+                      </span>
+                      <span className="text-xs text-zinc-400 tabular-nums">({cat.percent}%)</span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${cat.percent}%`,
+                        backgroundColor: cat.color,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>

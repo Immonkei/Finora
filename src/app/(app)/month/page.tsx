@@ -30,37 +30,6 @@ interface CatBudgetItem {
   color?: string | null;
 }
 
-const DEFAULT_CATEGORY_BUDGETS: CatBudgetItem[] = [
-  {
-    name: "Food & Drinks",
-    spentMinor: BigInt(12500),
-    limitMinor: BigInt(20000),
-    percent: 62.5,
-    color: "#4fa3b3",
-  },
-  {
-    name: "Transport",
-    spentMinor: BigInt(4800),
-    limitMinor: BigInt(6000),
-    percent: 80.0,
-    color: "#1b4d72",
-  },
-  {
-    name: "Housing & Bills",
-    spentMinor: BigInt(5000),
-    limitMinor: BigInt(5000),
-    percent: 100.0,
-    color: "#f59e0b",
-  },
-  {
-    name: "Entertainment",
-    spentMinor: BigInt(1700),
-    limitMinor: BigInt(4000),
-    percent: 42.5,
-    color: "#8b5cf6",
-  },
-];
-
 export default function MonthPage() {
   const isMounted = useMounted();
   const currentDate = isMounted ? new Date() : null;
@@ -106,14 +75,14 @@ export default function MonthPage() {
           .eq("month", currentMonthStr)
           .maybeSingle();
 
-        const limit = budget ? BigInt(budget.total_limit) : BigInt(60000);
+        const limit = budget ? BigInt(budget.total_limit) : 0n;
 
         let totalSpent = BigInt(0);
         const mapped: CatBudgetItem[] = ((catData as unknown as RpcCategorySpending[]) || []).map((c) => {
           const spent = BigInt(c.total);
           totalSpent += spent;
           const catLimit = BigInt(15000);
-          const pct = Number((spent * 100n) / catLimit);
+          const pct = catLimit > 0n ? Number((spent * 100n) / catLimit) : 0;
           return {
             name: c.category_name,
             spentMinor: spent,
@@ -126,10 +95,14 @@ export default function MonthPage() {
         setLiveData({
           spentThisMonthMinor: totalSpent,
           totalMonthlyLimitMinor: limit,
-          categoryBudgets: mapped.length > 0 ? mapped : DEFAULT_CATEGORY_BUDGETS,
+          categoryBudgets: mapped,
         });
       } catch {
-        // Fallback
+        setLiveData({
+          spentThisMonthMinor: 0n,
+          totalMonthlyLimitMinor: 0n,
+          categoryBudgets: [],
+        });
       }
     }
     loadMonthData();
@@ -144,9 +117,9 @@ export default function MonthPage() {
     ? currentDate.toLocaleDateString("en-US", { month: "short" })
     : "Oct";
 
-  const totalMonthlyLimitMinor = liveData ? liveData.totalMonthlyLimitMinor : BigInt(60000);
-  const spentThisMonthMinor = liveData ? liveData.spentThisMonthMinor : BigInt(24000);
-  const categoryBudgets = liveData ? liveData.categoryBudgets : DEFAULT_CATEGORY_BUDGETS;
+  const totalMonthlyLimitMinor = liveData ? liveData.totalMonthlyLimitMinor : 0n;
+  const spentThisMonthMinor = liveData ? liveData.spentThisMonthMinor : 0n;
+  const categoryBudgets = liveData ? liveData.categoryBudgets : [];
 
   const { forecastMinor, averagePerDayMinor } = calculateForecast(
     spentThisMonthMinor,
@@ -154,8 +127,11 @@ export default function MonthPage() {
     daysLeft
   );
 
-  const isOverspendRisk = forecastMinor > totalMonthlyLimitMinor;
-  const percentUsed = Number((spentThisMonthMinor * 100n) / totalMonthlyLimitMinor);
+  const isOverspendRisk = totalMonthlyLimitMinor > 0n && forecastMinor > totalMonthlyLimitMinor;
+  const percentUsed =
+    totalMonthlyLimitMinor > 0n
+      ? Math.round(Number((spentThisMonthMinor * 100n) / totalMonthlyLimitMinor))
+      : 0;
 
   // Helper for Spec FR-B2: accent below 80%, yellow from 80% to 100%, red above 100%
   const getBudgetColor = (percent: number) => {
@@ -310,11 +286,22 @@ export default function MonthPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <CategoryDonutChart
-              data={donutData}
-              totalSpentMinor={spentThisMonthMinor}
-              currency="USD"
-            />
+            {categoryBudgets.length === 0 ? (
+              <div className="py-12 text-center text-sm text-zinc-500">
+                <p className="font-medium text-zinc-700 dark:text-zinc-300">
+                  No category spending yet this month.
+                </p>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Expenses you log this month will appear here.
+                </p>
+              </div>
+            ) : (
+              <CategoryDonutChart
+                data={donutData}
+                totalSpentMinor={spentThisMonthMinor}
+                currency="USD"
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -327,38 +314,49 @@ export default function MonthPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {categoryBudgets.map((cat) => (
-              <div key={cat.name} className="space-y-1.5">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-zinc-800 dark:text-zinc-200">
-                    {cat.name}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums tracking-tight">
-                      {formatMoney(cat.spentMinor, "USD")} / {formatMoney(cat.limitMinor, "USD")}
+            {categoryBudgets.length === 0 ? (
+              <div className="py-12 text-center text-sm text-zinc-500">
+                <p className="font-medium text-zinc-700 dark:text-zinc-300">
+                  No category budgets active.
+                </p>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Spending will track against category targets here.
+                </p>
+              </div>
+            ) : (
+              categoryBudgets.map((cat) => (
+                <div key={cat.name} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                      {cat.name}
                     </span>
-                    <Badge
-                      variant={
-                        cat.percent >= 100
-                          ? "destructive"
-                          : cat.percent >= 80
-                          ? "warning"
-                          : "secondary"
-                      }
-                      className="text-[10px] tabular-nums"
-                    >
-                      {cat.percent}%
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums tracking-tight">
+                        {formatMoney(cat.spentMinor, "USD")} / {formatMoney(cat.limitMinor, "USD")}
+                      </span>
+                      <Badge
+                        variant={
+                          cat.percent >= 100
+                            ? "destructive"
+                            : cat.percent >= 80
+                            ? "warning"
+                            : "secondary"
+                        }
+                        className="text-[10px] tabular-nums"
+                      >
+                        {cat.percent}%
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${getBudgetColor(cat.percent)}`}
+                      style={{ width: `${Math.min(100, cat.percent)}%` }}
+                    />
                   </div>
                 </div>
-                <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${getBudgetColor(cat.percent)}`}
-                    style={{ width: `${Math.min(100, cat.percent)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
       </div>

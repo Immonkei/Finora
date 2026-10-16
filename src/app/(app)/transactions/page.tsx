@@ -40,65 +40,7 @@ export default function TransactionsPage() {
   const [editingTx, setEditingTx] = React.useState<EditableTransaction | null>(null);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
 
-  const initialTransactions: TxItem[] = [
-    {
-      id: "1",
-      note: "Iced Latte & Croissant",
-      category: "Food & Drinks",
-      categoryColor: "#EF4444",
-      account: "Cash",
-      amountMinor: BigInt(450),
-      type: "expense",
-      date: "Oct 8, 2026",
-      rawDate: "2026-10-08T09:15:00Z",
-    },
-    {
-      id: "2",
-      note: "Grab Taxi to Office",
-      category: "Transport",
-      categoryColor: "#3B82F6",
-      account: "Cash",
-      amountMinor: BigInt(300),
-      type: "expense",
-      date: "Oct 8, 2026",
-      rawDate: "2026-10-08T10:30:00Z",
-    },
-    {
-      id: "3",
-      note: "Freelance Project Milestone",
-      category: "Freelance / Income",
-      categoryColor: "#22C55E",
-      account: "Bank",
-      amountMinor: BigInt(45000),
-      type: "income",
-      date: "Oct 7, 2026",
-      rawDate: "2026-10-07T14:00:00Z",
-    },
-    {
-      id: "4",
-      note: "Monthly High-Speed Internet",
-      category: "Housing & Bills",
-      categoryColor: "#8B5CF6",
-      account: "Bank",
-      amountMinor: BigInt(3500),
-      type: "expense",
-      date: "Oct 5, 2026",
-      rawDate: "2026-10-05T12:00:00Z",
-    },
-    {
-      id: "5",
-      note: "Transfer to Savings",
-      category: "Transfer",
-      categoryColor: "#64748B",
-      account: "Cash → Savings",
-      amountMinor: BigInt(10000),
-      type: "transfer",
-      date: "Oct 2, 2026",
-      rawDate: "2026-10-02T16:00:00Z",
-    },
-  ];
-
-  const [transactions, setTransactions] = React.useState<TxItem[]>(initialTransactions);
+  const [transactions, setTransactions] = React.useState<TxItem[]>([]);
 
   const loadTransactions = React.useCallback(async () => {
     try {
@@ -353,8 +295,15 @@ export default function TransactionsPage() {
       <Card>
         <CardContent className="divide-y divide-zinc-100 dark:divide-zinc-800 p-0">
           {filtered.length === 0 ? (
-            <div className="p-8 text-center text-sm text-zinc-500">
-              No transactions match your search.
+            <div className="p-12 text-center text-sm text-zinc-500 space-y-2">
+              <p className="font-medium text-zinc-700 dark:text-zinc-300">
+                {hasActiveFilters ? "No transactions match your filters." : "No transactions logged yet."}
+              </p>
+              <p className="text-xs text-zinc-400">
+                {hasActiveFilters
+                  ? "Try adjusting your search or resetting filters."
+                  : "Tap Quick Add from the navigation bar to record your first expense."}
+              </p>
             </div>
           ) : (
             filtered.map((tx) => (

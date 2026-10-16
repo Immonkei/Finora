@@ -32,48 +32,14 @@ export async function getTodaySummary(): Promise<TodaySummaryData> {
   const daysLeft = getDaysLeftInMonth(now);
 
   const defaultResult: TodaySummaryData = {
-    spentTodayMinor: BigInt(1450), // $14.50
-    incomeTodayMinor: BigInt(0),
-    dailyAllowanceMinor: BigInt(1565), // $15.65
-    monthlyBudgetMinor: BigInt(60000), // $600.00
-    monthlySpentMinor: BigInt(24000),  // $240.00
-    remainingBudgetMinor: BigInt(36000), // $360.00
+    spentTodayMinor: 0n,
+    incomeTodayMinor: 0n,
+    dailyAllowanceMinor: 0n,
+    monthlyBudgetMinor: 0n,
+    monthlySpentMinor: 0n,
+    remainingBudgetMinor: 0n,
     daysLeftInMonth: daysLeft,
-    transactions: [
-      {
-        id: "1",
-        note: "Iced Latte & Croissant",
-        amount: 450,
-        base_amount: 450,
-        currency: "USD",
-        type: "expense",
-        categoryName: "Food & Drinks",
-        categoryColor: "#EF4444",
-        occurredAt: now.toISOString(),
-      },
-      {
-        id: "2",
-        note: "Grab Taxi to Office",
-        amount: 300,
-        base_amount: 300,
-        currency: "USD",
-        type: "expense",
-        categoryName: "Transport",
-        categoryColor: "#3B82F6",
-        occurredAt: now.toISOString(),
-      },
-      {
-        id: "3",
-        note: "Lunch with Team",
-        amount: 700,
-        base_amount: 700,
-        currency: "USD",
-        type: "expense",
-        categoryName: "Food & Drinks",
-        categoryColor: "#EF4444",
-        occurredAt: now.toISOString(),
-      },
-    ],
+    transactions: [],
   };
 
   try {
@@ -135,7 +101,7 @@ export async function getTodaySummary(): Promise<TodaySummaryData> {
       .eq("month", currentMonthStr)
       .maybeSingle();
 
-    const monthlyBudgetMinor = budget ? BigInt(budget.total_limit) : BigInt(60000);
+    const monthlyBudgetMinor = budget ? BigInt(budget.total_limit) : 0n;
 
     // Query monthly spent so far
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();

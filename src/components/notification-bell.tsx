@@ -23,36 +23,9 @@ interface NotificationItem {
   read: boolean;
 }
 
-const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "1",
-    kind: "limit_100",
-    title: "Budget Limit Reached (100%)",
-    message: "Housing & Bills has reached 100% of its $50.00 monthly budget limit.",
-    time: "2h ago",
-    read: false,
-  },
-  {
-    id: "2",
-    kind: "warning_80",
-    title: "Budget Warning (80%)",
-    message: "Transport has reached 80% ($48.00 of $60.00 limit). Slow down spending to stay on track.",
-    time: "5h ago",
-    read: false,
-  },
-  {
-    id: "3",
-    kind: "reminder",
-    title: "Evening Logging Reminder",
-    message: "Did you remember to log all of your coffee and snack expenses today?",
-    time: "1d ago",
-    read: true,
-  },
-];
-
 export function NotificationBell() {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [notifications, setNotifications] = React.useState<NotificationItem[]>(DEFAULT_NOTIFICATIONS);
+  const [notifications, setNotifications] = React.useState<NotificationItem[]>([]);
 
   const loadNotifications = React.useCallback(async () => {
     try {
