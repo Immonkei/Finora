@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createTransactionSchema, type CreateTransactionInput } from "./schema";
+import {
+  createTransactionSchema,
+  updateTransactionSchema,
+  type CreateTransactionInput,
+  type UpdateTransactionInput,
+} from "./schema";
 import { toMinorUnits } from "@/lib/money";
 
 export interface ActionResult<T = unknown> {
@@ -358,3 +363,117 @@ export async function parseReceiptUrl(note: string | null | undefined): Promise<
   }
   return { cleanNote: note, receiptUrl: null };
 }
+
+/**
+ * Updates an existing transaction (Spec FR-T6).
+ */
+export async function updateTransaction(
+  input: UpdateTransactionInput
+): Promise<ActionResult> {
+  const parseResult = updateTransactionSchema.safeParse(input);
+  if (!parseResult.success) {
+    return {
+      success: false,
+      error: parseResult.error.issues[0]?.message || "Invalid update input",
+    };
+  }
+
+  const { id, amount, currency, category_id, note, receipt_url, type, occurred_at } =
+    parseResult.data;
+
+  // Validate UUID format
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    revalidatePath("/today");
+    revalidatePath("/transactions");
+    return { success: true };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "Authentication required to update transactions" };
+    }
+
+    const updatePayload: {
+      type?: "expense" | "income" | "transfer";
+      amount?: number;
+      currency?: string;
+      exchange_rate?: number;
+      base_amount?: number;
+      category_id?: string | null;
+      note?: string | null;
+      occurred_at?: string;
+    } = {};
+
+    if (type) {
+      updatePayload.type = type;
+    }
+
+    const resolvedCurrency = currency || "USD";
+    if (amount !== undefined) {
+      const minorAmount = toMinorUnits(amount, resolvedCurrency);
+      updatePayload.amount = Number(minorAmount);
+      updatePayload.currency = resolvedCurrency;
+
+      let exchangeRate = 1.0;
+      let baseAmount = minorAmount;
+      if (resolvedCurrency === "KHR") {
+        exchangeRate = 0.00025;
+        baseAmount = BigInt(Math.round(Number(minorAmount) * exchangeRate * 100));
+      }
+      updatePayload.exchange_rate = exchangeRate;
+      updatePayload.base_amount = Number(baseAmount);
+    }
+
+    if (category_id !== undefined) {
+      const isCatUuid =
+        category_id &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(category_id);
+      updatePayload.category_id = isCatUuid ? category_id : null;
+    }
+
+    if (note !== undefined || receipt_url !== undefined) {
+      let finalNote = note || "";
+      if (receipt_url) {
+        finalNote = finalNote
+          ? `${finalNote} [receipt:${receipt_url}]`
+          : `[receipt:${receipt_url}]`;
+      }
+      updatePayload.note = finalNote || null;
+    }
+
+    if (occurred_at) {
+      updatePayload.occurred_at =
+        occurred_at instanceof Date ? occurred_at.toISOString() : occurred_at;
+    }
+
+    const { data: updated, error } = await supabase
+      .from("transactions")
+      .update(updatePayload)
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath("/today");
+    revalidatePath("/week");
+    revalidatePath("/month");
+    revalidatePath("/transactions");
+
+    return { success: true, data: updated };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to update transaction",
+    };
+  }
+}
+

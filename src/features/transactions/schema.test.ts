@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { createTransactionSchema, transactionFilterSchema } from "./schema";
+import {
+  createTransactionSchema,
+  transactionFilterSchema,
+  updateTransactionSchema,
+} from "./schema";
 
 describe("Transaction Schemas", () => {
   it("validates a proper expense", () => {
@@ -59,4 +63,26 @@ describe("Transaction Schemas", () => {
     const result = transactionFilterSchema.safeParse(filter);
     expect(result.success).toBe(true);
   });
+
+  it("validates partial updates in updateTransactionSchema (Spec FR-T6)", () => {
+    const validPartial = {
+      id: "00000000-0000-0000-0000-000000000001",
+      amount: 25.0,
+      note: "Updated Starbucks Latte",
+    };
+    const result = updateTransactionSchema.safeParse(validPartial);
+    expect(result.success).toBe(true);
+
+    const invalidAmount = {
+      id: "00000000-0000-0000-0000-000000000001",
+      amount: -10,
+    };
+    expect(updateTransactionSchema.safeParse(invalidAmount).success).toBe(false);
+
+    const missingId = {
+      amount: 25.0,
+    };
+    expect(updateTransactionSchema.safeParse(missingId).success).toBe(false);
+  });
 });
+

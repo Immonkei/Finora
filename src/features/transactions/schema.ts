@@ -41,3 +41,17 @@ export const transactionFilterSchema = z.object({
 });
 
 export type TransactionFilterInput = z.infer<typeof transactionFilterSchema>;
+
+export const updateTransactionSchema = z.object({
+  id: z.string().min(1, "Transaction ID is required"),
+  type: transactionTypeSchema.optional(),
+  amount: z.number().positive("Amount must be greater than 0").optional(),
+  currency: z.enum(["USD", "KHR"]).optional(),
+  category_id: z.string().optional().nullable(),
+  note: z.string().max(255).optional().nullable(),
+  receipt_url: z.string().optional().nullable(),
+  occurred_at: z.string().datetime().or(z.date()).optional(),
+});
+
+export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;
+

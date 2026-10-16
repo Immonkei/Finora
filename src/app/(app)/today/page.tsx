@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, ArrowDownLeft, Sparkles, TrendingUp, Wallet } from "lucide-react";
+import { Plus, ArrowDownLeft, Sparkles, TrendingUp, Wallet, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,12 @@ import { QuickAddDialog } from "@/features/transactions/components/quick-add-dia
 import { useMounted } from "@/lib/hooks";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeTable } from "@/lib/supabase/realtime";
+import { toast } from "sonner";
+import { deleteTransaction, restoreTransaction } from "@/features/transactions/actions";
+import {
+  EditTransactionDialog,
+  type EditableTransaction,
+} from "@/features/transactions/components/edit-transaction-dialog";
 
 interface DisplayTx {
   id: string;
@@ -54,6 +60,8 @@ const DEFAULT_TRANSACTIONS: DisplayTx[] = [
 
 export default function TodayPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false);
+  const [editingTx, setEditingTx] = React.useState<EditableTransaction | null>(null);
+  const [isEditOpen, setIsEditOpen] = React.useState(false);
   const isMounted = useMounted();
   const currentDate = isMounted ? new Date() : null;
   const daysLeft = currentDate ? getDaysLeftInMonth(currentDate) : 23;
@@ -161,6 +169,46 @@ export default function TodayPage() {
       loadTodayData();
     },
   });
+
+  const handleDelete = async (tx: DisplayTx) => {
+    if (liveData) {
+      setLiveData({
+        ...liveData,
+        transactions: liveData.transactions.filter((item) => item.id !== tx.id),
+        spentTodayMinor:
+          tx.type === "expense"
+            ? liveData.spentTodayMinor - tx.amountMinor
+            : liveData.spentTodayMinor,
+      });
+    }
+    await deleteTransaction(tx.id);
+
+    toast("Transaction deleted", {
+      description: `${tx.note} • ${formatMoney(tx.amountMinor, "USD")} (10s undo window)`,
+      duration: 10000,
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          await restoreTransaction(tx.id);
+          loadTodayData();
+          toast.success("Transaction restored!");
+        },
+      },
+    });
+  };
+
+  const handleEditClick = (tx: DisplayTx) => {
+    setEditingTx({
+      id: tx.id,
+      note: tx.note,
+      amount: Number(tx.amountMinor) / 100,
+      currency: "USD",
+      category: tx.category,
+      type: tx.type,
+      date: new Date().toISOString(),
+    });
+    setIsEditOpen(true);
+  };
 
   const monthlyBudgetMinor = liveData ? liveData.monthlyBudgetMinor : BigInt(60000);
   const monthlySpentMinor = liveData ? liveData.monthlySpentMinor : BigInt(24000);
@@ -310,10 +358,32 @@ export default function TodayPage() {
                   </div>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 tabular-nums tracking-tight">
-                  -{formatMoney(tx.amountMinor, "USD")}
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 tabular-nums tracking-tight">
+                    -{formatMoney(tx.amountMinor, "USD")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEditClick(tx)}
+                    className="h-8 w-8 text-zinc-400 hover:text-brand-600 hover:bg-brand-50/60 dark:text-zinc-500 dark:hover:text-accent-400 dark:hover:bg-zinc-800/60"
+                    title="Edit transaction"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(tx)}
+                    className="h-8 w-8 text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 dark:text-zinc-500 dark:hover:text-rose-400 dark:hover:bg-rose-500/20"
+                    title="Delete transaction (10s undo window)"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
@@ -324,6 +394,17 @@ export default function TodayPage() {
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
         onSuccess={loadTodayData}
+      />
+
+      <EditTransactionDialog
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        transaction={editingTx}
+        onSuccess={loadTodayData}
+        onDelete={(tx) => {
+          const match = todayTransactions.find((t) => t.id === tx.id);
+          if (match) handleDelete(match);
+        }}
       />
     </div>
   );

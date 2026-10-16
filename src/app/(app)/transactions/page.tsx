@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Search, Trash2, ArrowDownLeft, ArrowUpRight, Image as ImageIcon } from "lucide-react";
+import { Search, Trash2, Pencil, ArrowDownLeft, ArrowUpRight, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +12,10 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeTable } from "@/lib/supabase/realtime";
 import { deleteTransaction, restoreTransaction } from "@/features/transactions/actions";
+import {
+  EditTransactionDialog,
+  type EditableTransaction,
+} from "@/features/transactions/components/edit-transaction-dialog";
 
 interface TxItem {
   id: string;
@@ -28,6 +32,8 @@ interface TxItem {
 export default function TransactionsPage() {
   const [search, setSearch] = React.useState("");
   const [filterType, setFilterType] = React.useState<string>("all");
+  const [editingTx, setEditingTx] = React.useState<EditableTransaction | null>(null);
+  const [isEditOpen, setIsEditOpen] = React.useState(false);
 
   const initialTransactions: TxItem[] = [
     {
@@ -148,17 +154,31 @@ export default function TransactionsPage() {
     await deleteTransaction(tx.id);
 
     toast("Transaction deleted", {
-      description: `${tx.note} • ${formatMoney(tx.amountMinor, "USD")}`,
+      description: `${tx.note} • ${formatMoney(tx.amountMinor, "USD")} (10s undo window)`,
       duration: 10000,
       action: {
         label: "Undo",
         onClick: async () => {
           await restoreTransaction(tx.id);
           setTransactions((prev) => [tx, ...prev]);
-          toast.success("Transaction restored");
+          toast.success("Transaction restored!");
         },
       },
     });
+  };
+
+  const handleEditClick = (tx: TxItem) => {
+    setEditingTx({
+      id: tx.id,
+      note: tx.note,
+      amount: Number(tx.amountMinor) / 100,
+      currency: "USD",
+      category: tx.category,
+      type: tx.type,
+      date: tx.date,
+      receiptUrl: tx.receiptUrl,
+    });
+    setIsEditOpen(true);
   };
 
   const filtered = transactions.filter((tx) => {
@@ -260,7 +280,7 @@ export default function TransactionsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <div className="text-right">
                     <p
                       className={`font-semibold text-sm tabular-nums tracking-tight ${
@@ -276,20 +296,43 @@ export default function TransactionsPage() {
                       {tx.type}
                     </Badge>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(tx)}
-                    className="text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 dark:text-zinc-500 dark:hover:text-rose-400 dark:hover:bg-rose-500/20"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditClick(tx)}
+                      className="text-zinc-400 hover:text-brand-600 hover:bg-brand-50/60 dark:text-zinc-500 dark:hover:text-accent-400 dark:hover:bg-zinc-800/60"
+                      title="Edit transaction"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(tx)}
+                      className="text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 dark:text-zinc-500 dark:hover:text-rose-400 dark:hover:bg-rose-500/20"
+                      title="Delete transaction (10s undo window)"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))
           )}
         </CardContent>
       </Card>
+
+      <EditTransactionDialog
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        transaction={editingTx}
+        onSuccess={loadTransactions}
+        onDelete={(tx) => {
+          const match = transactions.find((t) => t.id === tx.id);
+          if (match) handleDelete(match);
+        }}
+      />
     </div>
   );
 }
