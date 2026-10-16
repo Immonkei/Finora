@@ -26,12 +26,17 @@ interface TxItem {
   amountMinor: bigint;
   type: "expense" | "income" | "transfer";
   date: string;
+  rawDate: string;
   receiptUrl?: string | null;
 }
 
 export default function TransactionsPage() {
   const [search, setSearch] = React.useState("");
   const [filterType, setFilterType] = React.useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = React.useState<string>("all");
+  const [accountFilter, setAccountFilter] = React.useState<string>("all");
+  const [startDate, setStartDate] = React.useState<string>("");
+  const [endDate, setEndDate] = React.useState<string>("");
   const [editingTx, setEditingTx] = React.useState<EditableTransaction | null>(null);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
 
@@ -45,6 +50,7 @@ export default function TransactionsPage() {
       amountMinor: BigInt(450),
       type: "expense",
       date: "Oct 8, 2026",
+      rawDate: "2026-10-08T09:15:00Z",
     },
     {
       id: "2",
@@ -55,6 +61,7 @@ export default function TransactionsPage() {
       amountMinor: BigInt(300),
       type: "expense",
       date: "Oct 8, 2026",
+      rawDate: "2026-10-08T10:30:00Z",
     },
     {
       id: "3",
@@ -65,6 +72,7 @@ export default function TransactionsPage() {
       amountMinor: BigInt(45000),
       type: "income",
       date: "Oct 7, 2026",
+      rawDate: "2026-10-07T14:00:00Z",
     },
     {
       id: "4",
@@ -75,6 +83,7 @@ export default function TransactionsPage() {
       amountMinor: BigInt(3500),
       type: "expense",
       date: "Oct 5, 2026",
+      rawDate: "2026-10-05T12:00:00Z",
     },
     {
       id: "5",
@@ -85,6 +94,7 @@ export default function TransactionsPage() {
       amountMinor: BigInt(10000),
       type: "transfer",
       date: "Oct 2, 2026",
+      rawDate: "2026-10-02T16:00:00Z",
     },
   ];
 
@@ -124,6 +134,7 @@ export default function TransactionsPage() {
             amountMinor: BigInt(t.amount),
             type: t.type as "expense" | "income" | "transfer",
             date: formatDisplayDate(t.occurred_at),
+            rawDate: t.occurred_at,
             receiptUrl,
           };
         });
@@ -181,17 +192,60 @@ export default function TransactionsPage() {
     setIsEditOpen(true);
   };
 
+  const uniqueCategories = React.useMemo(() => {
+    return Array.from(new Set(transactions.map((t) => t.category))).filter(Boolean);
+  }, [transactions]);
+
+  const uniqueAccounts = React.useMemo(() => {
+    return Array.from(new Set(transactions.map((t) => t.account))).filter(Boolean);
+  }, [transactions]);
+
   const filtered = transactions.filter((tx) => {
     const matchesSearch =
       tx.note.toLowerCase().includes(search.toLowerCase()) ||
       tx.category.toLowerCase().includes(search.toLowerCase());
     const matchesType = filterType === "all" || tx.type === filterType;
-    return matchesSearch && matchesType;
+    const matchesCategory =
+      categoryFilter === "all" || tx.category === categoryFilter;
+    const matchesAccount =
+      accountFilter === "all" || tx.account === accountFilter;
+
+    let matchesDate = true;
+    if (startDate && tx.rawDate) {
+      matchesDate = matchesDate && tx.rawDate.slice(0, 10) >= startDate;
+    }
+    if (endDate && tx.rawDate) {
+      matchesDate = matchesDate && tx.rawDate.slice(0, 10) <= endDate;
+    }
+
+    return (
+      matchesSearch &&
+      matchesType &&
+      matchesCategory &&
+      matchesAccount &&
+      matchesDate
+    );
   });
+
+  const hasActiveFilters =
+    search !== "" ||
+    filterType !== "all" ||
+    categoryFilter !== "all" ||
+    accountFilter !== "all" ||
+    startDate !== "" ||
+    endDate !== "";
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setFilterType("all");
+    setCategoryFilter("all");
+    setAccountFilter("all");
+    setStartDate("");
+    setEndDate("");
+  };
 
   return (
     <div className="space-y-6">
-
       <div>
         <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
           Ledger
@@ -202,28 +256,96 @@ export default function TransactionsPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-zinc-400" />
-          <Input
-            placeholder="Search notes or categories..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-zinc-400" />
+            <Input
+              placeholder="Search notes or categories..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
+            {["all", "expense", "income", "transfer"].map((type) => (
+              <Button
+                key={type}
+                variant={filterType === type ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilterType(type)}
+                className="capitalize whitespace-nowrap"
+              >
+                {type}
+              </Button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
-          {["all", "expense", "income", "transfer"].map((type) => (
-            <Button
-              key={type}
-              variant={filterType === type ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilterType(type)}
-              className="capitalize whitespace-nowrap"
+
+        {/* Spec FR-T8: Date Range, Category, and Account Filters */}
+        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+          <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800">
+            <span className="text-zinc-500 font-medium">Category:</span>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="bg-transparent border-none text-xs font-medium text-zinc-800 dark:text-zinc-200 focus:outline-none"
             >
-              {type}
+              <option value="all">All Categories</option>
+              {uniqueCategories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800">
+            <span className="text-zinc-500 font-medium">Account:</span>
+            <select
+              value={accountFilter}
+              onChange={(e) => setAccountFilter(e.target.value)}
+              className="bg-transparent border-none text-xs font-medium text-zinc-800 dark:text-zinc-200 focus:outline-none"
+            >
+              <option value="all">All Accounts</option>
+              {uniqueAccounts.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800">
+            <span className="text-zinc-500 font-medium">From:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="bg-transparent border-none text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800">
+            <span className="text-zinc-500 font-medium">To:</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="bg-transparent border-none text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none"
+            />
+          </div>
+
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetFilters}
+              className="h-8 px-2 text-xs text-brand-600 dark:text-accent-400 hover:bg-brand-50 dark:hover:bg-brand-950/30"
+            >
+              Reset Filters
             </Button>
-          ))}
+          )}
         </div>
       </div>
 

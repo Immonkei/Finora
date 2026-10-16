@@ -1,5 +1,17 @@
 import { z } from "zod";
 
+export const uuidSchema = z
+  .string()
+  .regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    "Invalid UUID format"
+  );
+
+export function isValidUuid(val?: string | null): boolean {
+  if (!val) return false;
+  return uuidSchema.safeParse(val).success;
+}
+
 export const transactionTypeSchema = z.enum(["expense", "income", "transfer"]);
 
 export const createTransactionSchema = z
@@ -42,8 +54,12 @@ export const transactionFilterSchema = z.object({
 
 export type TransactionFilterInput = z.infer<typeof transactionFilterSchema>;
 
+export const transactionIdSchema = z.object({
+  id: uuidSchema,
+});
+
 export const updateTransactionSchema = z.object({
-  id: z.string().min(1, "Transaction ID is required"),
+  id: uuidSchema,
   type: transactionTypeSchema.optional(),
   amount: z.number().positive("Amount must be greater than 0").optional(),
   currency: z.enum(["USD", "KHR"]).optional(),
@@ -54,4 +70,5 @@ export const updateTransactionSchema = z.object({
 });
 
 export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;
+export type TransactionIdInput = z.infer<typeof transactionIdSchema>;
 

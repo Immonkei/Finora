@@ -107,8 +107,23 @@ export function QuickAddDialog({
               color: c.color || "#3B82F6",
               icon: (c.icon && ICON_MAP[c.icon]) || Sparkles,
             }));
-            setCategoriesList(mapped);
-            setSelectedCategory(mapped[0].id);
+            // Spec FR-T5: Category is preselected with the last used category
+            let preselectedId = mapped[0].id;
+            const { data: lastTx } = await supabase
+              .from("transactions")
+              .select("category_id")
+              .eq("user_id", user.id)
+              .is("deleted_at", null)
+              .not("category_id", "is", null)
+              .order("occurred_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (lastTx?.category_id && mapped.some((c) => c.id === lastTx.category_id)) {
+              preselectedId = lastTx.category_id;
+            }
+
+            setSelectedCategory(preselectedId);
           }
         }
       } catch {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { processAndUploadReceipt } from "@/features/transactions/receipt-storage";
 
 export async function POST(request: Request) {
   try {
@@ -25,55 +26,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
+    const uploadResult = await processAndUploadReceipt(file, user.id, supabase as any);
+
+    if (!uploadResult.success) {
       return NextResponse.json(
-        { success: false, error: "File exceeds 10MB size limit" },
-        { status: 400 }
+        { success: false, error: uploadResult.error },
+        { status: uploadResult.error?.includes("limit") || uploadResult.error?.includes("type") ? 400 : 500 }
       );
     }
-
-    // Validate image mime type
-    const validTypes = ["image/jpeg", "image/png", "image/webp", "image/heic"];
-    if (!validTypes.includes(file.type)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid file type. Please upload a JPEG, PNG, or WebP image",
-        },
-        { status: 400 }
-      );
-    }
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const fileExt = file.name.split(".").pop() || "jpg";
-    const sanitizedExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${sanitizedExt}`;
-
-    // Upload to receipts bucket
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("receipts")
-      .upload(fileName, buffer, {
-        contentType: file.type,
-        upsert: true,
-      });
-
-    if (uploadError) {
-      return NextResponse.json(
-        { success: false, error: uploadError.message },
-        { status: 500 }
-      );
-    }
-
-    // Retrieve public URL
-    const { data: publicUrlData } = supabase.storage
-      .from("receipts")
-      .getPublicUrl(uploadData.path);
 
     return NextResponse.json({
       success: true,
-      url: publicUrlData.publicUrl,
-      path: uploadData.path,
+      url: uploadResult.url,
+      path: uploadResult.path,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to upload receipt";

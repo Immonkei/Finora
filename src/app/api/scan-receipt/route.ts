@@ -6,6 +6,7 @@ import {
   type AvailableCategory,
   type ScannedReceiptResult,
 } from "@/features/transactions/receipt-scanner";
+import { processAndUploadReceipt } from "@/features/transactions/receipt-storage";
 
 export async function POST(request: Request) {
   try {
@@ -49,50 +50,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
+    // Upload to Supabase Storage receipts bucket via shared helper
+    const uploadResult = await processAndUploadReceipt(file, user.id, supabase as any);
+    if (!uploadResult.success) {
       return NextResponse.json(
-        { success: false, error: "File exceeds 10MB size limit" },
+        { success: false, error: uploadResult.error },
         { status: 400 }
       );
     }
 
-    // Validate image mime type
-    const validTypes = ["image/jpeg", "image/png", "image/webp", "image/heic"];
-    if (!validTypes.includes(file.type)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid file type. Please upload a JPEG, PNG, or WebP image",
-        },
-        { status: 400 }
-      );
-    }
-
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const base64Image = buffer.toString("base64");
-
-    // 1. Upload to Supabase Storage `receipts` bucket
-    const fileExt = file.name.split(".").pop() || "jpg";
-    const sanitizedExt = fileExt.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${sanitizedExt}`;
-
-    let receiptUrl: string | undefined;
-
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("receipts")
-      .upload(fileName, buffer, {
-        contentType: file.type,
-        upsert: true,
-      });
-
-    if (!uploadError && uploadData) {
-      const { data: publicUrlData } = supabase.storage
-        .from("receipts")
-        .getPublicUrl(uploadData.path);
-      receiptUrl = publicUrlData.publicUrl;
-    }
+    const receiptUrl = uploadResult.url;
+    const base64Image = uploadResult.buffer!.toString("base64");
 
     // 2. Perform AI Vision scan if Gemini API key is present
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;

@@ -1,3 +1,5 @@
+import { formatMoney, type CurrencyCode } from "@/lib/money";
+
 /**
  * AI Weekly Insight Report Generator (Spec 3.4 #23)
  * Analyzes allowance pacing, leaks, and provides personalized weekly recommendations.
@@ -23,8 +25,10 @@ export function generateWeeklyAiReport(params: {
     spentThisWeekMinor,
     allowanceAverageMinor,
     topLeakTitle = "Coffee & snacks",
+    currency = "USD",
   } = params;
 
+  const validCurrency: CurrencyCode = currency === "KHR" ? "KHR" : "USD";
   const weeklyTargetMinor = allowanceAverageMinor * 7n;
   const isUnderBudget = spentThisWeekMinor <= weeklyTargetMinor;
 
@@ -40,9 +44,11 @@ export function generateWeeklyAiReport(params: {
       "Your weekly expenditure exceeded your target pace due to higher food & drinks expenses.";
   }
 
+  const estimatedMonthlySavings = validCurrency === "KHR" ? 140000n : 3500n;
+
   const highlights = [
-    `Weekly expenditure: $${(Number(spentThisWeekMinor) / 100).toFixed(2)}`,
-    `Allowance target pace: $${(Number(weeklyTargetMinor) / 100).toFixed(2)}`,
+    `Weekly expenditure: ${formatMoney(spentThisWeekMinor, validCurrency)}`,
+    `Allowance target pace: ${formatMoney(weeklyTargetMinor, validCurrency)}`,
     `Most repeated small expense: "${topLeakTitle}"`,
   ];
 
@@ -50,7 +56,7 @@ export function generateWeeklyAiReport(params: {
     isUnderBudget
       ? "Maintain this pace through the weekend to increase your month-end rollover."
       : "Consider capping dining out over the next 3 days to realign with your daily allowance.",
-    `Cutting back on repeat ${topLeakTitle.toLowerCase()} could save you an estimated $35/month.`,
+    `Cutting back on repeat ${topLeakTitle.toLowerCase()} could save you an estimated ${formatMoney(estimatedMonthlySavings, validCurrency)}/month.`,
   ];
 
   return {

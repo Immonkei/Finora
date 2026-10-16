@@ -1,79 +1,79 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { fromMinorUnits, type CurrencyCode } from "@/lib/money";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Mock data fallback if user is not authenticated or running locally without Supabase
-    let rows = [
-      {
-        id: "1",
-        occurred_at: "2026-10-08T09:15:00Z",
-        type: "expense",
-        amount: 4.5,
-        currency: "USD",
-        base_amount: 4.5,
-        category: "Food & Drinks",
-        account: "Cash",
-        note: "Iced Latte & Croissant",
-      },
-      {
-        id: "2",
-        occurred_at: "2026-10-08T10:30:00Z",
-        type: "expense",
-        amount: 3.0,
-        currency: "USD",
-        base_amount: 3.0,
-        category: "Transport",
-        account: "Cash",
-        note: "Grab Taxi to Office",
-      },
-      {
-        id: "3",
-        occurred_at: "2026-10-07T14:00:00Z",
-        type: "income",
-        amount: 450.0,
-        currency: "USD",
-        base_amount: 450.0,
-        category: "Freelance",
-        account: "Bank",
-        note: "Freelance Project Milestone",
-      },
-    ];
-
-    if (user) {
-      const { data: dbTxs } = await supabase
-        .from("transactions")
-        .select("*, categories(name), accounts(name)")
-        .eq("user_id", user.id)
-        .is("deleted_at", null)
-        .order("occurred_at", { ascending: false });
-
-      if (dbTxs) {
-        rows = dbTxs.map((t) => {
-          const cat = Array.isArray(t.categories) ? t.categories[0] : t.categories;
-          const acc = Array.isArray(t.accounts) ? t.accounts[0] : t.accounts;
-          return {
-            id: t.id,
-            occurred_at: t.occurred_at,
-            type: t.type,
-            amount: t.amount / (t.currency === "USD" ? 100 : 1),
-            currency: t.currency,
-            base_amount: t.base_amount / 100,
-            category: cat?.name || "Uncategorized",
-            account: acc?.name || "Cash",
-            note: t.note || "",
-          };
-        });
-      }
+    // Spec FR-A3: Authentication required for user data export
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const fromDate = searchParams.get("from");
+    const toDate = searchParams.get("to");
+
+    let query = supabase
+      .from("transactions")
+      .select("*, categories(name), accounts(name)")
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .order("occurred_at", { ascending: false });
+
+    // Spec FR-X2: Optional date range filtering
+    if (fromDate) {
+      query = query.gte("occurred_at", fromDate);
+    }
+    if (toDate) {
+      query = query.lte("occurred_at", toDate);
+    }
+
+    const { data: dbTxs, error } = await query;
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    const rows = (dbTxs || []).map((t) => {
+      const cat = Array.isArray(t.categories) ? t.categories[0] : t.categories;
+      const acc = Array.isArray(t.accounts) ? t.accounts[0] : t.accounts;
+      const currency = (t.currency || "USD") as CurrencyCode;
+      const decimalAmount = fromMinorUnits(t.amount, currency);
+      const baseAmountDecimal = t.base_amount / 100;
+
+      return {
+        id: t.id,
+        occurred_at: t.occurred_at,
+        type: t.type,
+        amount:
+          currency === "KHR"
+            ? decimalAmount.toFixed(0)
+            : decimalAmount.toFixed(2),
+        currency,
+        base_amount: baseAmountDecimal.toFixed(2),
+        category: cat?.name || "Uncategorized",
+        account: acc?.name || "Cash",
+        note: t.note || "",
+      };
+    });
+
     // Format CSV
-    const headers = ["ID", "Date", "Type", "Amount", "Currency", "Base Amount (USD)", "Category", "Account", "Note"];
+    const headers = [
+      "ID",
+      "Date",
+      "Type",
+      "Amount",
+      "Currency",
+      "Base Amount (USD)",
+      "Category",
+      "Account",
+      "Note",
+    ];
     const csvLines = [headers.join(",")];
 
     for (const r of rows) {
@@ -83,9 +83,9 @@ export async function GET() {
           r.id,
           r.occurred_at,
           r.type,
-          r.amount.toFixed(2),
+          r.amount,
           r.currency,
-          r.base_amount.toFixed(2),
+          r.base_amount,
           `"${r.category}"`,
           `"${r.account}"`,
           cleanNote,
@@ -94,12 +94,13 @@ export async function GET() {
     }
 
     const csvContent = csvLines.join("\n");
+    const filenameDate = new Date().toISOString().slice(0, 10);
 
     return new NextResponse(csvContent, {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="finora-transactions-${new Date().toISOString().slice(0, 10)}.csv"`,
+        "Content-Disposition": `attachment; filename="finora-transactions-${filenameDate}.csv"`,
       },
     });
   } catch (err) {

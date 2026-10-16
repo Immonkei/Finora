@@ -12,5 +12,10 @@ export const contributeGoalSchema = z.object({
   amount: z.number().positive("Contribution amount must be greater than 0"),
 });
 
+export const deleteGoalSchema = z.object({
+  goal_id: z.string().uuid("Invalid goal ID"),
+});
+
 export type CreateSavingsGoalInput = z.infer<typeof createSavingsGoalSchema>;
 export type ContributeGoalInput = z.infer<typeof contributeGoalSchema>;
+export type DeleteGoalInput = z.infer<typeof deleteGoalSchema>;

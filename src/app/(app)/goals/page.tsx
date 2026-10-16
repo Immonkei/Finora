@@ -11,6 +11,7 @@ import { formatDisplayDate } from "@/lib/dates";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeTable } from "@/lib/supabase/realtime";
+import { createSavingsGoal, contributeSavingsGoal } from "@/features/goals/actions";
 
 interface GoalItem {
   id: string;
@@ -59,6 +60,24 @@ export default function GoalsPage() {
   const [deadlineStr, setDeadlineStr] = React.useState("");
   const [contributionStr, setContributionStr] = React.useState("");
 
+  function computeWeeklyNeeded(
+    target: number,
+    saved: number,
+    deadlineStr?: string | null
+  ): bigint {
+    const remaining = Math.max(0, target - saved);
+    if (remaining === 0) return 0n;
+    if (!deadlineStr) {
+      return BigInt(Math.max(1, Math.round(remaining / 12)));
+    }
+    const targetDate = new Date(deadlineStr);
+    const now = new Date();
+    const diffMs = targetDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const diffWeeks = Math.max(1, Math.ceil(diffDays / 7));
+    return BigInt(Math.max(1, Math.round(remaining / diffWeeks)));
+  }
+
   const loadGoals = React.useCallback(async () => {
     try {
       const supabase = createClient();
@@ -81,8 +100,10 @@ export default function GoalsPage() {
             targetAmountMinor: BigInt(g.target_amount),
             savedAmountMinor: BigInt(g.saved_amount),
             deadline: g.deadline ? formatDisplayDate(g.deadline) : "Open",
-            weeklyNeededMinor: BigInt(
-              Math.max(0, Math.round((g.target_amount - g.saved_amount) / 12))
+            weeklyNeededMinor: computeWeeklyNeeded(
+              g.target_amount,
+              g.saved_amount,
+              g.deadline
             ),
           }))
         );
@@ -118,31 +139,26 @@ export default function GoalsPage() {
     const targetMinor = BigInt(Math.round(target * 100));
 
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const res = await createSavingsGoal({
+        name: goalName.trim(),
+        target_amount: Number(targetMinor),
+        saved_amount: 0,
+        deadline: deadlineStr || null,
+      });
 
-      if (user) {
-        const { error } = await supabase.from("savings_goals").insert({
-          user_id: user.id,
-          name: goalName.trim(),
-          target_amount: Number(targetMinor),
-          saved_amount: 0,
-          deadline: deadlineStr || null,
+      if (!res.success) {
+        toast.error("Failed to create goal", {
+          description: res.error,
         });
-
-        if (error) {
-          toast.error("Failed to create goal in database", {
-            description: error.message,
-          });
-          return;
-        }
-
-        loadGoals();
+        return;
       }
-    } catch {
-      // Fallback
+
+      loadGoals();
+    } catch (err) {
+      toast.error("Failed to create goal", {
+        description: err instanceof Error ? err.message : "Unexpected error",
+      });
+      return;
     }
 
     const newGoal: GoalItem = {
@@ -151,7 +167,7 @@ export default function GoalsPage() {
       targetAmountMinor: targetMinor,
       savedAmountMinor: BigInt(0),
       deadline: deadlineStr || "Open",
-      weeklyNeededMinor: targetMinor / 12n,
+      weeklyNeededMinor: computeWeeklyNeeded(Number(targetMinor), 0, deadlineStr),
     };
 
     setGoals([...goals, newGoal]);
@@ -178,22 +194,24 @@ export default function GoalsPage() {
     const updatedSaved = contributeGoal.savedAmountMinor + contributionMinor;
 
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const res = await contributeSavingsGoal({
+        goal_id: contributeGoal.id,
+        amount: Number(contributionMinor),
+      });
 
-      if (user) {
-        await supabase
-          .from("savings_goals")
-          .update({ saved_amount: Number(updatedSaved) })
-          .eq("id", contributeGoal.id)
-          .eq("user_id", user.id);
-
-        loadGoals();
+      if (!res.success) {
+        toast.error("Failed to record contribution", {
+          description: res.error,
+        });
+        return;
       }
-    } catch {
-      // Fallback
+
+      loadGoals();
+    } catch (err) {
+      toast.error("Failed to record contribution", {
+        description: err instanceof Error ? err.message : "Unexpected error",
+      });
+      return;
     }
 
     setGoals((prev) =>

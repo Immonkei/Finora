@@ -14,15 +14,7 @@ export interface ParsedTransaction {
   categoryName: string;
 }
 
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  "Food & Drinks": ["coffee", "latte", "tea", "cafe", "lunch", "dinner", "breakfast", "meal", "food", "snack", "burger", "pizza", "starbucks", "drink", "beer"],
-  "Groceries": ["grocery", "groceries", "supermarket", "market", "walmart", "target", "costco", "fruit", "milk", "vegetables"],
-  "Transport": ["taxi", "grab", "ride", "uber", "gas", "fuel", "bus", "train", "parking", "passapp", "subway"],
-  "Housing & Bills": ["rent", "wifi", "internet", "electric", "electricity", "water", "utility", "bill", "subscription", "cell", "phone"],
-  "Entertainment": ["movie", "cinema", "netflix", "spotify", "game", "steam", "concert", "club"],
-  "Shopping": ["clothes", "shoes", "amazon", "electronics", "shopping", "gift"],
-  "Health & Medical": ["pharmacy", "medicine", "doctor", "dentist", "hospital", "gym", "workout"],
-};
+import { matchCategoryNameFromText } from "./categories";
 
 export function parseNaturalLanguageInput(rawInput: string): ParsedTransaction | null {
   const text = rawInput.trim();
@@ -56,16 +48,8 @@ export function parseNaturalLanguageInput(rawInput: string): ParsedTransaction |
   // Capitalize first letter of note
   cleanedNote = cleanedNote.charAt(0).toUpperCase() + cleanedNote.slice(1);
 
-  // Infer category from keywords in the note
-  const lowerNote = cleanedNote.toLowerCase();
-  let categoryName = "Food & Drinks"; // default
-
-  for (const [catName, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some((kw) => lowerNote.includes(kw))) {
-      categoryName = catName;
-      break;
-    }
-  }
+  // Infer category from keywords in the note using centralized matcher
+  const categoryName = matchCategoryNameFromText(cleanedNote) || "Food & Drinks";
 
   return {
     amount,

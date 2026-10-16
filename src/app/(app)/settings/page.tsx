@@ -18,6 +18,8 @@ import { PWAInstallCard, OfflineQueueCard } from "@/components/pwa-provider";
 import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
+import { updateUserSettings, deleteUserAccount } from "@/features/settings/actions";
+import { createNotification } from "@/features/notifications/actions";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -61,29 +63,20 @@ export default function SettingsPage() {
     loadProfile();
   }, []);
 
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
   const handleSaveSettings = async () => {
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const res = await updateUserSettings({
+        main_currency: currency as "USD" | "KHR",
+        timezone,
+        week_starts_on: parseInt(weekStartsOn, 10) as 0 | 1,
+        reminder_time: remindersEnabled ? `${reminderTime}:00` : null,
+      });
 
-      if (user) {
-        const { error } = await supabase
-          .from("profiles")
-          .upsert({
-            id: user.id,
-            main_currency: currency,
-            timezone,
-            week_starts_on: parseInt(weekStartsOn, 10),
-            reminder_time: remindersEnabled ? `${reminderTime}:00` : null,
-            updated_at: new Date().toISOString(),
-          });
-
-        if (error) {
-          toast.error("Failed to save settings", { description: error.message });
-          return;
-        }
+      if (!res.success) {
+        toast.error("Failed to save settings", { description: res.error });
+        return;
       }
 
       toast.success("Preferences updated", {
@@ -98,21 +91,49 @@ export default function SettingsPage() {
 
   const handleSendTestAlert = async () => {
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("notifications").insert({
-          user_id: user.id,
-          kind: "warning_80",
-          message: `Live Realtime Alert: Budget monitoring test broadcast at ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
-          read: false,
-        });
+      const res = await createNotification({
+        kind: "warning_80",
+        message: `Live Realtime Alert: Budget monitoring test broadcast at ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
+      });
+
+      if (res.success) {
         toast.success("Test alert dispatched via Supabase Realtime!");
+      } else {
+        toast.error("Failed to send test alert", { description: res.error });
       }
     } catch {
       toast.error("Failed to send test alert");
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (
+      !window.confirm(
+        "Are you sure you want to permanently delete your account and all data? This cannot be undone."
+      )
+    ) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const res = await deleteUserAccount();
+      if (!res.success) {
+        toast.error("Failed to delete account", { description: res.error });
+        setIsDeleting(false);
+        return;
+      }
+
+      toast.success("Account deleted", {
+        description: "All records and your account have been permanently deleted.",
+      });
+      router.push("/login");
+      router.refresh();
+    } catch (err) {
+      toast.error("Failed to delete account", {
+        description: err instanceof Error ? err.message : "Please try again",
+      });
+      setIsDeleting(false);
     }
   };
 
@@ -410,14 +431,11 @@ export default function SettingsPage() {
             <Button
               variant="destructive"
               size="sm"
-              onClick={() => {
-                toast.error("Account deletion requested", {
-                  description: "All database records removed via cascade.",
-                });
-              }}
+              onClick={handleDeleteAccount}
+              disabled={isDeleting}
               className="self-start sm:self-auto"
             >
-              Delete All Data
+              {isDeleting ? "Deleting..." : "Delete All Data"}
             </Button>
           </div>
         </CardContent>

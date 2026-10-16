@@ -22,74 +22,17 @@ export interface ScannedReceiptResult {
   error?: string;
 }
 
-export interface AvailableCategory {
-  id: string;
-  name: string;
-}
+import {
+  type AvailableCategory,
+  CATEGORY_KEYWORDS,
+  matchReceiptCategory,
+} from "./categories";
 
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  "Food & Drinks": [
-    "coffee", "cafe", "latte", "espresso", "starbucks", "brown coffee",
-    "restaurant", "bakery", "bread", "burger", "pizza", "kfc", "mcdonalds",
-    "bistro", "kitchen", "diner", "lunch", "dinner", "breakfast", "food",
-    "tea", "beverage", "bar", "brewery", "grill", "noodle", "sushi", "pho"
-  ],
-  "Groceries": [
-    "supermarket", "grocery", "mart", "market", "lucky supermarket", "aeon",
-    "makro", "walmart", "costco", "aldi", "whole foods", "produce", "fruits",
-    "vegetables", "milk", "bread", "butcher", "fish", "meat"
-  ],
-  "Transport": [
-    "grab", "uber", "taxi", "ride", "passapp", "fuel", "gas", "petrol",
-    "shell", "caltex", "total", "tela", "parking", "toll", "transit",
-    "metro", "bus", "train", "airline", "flight"
-  ],
-  "Housing & Bills": [
-    "rent", "electric", "electricity", "water", "edc", "utility", "wifi",
-    "internet", "telecom", "smart", "cellcard", "metfone", "bill", "phone"
-  ],
-  "Entertainment": [
-    "cinema", "movie", "theatre", "netflix", "spotify", "game", "steam",
-    "playstation", "nintendo", "arcade", "concert", "bowling", "karaoke"
-  ],
-  "Shopping": [
-    "zara", "uniqlo", "h&m", "apple", "clothing", "shoes", "fashion",
-    "amazon", "electronics", "retail", "store", "mall", "boutique", "apparel"
-  ],
-  "Health & Medical": [
-    "pharmacy", "pharma", "medicine", "hospital", "clinic", "doctor",
-    "dentist", "optical", "dental", "gym", "fitness", "supplement"
-  ],
+export {
+  type AvailableCategory,
+  CATEGORY_KEYWORDS,
+  matchReceiptCategory,
 };
-
-/**
- * Match merchant name or receipt text to the best matching category
- */
-export function matchReceiptCategory(
-  merchantOrText: string,
-  availableCategories: AvailableCategory[] = []
-): { categoryName: string; categoryId?: string } {
-  const lower = merchantOrText.toLowerCase();
-
-  let matchedName = "Food & Drinks"; // standard fallback
-
-  for (const [categoryName, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some((kw) => lower.includes(kw))) {
-      matchedName = categoryName;
-      break;
-    }
-  }
-
-  // Find corresponding ID if user's dynamic categories are provided
-  const found = availableCategories.find(
-    (c) => c.name.toLowerCase() === matchedName.toLowerCase()
-  );
-
-  return {
-    categoryName: found ? found.name : matchedName,
-    categoryId: found ? found.id : undefined,
-  };
-}
 
 /**
  * Pure heuristic parser for receipt text lines

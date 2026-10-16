@@ -7,6 +7,12 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeTable } from "@/lib/supabase/realtime";
+import {
+  createNotification,
+  markAllNotificationsRead,
+  deleteNotification as deleteNotificationAction,
+  checkDailyReminder,
+} from "@/features/notifications/actions";
 
 interface NotificationItem {
   id: string;
@@ -56,38 +62,8 @@ export function NotificationBell() {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      // FR-N2: Check and generate daily evening reminder if due
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("reminder_time")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profile?.reminder_time) {
-        const todayDateStr = new Date().toISOString().slice(0, 10);
-        const currentHours = new Date().getHours();
-        const currentMinutes = new Date().getMinutes();
-        const [remH, remM] = profile.reminder_time.slice(0, 5).split(":").map(Number);
-
-        if (currentHours > remH || (currentHours === remH && currentMinutes >= remM)) {
-          const { data: todayReminder } = await supabase
-            .from("notifications")
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("kind", "reminder")
-            .gte("created_at", `${todayDateStr}T00:00:00Z`)
-            .maybeSingle();
-
-          if (!todayReminder) {
-            await supabase.from("notifications").insert({
-              user_id: user.id,
-              kind: "reminder",
-              message: "Evening check-in: Did you log all your expenses today? Tap Quick Add to record cash and coffee spends.",
-              read: false,
-            });
-          }
-        }
-      }
+      // FR-N2: Check and generate daily evening reminder if due via Server Action
+      await checkDailyReminder();
 
       const { data } = await supabase
         .from("notifications")
@@ -140,17 +116,7 @@ export function NotificationBell() {
   const markAllAsRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from("notifications")
-          .update({ read: true })
-          .eq("user_id", user.id)
-          .eq("read", false);
-      }
+      await markAllNotificationsRead();
     } catch {
       // Fallback
     }
@@ -159,17 +125,7 @@ export function NotificationBell() {
   const deleteNotification = async (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from("notifications")
-          .delete()
-          .eq("id", id)
-          .eq("user_id", user.id);
-      }
+      await deleteNotificationAction(id);
     } catch {
       // Fallback
     }
@@ -177,18 +133,15 @@ export function NotificationBell() {
 
   const sendTestNotification = async () => {
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("notifications").insert({
-          user_id: user.id,
-          kind: "warning_80",
-          message: `Live Realtime Test: Budget monitoring active. Current time ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
-          read: false,
-        });
+      const res = await createNotification({
+        kind: "warning_80",
+        message: `Live Realtime Test: Budget monitoring active. Current time ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
+      });
+
+      if (res.success) {
         toast.success("Test alert sent to Supabase!");
+      } else {
+        toast.error("Failed to trigger alert", { description: res.error });
       }
     } catch {
       toast.error("Failed to trigger alert");

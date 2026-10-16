@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   createTransactionSchema,
   updateTransactionSchema,
+  isValidUuid,
   type CreateTransactionInput,
   type UpdateTransactionInput,
 } from "./schema";
@@ -75,11 +76,7 @@ export async function createTransaction(
 
       // Resolve valid category if specified (validate UUID to prevent Postgres 22P02)
       let validCategoryId: string | null = null;
-      const isCategoryUuid =
-        data.category_id &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          data.category_id
-        );
+      const isCategoryUuid = isValidUuid(data.category_id);
 
       if (isCategoryUuid && data.category_id) {
         const { data: catExists } = await supabase
@@ -109,11 +106,7 @@ export async function createTransaction(
       // Resolve target account for transfer (FR-T1 & transfer_needs_target constraint)
       let validToAccountId: string | null = null;
       if (data.type === "transfer") {
-        const isToAccountUuid =
-          data.to_account_id &&
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-            data.to_account_id
-          );
+        const isToAccountUuid = isValidUuid(data.to_account_id);
 
         if (isToAccountUuid && data.to_account_id) {
           const { data: toAccExists } = await supabase
@@ -286,7 +279,7 @@ export async function createTransaction(
  * Soft deletes a transaction by setting deleted_at (Spec FR-T6).
  */
 export async function deleteTransaction(id: string): Promise<ActionResult> {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+  if (!isValidUuid(id)) {
     revalidatePath("/today");
     revalidatePath("/transactions");
     return { success: true };
@@ -318,7 +311,7 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
  * Restores a soft-deleted transaction (Spec FR-T6 10-second undo window).
  */
 export async function restoreTransaction(id: string): Promise<ActionResult> {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+  if (!isValidUuid(id)) {
     revalidatePath("/today");
     revalidatePath("/transactions");
     return { success: true };
@@ -382,7 +375,7 @@ export async function updateTransaction(
     parseResult.data;
 
   // Validate UUID format
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+  if (!isValidUuid(id)) {
     revalidatePath("/today");
     revalidatePath("/transactions");
     return { success: true };
@@ -430,9 +423,7 @@ export async function updateTransaction(
     }
 
     if (category_id !== undefined) {
-      const isCatUuid =
-        category_id &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(category_id);
+      const isCatUuid = isValidUuid(category_id);
       updatePayload.category_id = isCatUuid ? category_id : null;
     }
 
