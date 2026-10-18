@@ -304,7 +304,7 @@ export default function SettingsPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2">
                 <div>
                   <p className="text-sm font-medium">Language</p>
-                  <p className="text-xs text-zinc-500">App interface language (Spec 12)</p>
+                  <p className="text-xs text-zinc-500">App interface language</p>
                 </div>
                 <select
                   value={language}

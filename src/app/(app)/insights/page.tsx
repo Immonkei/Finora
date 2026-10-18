@@ -6,7 +6,6 @@ import {
   Coffee,
   TrendingDown,
   TrendingUp,
-  Sparkles,
   Globe,
   Award,
   Calendar,
@@ -293,8 +292,8 @@ export default function InsightsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-accent-500" /> Phase 3 Intelligence
+          <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
+            Trends &amp; Analytics
           </p>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             Spending Insights
