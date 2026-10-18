@@ -201,7 +201,8 @@ Respond ONLY with valid, raw JSON (no markdown backticks, no explanatory text):
 {"merchant": "...", "amount": 0.0, "currency": "USD", "date": "YYYY-MM-DD", "category": "...", "bankName": null, "transactionId": null, "confidence": 0.95}`;
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
