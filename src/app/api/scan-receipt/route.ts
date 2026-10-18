@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     }
 
     // Upload to Supabase Storage receipts bucket via shared helper
-    const uploadResult = await processAndUploadReceipt(file, user.id, supabase as any);
+    const uploadResult = await processAndUploadReceipt(file, user.id, supabase);
     if (!uploadResult.success) {
       return NextResponse.json(
         { success: false, error: uploadResult.error },

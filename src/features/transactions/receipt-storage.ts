@@ -2,8 +2,6 @@
  * Shared Supabase Storage Receipt Helper
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database";
 
 export const ALLOWED_RECEIPT_MIME_TYPES = [
   "image/jpeg",
@@ -22,10 +20,23 @@ export interface ReceiptUploadResult {
   error?: string;
 }
 
+export interface StorageClientLike {
+  storage: {
+    from: (bucket: string) => {
+      upload: (
+        path: string,
+        file: Buffer,
+        options: { contentType: string; upsert: boolean }
+      ) => Promise<{ data: { path: string } | null; error: { message: string } | null }>;
+      getPublicUrl: (path: string) => { data: { publicUrl: string } };
+    };
+  };
+}
+
 export async function processAndUploadReceipt(
   file: File,
   userId: string,
-  supabase: SupabaseClient<Database>
+  supabase: StorageClientLike
 ): Promise<ReceiptUploadResult> {
   // Validate size
   if (file.size > MAX_RECEIPT_FILE_SIZE) {
@@ -57,10 +68,10 @@ export async function processAndUploadReceipt(
       upsert: true,
     });
 
-  if (uploadError) {
+  if (uploadError || !uploadData) {
     return {
       success: false,
-      error: uploadError.message,
+      error: uploadError?.message || "Upload failed",
     };
   }
 

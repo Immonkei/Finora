@@ -1,10 +1,16 @@
 /**
- * AI & Heuristic Receipt Scanner (Spec 3.4 #22)
- * Extracts merchant name, total amount, currency, date, and suggested category
- * from receipt images and raw text tokens.
+ * AI & Heuristic Receipt & KHQR Payment Slip Scanner (Spec 3.4 #22)
+ * Extracts merchant name, total amount, currency, date, banking source, and suggested category
+ * from receipt photos, mobile banking screenshots (ABA, Bakong, Wing, ACLEDA), and raw text.
  */
 
 import { toMinorUnits } from "@/lib/money";
+import {
+  type AvailableCategory,
+  CATEGORY_KEYWORDS,
+  matchReceiptCategory,
+} from "./categories";
+import { parseKhqrBankingSlip, type DetectedBank } from "./khqr-slip-parser";
 
 export interface ScannedReceiptResult {
   success: boolean;
@@ -17,16 +23,12 @@ export interface ScannedReceiptResult {
   categoryId?: string;
   rawText?: string;
   confidence: number;
-  source: "gemini_vision" | "heuristic_engine";
+  source: "gemini_vision" | "heuristic_engine" | "khqr_slip_parser";
+  bankName?: DetectedBank;
+  transactionId?: string;
   receiptUrl?: string;
   error?: string;
 }
-
-import {
-  type AvailableCategory,
-  CATEGORY_KEYWORDS,
-  matchReceiptCategory,
-} from "./categories";
 
 export {
   type AvailableCategory,
@@ -35,7 +37,7 @@ export {
 };
 
 /**
- * Pure heuristic parser for receipt text lines
+ * Pure heuristic parser for receipt and mobile payment slip text lines
  */
 export function parseReceiptText(
   rawText: string,
@@ -55,11 +57,32 @@ export function parseReceiptText(
     };
   }
 
-  // 1. Detect Currency
+  // 1. Check if the text matches a mobile banking slip or KHQR voucher
+  const slipResult = parseKhqrBankingSlip(rawText, availableCategories);
+  if (slipResult.isSlip && slipResult.amount > 0) {
+    return {
+      success: true,
+      merchant: slipResult.merchant,
+      amount: slipResult.amount,
+      amountMinor: slipResult.amountMinor,
+      currency: slipResult.currency,
+      date: slipResult.dateTime || new Date().toISOString().slice(0, 10),
+      category: slipResult.category,
+      categoryId: slipResult.categoryId,
+      rawText,
+      confidence: slipResult.confidence,
+      source: "khqr_slip_parser",
+      bankName: slipResult.bankName,
+      transactionId: slipResult.transactionId,
+    };
+  }
+
+  // 2. Standard paper receipt extraction
+  // Detect Currency
   const isKhr = /\b(khr|riel|៛)\b/i.test(rawText);
   const currency: "USD" | "KHR" = isKhr ? "KHR" : "USD";
 
-  // 2. Extract Merchant Name (top 1-3 lines usually contain store header)
+  // Extract Merchant Name
   let merchant = "";
   const ignoredHeaderWords = /^(receipt|tax invoice|invoice|bill|order|welcome|date|table|guest|cashier|check)/i;
   for (let i = 0; i < Math.min(lines.length, 5); i++) {
@@ -73,8 +96,7 @@ export function parseReceiptText(
     merchant = lines[0].slice(0, 32);
   }
 
-  // 3. Extract Amount
-  // Look for lines containing "Total", "Grand Total", "Amount", "Balance", "Net", "Charge", "Paid"
+  // Extract Amount
   let extractedAmount: number | undefined;
   const totalLineRegex = /(?:total|amount|balance|charge|paid|net|grand total)\s*[:=]?\s*(?:\$|៛)?\s*([0-9,]+(?:\.[0-9]{1,2})?)/i;
 
@@ -91,7 +113,6 @@ export function parseReceiptText(
     }
   }
 
-  // If no "total" keyword line matched, search for the most plausible trailing number
   if (extractedAmount === undefined) {
     for (let i = lines.length - 1; i >= 0; i--) {
       const match = lines[i].match(/(?:\$|៛)\s*([0-9,]+(?:\.[0-9]{1,2})?)/);
@@ -105,17 +126,14 @@ export function parseReceiptText(
     }
   }
 
-  // 4. Extract Date
+  // Extract Date
   let dateStr: string | undefined;
-  // Match YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY
   const dateMatch = rawText.match(/\b(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})\b/);
   if (dateMatch) {
     const rawDate = dateMatch[1];
-    // Check if ISO format YYYY-MM-DD
     if (/^\d{4}/.test(rawDate)) {
       dateStr = rawDate.replace(/[./]/g, "-");
     } else {
-      // Approximate to today or ISO
       try {
         const parsed = new Date(rawDate);
         if (!isNaN(parsed.getTime())) {
@@ -130,7 +148,7 @@ export function parseReceiptText(
     dateStr = new Date().toISOString().slice(0, 10);
   }
 
-  // 5. Inferred Category
+  // Inferred Category
   const { categoryName, categoryId } = matchReceiptCategory(
     `${merchant} ${rawText}`,
     availableCategories
@@ -155,7 +173,7 @@ export function parseReceiptText(
 }
 
 /**
- * Call Gemini Multimodal Vision API to parse a receipt image
+ * Call Gemini Multimodal Vision API to parse a receipt photo or payment slip screenshot
  */
 export async function parseReceiptWithGemini(
   imageBase64: string,
@@ -167,17 +185,20 @@ export async function parseReceiptWithGemini(
     ? availableCategories.map((c) => c.name).join(", ")
     : Object.keys(CATEGORY_KEYWORDS).join(", ");
 
-  const prompt = `You are a high-precision receipt analysis engine for a personal finance app.
-Inspect this receipt photo and extract:
-1. "merchant": The official store, restaurant, or business name.
-2. "amount": The final total amount charged/paid as a number (e.g. 14.50 or 45000).
-3. "currency": Either "USD" or "KHR" based on symbols ($, ៛, USD, KHR, Riel).
+  const prompt = `You are a high-precision receipt and mobile banking payment slip analysis engine for a personal finance app.
+Inspect this photo (which may be a store receipt or a mobile banking payment slip like ABA Mobile, Bakong KHQR, Wing Bank, or ACLEDA).
+Extract:
+1. "merchant": The official store, restaurant, payee, or business name (remove "To:", "Paid to", or account numbers).
+2. "amount": The final total amount charged or transferred as a positive number (e.g. 4.50 or 25000).
+3. "currency": Either "USD" or "KHR" based on symbols ($, ៛, USD, KHR, Riel, រៀល).
 4. "date": The date of transaction in YYYY-MM-DD format (if visible, otherwise today).
 5. "category": Pick the single best category from this list: [${categoryNames}].
-6. "confidence": A score between 0.0 and 1.0 based on image clarity.
+6. "bankName": If this is a banking slip/screenshot, identify the bank (e.g. "ABA Mobile", "Bakong", "Wing Bank", "ACLEDA Mobile") or null.
+7. "transactionId": The transaction ID, ref number, or hash if visible, or null.
+8. "confidence": A score between 0.0 and 1.0 based on image clarity.
 
 Respond ONLY with valid, raw JSON (no markdown backticks, no explanatory text):
-{"merchant": "...", "amount": 0.0, "currency": "USD", "date": "YYYY-MM-DD", "category": "...", "confidence": 0.95}`;
+{"merchant": "...", "amount": 0.0, "currency": "USD", "date": "YYYY-MM-DD", "category": "...", "bankName": null, "transactionId": null, "confidence": 0.95}`;
 
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
@@ -216,7 +237,6 @@ Respond ONLY with valid, raw JSON (no markdown backticks, no explanatory text):
       throw new Error("No text response returned from Gemini Vision model");
     }
 
-    // Clean potential markdown fencing if returned
     const cleanedJson = candidate.replace(/^```json/i, "").replace(/```$/i, "").trim();
     const parsed = JSON.parse(cleanedJson);
 
@@ -231,13 +251,15 @@ Respond ONLY with valid, raw JSON (no markdown backticks, no explanatory text):
 
     return {
       success: true,
-      merchant: parsed.merchant || "Receipt Store",
+      merchant: parsed.merchant || "Payment Payee",
       amount,
       amountMinor,
       currency,
       date: parsed.date || new Date().toISOString().slice(0, 10),
       category: categoryName,
       categoryId,
+      bankName: parsed.bankName || undefined,
+      transactionId: parsed.transactionId || undefined,
       confidence: parsed.confidence || 0.95,
       source: "gemini_vision",
     };
