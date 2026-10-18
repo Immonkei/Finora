@@ -14,6 +14,7 @@ import {
   Activity,
   RefreshCw,
   Sparkles,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -33,6 +34,7 @@ type SettingsTab = "categories" | "preferences" | "system" | "account";
 export default function SettingsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = React.useState<SettingsTab>("categories");
+  const [userEmail, setUserEmail] = React.useState<string | null>(null);
 
   const [currency, setCurrency] = React.useState("USD");
   const [language, setLanguage] = React.useState("en");
@@ -73,6 +75,7 @@ export default function SettingsPage() {
           data: { user },
         } = await supabase.auth.getUser();
         if (user) {
+          setUserEmail(user.email ?? null);
           const { data: profile } = await supabase
             .from("profiles")
             .select("*")
@@ -607,6 +610,29 @@ export default function SettingsPage() {
       {/* Tab 4: Account & Security */}
       {activeTab === "account" && (
         <div className="space-y-6 animate-in fade-in duration-150">
+          {/* Active Profile Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <User className="h-4 w-4 text-brand-600 dark:text-accent-400" /> Account Profile
+              </CardTitle>
+              <CardDescription>Your currently active Finora login</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/60 dark:border-zinc-700/60">
+                <div>
+                  <span className="text-[11px] text-zinc-400 block">Signed-In Email:</span>
+                  <p className="font-semibold text-zinc-900 dark:text-zinc-100 font-mono text-sm mt-0.5">
+                    {userEmail || "Loading..."}
+                  </p>
+                </div>
+                <Badge variant="brand" className="text-xs px-2.5 self-start sm:self-auto">
+                  Active
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Danger Zone */}
           <Card className="border-rose-200 dark:border-rose-950/60 bg-rose-50/20 dark:bg-rose-950/10">
             <CardHeader>
