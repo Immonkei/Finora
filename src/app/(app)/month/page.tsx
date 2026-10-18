@@ -72,6 +72,11 @@ export default function MonthPage() {
           p_to: endOfMonth,
         });
 
+        const { data: dbCategories } = await supabase
+          .from("categories")
+          .select("id, name, color, icon, monthly_budget")
+          .eq("user_id", user.id);
+
         const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
         const { data: budget } = await supabase
           .from("budgets")
@@ -82,18 +87,29 @@ export default function MonthPage() {
 
         const limit = budget ? BigInt(budget.total_limit) : 0n;
 
+        const catSpentMap = new Map<string, bigint>();
         let totalSpent = BigInt(0);
-        const mapped: CatBudgetItem[] = ((catData as unknown as RpcCategorySpending[]) || []).map((c) => {
+        ((catData as unknown as RpcCategorySpending[]) || []).forEach((c) => {
           const spent = BigInt(c.total);
           totalSpent += spent;
-          const catLimit = BigInt(15000);
+          catSpentMap.set(c.category_name, spent);
+        });
+
+        // Include categories that have an active monthly budget or had spending this month
+        const activeCategories = (dbCategories || []).filter(
+          (c) => (c.monthly_budget !== null && c.monthly_budget > 0) || catSpentMap.has(c.name)
+        );
+
+        const mapped: CatBudgetItem[] = activeCategories.map((c) => {
+          const spent = catSpentMap.get(c.name) || 0n;
+          const catLimit = BigInt(c.monthly_budget || 0);
           const pct = catLimit > 0n ? Number((spent * 100n) / catLimit) : 0;
           return {
-            name: c.category_name,
+            name: c.name,
             spentMinor: spent,
             limitMinor: catLimit,
             percent: Math.round(pct * 10) / 10,
-            color: c.category_color,
+            color: c.color,
           };
         });
 
