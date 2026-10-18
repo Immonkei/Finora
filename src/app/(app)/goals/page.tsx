@@ -1,17 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { Target, Plus, Calendar, Trash2, Sparkles, TrendingUp } from "lucide-react";
+import { Target, Plus, Calendar, Trash2, TrendingUp, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/money";
 import { formatDisplayDate } from "@/lib/dates";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeTable } from "@/lib/supabase/realtime";
 import { createSavingsGoal, contributeSavingsGoal, deleteSavingsGoal } from "@/features/goals/actions";
-import { MilestoneRing } from "@/features/goals/components/milestone-ring";
+import { MilestoneRing, getMilestoneTier } from "@/features/goals/components/milestone-ring";
 import { fireConfetti } from "@/components/ui/confetti";
 
 interface GoalItem {
@@ -208,7 +209,7 @@ export default function GoalsPage() {
 
     if (isCompleted) {
       fireConfetti({ particleCount: 160 });
-      toast.success("Goal Reached! 🏆🎉", {
+      toast.success("Goal Reached!", {
         description: `Congratulations! You conquered your goal for "${contributeGoal.name}"!`,
       });
     } else {
@@ -282,27 +283,46 @@ export default function GoalsPage() {
             Math.round(Number((g.savedAmountMinor * 100n) / g.targetAmountMinor))
           );
           const isDone = g.savedAmountMinor >= g.targetAmountMinor;
+          const tier = getMilestoneTier(percent);
+          const khrSaved = Number(g.savedAmountMinor) * 41;
+          const khrTarget = Number(g.targetAmountMinor) * 41;
 
           return (
             <Card
               key={g.id}
-              className="relative overflow-hidden flex flex-col justify-between border-zinc-200/80 dark:border-zinc-800/80 shadow-xs hover:border-brand-500/40 transition-all bg-white dark:bg-zinc-900"
+              className="relative overflow-hidden flex flex-col justify-between border-zinc-200/80 dark:border-zinc-800/80 shadow-xs hover:border-brand-500/40 hover:shadow-md transition-all bg-white dark:bg-zinc-900 rounded-2xl"
             >
               <div>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1">
-                      <CardTitle className="text-base font-bold text-zinc-900 dark:text-zinc-50 leading-snug">
-                        {g.name}
-                      </CardTitle>
-                      <CardDescription className="flex items-center gap-1.5 text-xs text-zinc-500">
-                        <Calendar className="h-3.5 w-3.5 text-zinc-400" /> Target: {g.deadline}
-                      </CardDescription>
+                <CardHeader className="pb-3 pt-5 px-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="p-2.5 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-accent-400 border border-brand-100 dark:border-brand-900/50 shrink-0">
+                        <Target className="h-5 w-5" />
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <CardTitle className="text-base font-bold text-zinc-900 dark:text-zinc-50 leading-snug truncate">
+                            {g.name}
+                          </CardTitle>
+                          <span
+                            className={cn(
+                              "text-[10px] font-semibold px-2 py-0.5 rounded-full border shadow-2xs inline-flex items-center gap-1 shrink-0",
+                              tier.badgeColor
+                            )}
+                          >
+                            {React.createElement(tier.icon, { className: "h-2.5 w-2.5 shrink-0" })}
+                            <span>{tier.label}</span>
+                          </span>
+                        </div>
+                        <CardDescription className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                          <Calendar className="h-3.5 w-3.5 text-zinc-400 shrink-0" /> Target: {g.deadline || "Open Target"}
+                        </CardDescription>
+                      </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleDeleteGoal(g.id, g.name)}
-                      className="text-zinc-400 hover:text-rose-500 dark:hover:text-rose-400 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                      className="text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer shrink-0"
                       title="Delete Goal"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -310,40 +330,48 @@ export default function GoalsPage() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-4 pt-1">
+                <CardContent className="space-y-3.5 pt-0 px-5">
                   {/* Visual Milestone Ring & Key Numbers */}
-                  <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-zinc-50/80 dark:bg-zinc-950/60 border border-zinc-200/60 dark:border-zinc-800/60">
-                    <MilestoneRing percent={percent} size={92} strokeWidth={8} />
-
+                  <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-zinc-50/80 dark:bg-zinc-800/40 border border-zinc-200/70 dark:border-zinc-800">
                     <div className="space-y-1 min-w-0 flex-1">
-                      <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
                         Accumulated
                       </p>
-                      <div className="text-2xl font-black text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight">
+                      <div className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight">
                         {formatMoney(g.savedAmountMinor, "USD")}
                       </div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums truncate">
-                        Target: <strong>{formatMoney(g.targetAmountMinor, "USD")}</strong>
+                      <div className="text-xs text-zinc-600 dark:text-zinc-300 font-medium tabular-nums">
+                        Target: <span className="font-bold text-zinc-900 dark:text-zinc-100">{formatMoney(g.targetAmountMinor, "USD")}</span>
                       </div>
-                      <div className="text-[11px] text-zinc-400 dark:text-zinc-500 tabular-nums truncate">
-                        ≈ ៛{(Number(g.savedAmountMinor) * 41).toLocaleString()} / ៛{(Number(g.targetAmountMinor) * 41).toLocaleString()}
+                      <div className="text-[11px] text-zinc-400 dark:text-zinc-500 tabular-nums">
+                        ≈ ៛{khrSaved.toLocaleString()} / ៛{khrTarget.toLocaleString()}
                       </div>
+                    </div>
+
+                    <div className="shrink-0 flex items-center justify-center">
+                      <MilestoneRing percent={percent} size={80} strokeWidth={7} showMilestoneBadge={false} />
                     </div>
                   </div>
 
                   {/* Pacing / Status badge */}
                   {!isDone ? (
-                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-brand-50/70 dark:bg-brand-950/40 text-xs text-brand-900 dark:text-brand-200 border border-brand-200/50 dark:border-brand-800/40">
-                      <TrendingUp className="h-4 w-4 text-brand-600 dark:text-accent-400 shrink-0" />
-                      <span>
-                        Pace: <strong>{formatMoney(g.weeklyNeededMinor, "USD")}/week</strong> needed
+                    <div className="flex items-center justify-between p-2.5 px-3 rounded-xl bg-brand-50/70 dark:bg-brand-950/40 border border-brand-200/50 dark:border-brand-800/40 text-xs">
+                      <div className="flex items-center gap-2 text-brand-900 dark:text-brand-200 font-medium">
+                        <TrendingUp className="h-3.5 w-3.5 text-brand-600 dark:text-accent-400 shrink-0" />
+                        <span>Weekly Pace</span>
+                      </div>
+                      <span className="font-bold text-brand-700 dark:text-accent-300 tabular-nums">
+                        {formatMoney(g.weeklyNeededMinor, "USD")} / week
                       </span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-xs text-emerald-900 dark:text-emerald-200 border border-emerald-200/50 dark:border-emerald-800/40">
-                      <Sparkles className="h-4 w-4 text-amber-500 shrink-0 animate-spin" />
-                      <span>
-                        <strong>Target Conquered!</strong> Milestone achieved.
+                    <div className="flex items-center justify-between p-2.5 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-800/40 text-xs">
+                      <div className="flex items-center gap-2 text-emerald-900 dark:text-emerald-200 font-medium">
+                        <Trophy className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span>Milestone Conquered</span>
+                      </div>
+                      <span className="font-bold text-emerald-700 dark:text-emerald-300">
+                        100% Achieved
                       </span>
                     </div>
                   )}
@@ -358,21 +386,21 @@ export default function GoalsPage() {
                     size="sm"
                     onClick={() => {
                       fireConfetti({ particleCount: 150 });
-                      toast.success("Milestone Celebrated! 🎉", {
+                      toast.success("Milestone Celebrated!", {
                         description: `Great job conquering "${g.name}"!`,
                       });
                     }}
-                    className="w-full border-amber-300 dark:border-amber-700 bg-amber-50/50 hover:bg-amber-100 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 font-semibold cursor-pointer"
+                    className="w-full h-10 border-amber-300 dark:border-amber-700 bg-amber-50/50 hover:bg-amber-100 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 font-semibold cursor-pointer rounded-xl"
                   >
-                    <Sparkles className="h-4 w-4 mr-1.5 text-amber-500" />
-                    Celebrate Milestone 🎉
+                    <Trophy className="h-4 w-4 mr-1.5 text-amber-500" />
+                    Celebrate Milestone
                   </Button>
                 ) : (
                   <Button
                     variant="default"
                     size="sm"
                     onClick={() => setContributeGoal(g)}
-                    className="w-full font-semibold shadow-xs cursor-pointer"
+                    className="w-full h-10 font-semibold shadow-xs cursor-pointer rounded-xl"
                   >
                     <Plus className="h-4 w-4 mr-1" />
                     Contribute Funds

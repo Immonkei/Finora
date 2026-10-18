@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Sparkles } from "lucide-react";
+import { Check, Sprout, Compass, TrendingUp, Flame, Trophy, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MilestoneRingProps {
@@ -16,39 +16,45 @@ export function getMilestoneTier(percent: number): {
   label: string;
   badgeColor: string;
   ringGradientId: string;
+  icon: LucideIcon;
 } {
   if (percent >= 100) {
     return {
-      label: "Goal Conquered! 🏆",
-      badgeColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700",
+      label: "Goal Conquered",
+      badgeColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
       ringGradientId: "grad-emerald",
+      icon: Trophy,
     };
   }
   if (percent >= 75) {
     return {
-      label: "Final Stretch! 🥇",
-      badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border-amber-300 dark:border-amber-700",
+      label: "Final Stretch",
+      badgeColor: "bg-amber-50 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border-amber-200 dark:border-amber-800",
       ringGradientId: "grad-amber",
+      icon: Flame,
     };
   }
   if (percent >= 50) {
     return {
-      label: "Halfway There! 🥈",
-      badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 border-blue-300 dark:border-blue-700",
+      label: "Halfway There",
+      badgeColor: "bg-sky-50 text-sky-700 dark:bg-sky-950/70 dark:text-sky-300 border-sky-200 dark:border-sky-800",
       ringGradientId: "grad-blue",
+      icon: TrendingUp,
     };
   }
   if (percent >= 25) {
     return {
-      label: "Quarter Way! 🥉",
-      badgeColor: "bg-purple-100 text-purple-800 dark:bg-purple-950/70 dark:text-purple-300 border-purple-300 dark:border-purple-700",
+      label: "Quarter Way",
+      badgeColor: "bg-violet-50 text-violet-700 dark:bg-violet-950/70 dark:text-violet-300 border-violet-200 dark:border-violet-800",
       ringGradientId: "grad-purple",
+      icon: Compass,
     };
   }
   return {
-    label: "Starting Out 🌱",
+    label: "Starting Out",
     badgeColor: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700",
     ringGradientId: "grad-brand",
+    icon: Sprout,
   };
 }
 
@@ -103,8 +109,8 @@ export function MilestoneRing({
               <stop offset="100%" stopColor="#7C3AED" />
             </linearGradient>
             <linearGradient id="grad-brand" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#3B82F6" />
-              <stop offset="100%" stopColor="#10B981" />
+              <stop offset="0%" stopColor="#1b4d72" />
+              <stop offset="100%" stopColor="#0ea5e9" />
             </linearGradient>
           </defs>
 
@@ -184,12 +190,12 @@ export function MilestoneRing({
       {showMilestoneBadge && (
         <span
           className={cn(
-            "text-[11px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs transition-all flex items-center gap-1",
+            "text-[11px] font-semibold px-2.5 py-0.5 rounded-full border shadow-2xs transition-all inline-flex items-center gap-1.5",
             tier.badgeColor
           )}
         >
-          {isCompleted && <Sparkles className="h-3 w-3 text-amber-500" />}
-          {tier.label}
+          {React.createElement(tier.icon, { className: "h-3 w-3 shrink-0" })}
+          <span>{tier.label}</span>
         </span>
       )}
     </div>
