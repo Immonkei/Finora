@@ -175,7 +175,7 @@ export default function WeekPage() {
   const differenceMinor = lastWeekSpentMinor - totalWeekSpentMinor;
   const isSpendingLower = differenceMinor >= 0n;
 
-  const topCategories = liveCategories ?? [];
+  const topCategories = React.useMemo(() => liveCategories ?? [], [liveCategories]);
   const dailyAverageMinor = totalWeekSpentMinor / 7n;
 
   // Day-by-day Recharts Bar Chart Data

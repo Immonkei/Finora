@@ -82,6 +82,8 @@ export function QuickAddDialog({
     category?: string;
     confidence?: number;
     source?: string;
+    bankName?: string;
+    transactionId?: string;
   } | null>(null);
 
   // Load user's actual categories from Supabase on mount
@@ -123,6 +125,7 @@ export function QuickAddDialog({
               preselectedId = lastTx.category_id;
             }
 
+            setCategoriesList(mapped);
             setSelectedCategory(preselectedId);
           }
         }
@@ -208,7 +211,10 @@ export function QuickAddDialog({
               setCurrency(data.currency);
             }
             if (data.merchant) {
-              setNote(data.merchant);
+              const noteText = data.transactionId
+                ? `${data.merchant} [Ref: ${data.transactionId}]`
+                : data.merchant;
+              setNote(noteText);
             }
             if (data.category) {
               const matchedCat = categoriesList.find(
@@ -225,9 +231,15 @@ export function QuickAddDialog({
               category: data.category,
               confidence: data.confidence,
               source: data.source,
+              bankName: data.bankName,
+              transactionId: data.transactionId,
             });
 
-            toast.success("✨ Receipt auto-filled!", {
+            const sourceTitle = data.bankName
+              ? `${data.bankName} Voucher detected!`
+              : "Receipt auto-filled!";
+
+            toast.success(`✨ ${sourceTitle}`, {
               description: `${data.merchant || "Store"} • ${data.currency === "USD" ? "$" : "៛"}${data.amount || 0}`,
             });
           } else {
@@ -413,9 +425,9 @@ export function QuickAddDialog({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 text-zinc-500 hover:text-brand-600 dark:hover:text-accent-400 transition-all cursor-pointer"
-              title="Snap or upload a receipt to auto-fill"
+              title="Snap or upload a receipt photo or ABA / Bakong KHQR payment screenshot"
             >
-              <Camera className="h-3 w-3" /> Scan AI
+              <Camera className="h-3 w-3" /> Scan Slip
             </button>
           </div>
 
@@ -514,9 +526,16 @@ export function QuickAddDialog({
           {scannedSummary && !isScanningReceipt && (
             <div className="p-3 bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-xs flex items-center justify-between text-emerald-900 dark:text-emerald-200 animate-in fade-in">
               <div className="flex items-center gap-2 truncate">
-                <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                {scannedSummary.bankName ? (
+                  <Badge variant="default" className="text-[10px] font-bold bg-brand-600 text-white shrink-0 px-2 py-0.5">
+                    {scannedSummary.bankName}
+                  </Badge>
+                ) : (
+                  <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                )}
                 <span className="truncate">
-                  ✨ Auto-filled: <strong>{scannedSummary.merchant}</strong> •{" "}
+                  {scannedSummary.bankName ? "Payment Extracted: " : "✨ Auto-filled: "}
+                  <strong>{scannedSummary.merchant}</strong> •{" "}
                   <strong className="tabular-nums">
                     {currency === "USD" ? "$" : "៛"}{scannedSummary.amount}
                   </strong>{" "}
@@ -524,7 +543,11 @@ export function QuickAddDialog({
                 </span>
               </div>
               <Badge variant="outline" className="border-emerald-500/40 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0 ml-2">
-                {scannedSummary.source === "gemini_vision" ? "Gemini AI" : "Smart OCR"}
+                {scannedSummary.bankName
+                  ? "KHQR Slip"
+                  : scannedSummary.source === "gemini_vision"
+                  ? "Gemini AI"
+                  : "Smart OCR"}
               </Badge>
             </div>
           )}

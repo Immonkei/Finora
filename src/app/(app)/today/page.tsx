@@ -28,8 +28,6 @@ interface DisplayTx {
   time: string;
 }
 
-const DEFAULT_TRANSACTIONS: DisplayTx[] = [];
-
 export default function TodayPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const [editingTx, setEditingTx] = React.useState<EditableTransaction | null>(null);

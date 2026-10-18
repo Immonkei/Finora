@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const uploadResult = await processAndUploadReceipt(file, user.id, supabase as any);
+    const uploadResult = await processAndUploadReceipt(file, user.id, supabase);
 
     if (!uploadResult.success) {
       return NextResponse.json(
