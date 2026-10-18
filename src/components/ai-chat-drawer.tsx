@@ -1,7 +1,23 @@
 "use client";
 
 import * as React from "react";
-import { Sparkles, X, Send, Bot, User, Trash2 } from "lucide-react";
+import {
+  Sparkles,
+  X,
+  Send,
+  Bot,
+  User,
+  Trash2,
+  ShoppingBag,
+  ShieldCheck,
+  PieChart,
+  Utensils,
+  Target,
+  CalendarClock,
+  PiggyBank,
+  Banknote,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +31,7 @@ interface ChatMessage {
 interface QuickMoneyQuestion {
   title: string;
   category: string;
-  icon: string;
+  icon: LucideIcon;
 }
 
 let messageSequence = 0;
@@ -35,42 +51,42 @@ const USEFUL_MONEY_QUESTIONS: QuickMoneyQuestion[] = [
   {
     title: "Can I afford a $30 purchase today?",
     category: "Affordability",
-    icon: "🛍️",
+    icon: ShoppingBag,
   },
   {
     title: "What is my safe daily allowance right now?",
     category: "Allowance",
-    icon: "🛡️",
+    icon: ShieldCheck,
   },
   {
     title: "Where did most of my money go this month?",
     category: "Breakdown",
-    icon: "📊",
+    icon: PieChart,
   },
   {
     title: "How much did I spend on food & groceries?",
     category: "Category",
-    icon: "☕",
+    icon: Utensils,
   },
   {
     title: "How close am I to reaching my savings goals?",
     category: "Goals",
-    icon: "🎯",
+    icon: Target,
   },
   {
     title: "What upcoming bills or subscriptions are due next?",
     category: "Bills",
-    icon: "📅",
+    icon: CalendarClock,
   },
   {
     title: "How can I trim spending and save an extra $100?",
     category: "Savings",
-    icon: "💡",
+    icon: PiggyBank,
   },
   {
     title: "What is my remaining budget in Cambodian Riel?",
     category: "Currency",
-    icon: "៛",
+    icon: Banknote,
   },
 ];
 
@@ -315,24 +331,29 @@ export function AIChatDrawer() {
                     Helpful Questions to Ask:
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {USEFUL_MONEY_QUESTIONS.map((q) => (
-                      <button
-                        key={q.title}
-                        type="button"
-                        onClick={() => handleSendMessage(q.title)}
-                        className="flex items-start gap-2 p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60 hover:bg-brand-50/60 dark:hover:bg-brand-950/40 hover:border-brand-300 dark:hover:border-brand-700 transition-all text-left cursor-pointer active:scale-[0.98]"
-                      >
-                        <span className="text-sm shrink-0">{q.icon}</span>
-                        <div>
-                          <p className="text-[11px] font-semibold text-zinc-800 dark:text-zinc-200 leading-snug">
-                            {q.title}
-                          </p>
-                          <span className="text-[9px] text-zinc-400 font-medium">
-                            {q.category}
-                          </span>
-                        </div>
-                      </button>
-                    ))}
+                    {USEFUL_MONEY_QUESTIONS.map((q) => {
+                      const Icon = q.icon;
+                      return (
+                        <button
+                          key={q.title}
+                          type="button"
+                          onClick={() => handleSendMessage(q.title)}
+                          className="flex items-start gap-2.5 p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60 hover:bg-brand-50/60 dark:hover:bg-brand-950/40 hover:border-brand-300 dark:hover:border-brand-700 transition-all text-left cursor-pointer active:scale-[0.98]"
+                        >
+                          <div className="w-6 h-6 rounded-lg bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-accent-400 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                            <Icon className="h-3.5 w-3.5" />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-semibold text-zinc-800 dark:text-zinc-200 leading-snug">
+                              {q.title}
+                            </p>
+                            <span className="text-[9px] text-zinc-400 font-medium">
+                              {q.category}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -344,17 +365,20 @@ export function AIChatDrawer() {
             {messages.length > 1 && (
               <div className="px-3 py-1.5 border-t border-zinc-100 dark:border-zinc-800/60 bg-zinc-50/40 dark:bg-zinc-950/20 shrink-0">
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                  {USEFUL_MONEY_QUESTIONS.map((q) => (
-                    <button
-                      key={q.title}
-                      type="button"
-                      onClick={() => handleSendMessage(q.title)}
-                      className="whitespace-nowrap text-[11px] font-medium px-2.5 py-1 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-zinc-700 dark:text-zinc-300 hover:text-brand-600 dark:hover:text-accent-400 hover:border-brand-400 dark:hover:border-accent-500 transition-colors shrink-0 cursor-pointer active:scale-95"
-                    >
-                      <span className="mr-1">{q.icon}</span>
-                      {q.title}
-                    </button>
-                  ))}
+                  {USEFUL_MONEY_QUESTIONS.map((q) => {
+                    const Icon = q.icon;
+                    return (
+                      <button
+                        key={q.title}
+                        type="button"
+                        onClick={() => handleSendMessage(q.title)}
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium px-2.5 py-1 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-zinc-700 dark:text-zinc-300 hover:text-brand-600 dark:hover:text-accent-400 hover:border-brand-400 dark:hover:border-accent-500 transition-colors shrink-0 cursor-pointer active:scale-95"
+                      >
+                        <Icon className="h-3 w-3 text-brand-600 dark:text-accent-400 shrink-0" />
+                        <span>{q.title}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
