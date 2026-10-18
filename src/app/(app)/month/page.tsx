@@ -7,8 +7,9 @@ import { formatMoney, calculateForecast } from "@/lib/money";
 import { getDaysPassedInMonth, getDaysLeftInMonth } from "@/lib/dates";
 import { useMounted } from "@/lib/hooks";
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+import { FileText, Sparkles } from "lucide-react";
 import { MonthlyStatementModal } from "@/features/reports/components/monthly-statement-modal";
 import {
   BudgetPaceAreaChart,
@@ -174,7 +175,18 @@ export default function MonthPage() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link href="/settings#categories">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 font-semibold text-xs border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 shadow-xs"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-accent-400" />
+              <span>Categories & Rollover</span>
+            </Button>
+          </Link>
+
           <Button
             onClick={() => setIsStatementOpen(true)}
             variant="outline"

@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { updateUserSettings, deleteUserAccount } from "@/features/settings/actions";
 import { createNotification } from "@/features/notifications/actions";
+import { CategoryManager } from "@/features/categories/components/category-manager";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -158,6 +159,11 @@ export default function SettingsPage() {
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           Settings
         </h1>
+      </div>
+
+      {/* Custom Categories & Rollover Allowance Manager */}
+      <div id="categories">
+        <CategoryManager />
       </div>
 
       {/* Localization & Currency (Spec FR-X1 & Spec 12) */}
