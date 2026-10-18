@@ -4,6 +4,8 @@ const PRECACHE_URLS = [
   "/today",
   "/transactions",
   "/goals",
+  "/recurring",
+  "/insights",
   "/week",
   "/month",
   "/settings",

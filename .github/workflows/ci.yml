@@ -30,6 +30,9 @@ jobs:
       - name: Run Unit Tests
         run: npm test
 
+      - name: Run ESLint
+        run: npm run lint
+
       - name: Build Next.js Application
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}

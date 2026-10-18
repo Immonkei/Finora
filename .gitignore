@@ -44,3 +44,20 @@ next-env.d.ts
 # supabase
 supabase/.temp/
 .temp/
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+
+# Tooling cache
+.eslintcache
+.gemini/
+

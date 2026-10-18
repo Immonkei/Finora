@@ -1,27 +1,46 @@
 # Finora — Personal Finance Tracker
 
-Finora is a fast, mobile-friendly personal finance tracking web application built to help users take control of their spending through live **Daily Allowance** calculations, quick logging (< 5s), multi-currency support (USD & KHR), and privacy backed by PostgreSQL Row Level Security (RLS).
+Finora is a fast, simple, and mobile-friendly personal finance app. It helps you stay in control of your daily spending with real-time **Daily Allowance** calculations, dual currency support (USD & KHR), offline mode, and quick logging (keyboard, speech, or camera).
 
 ![Finora Logo](public/finora-logo.png)
 
 ---
 
+## ✨ Features
+
+- **Daily Spending Allowance:** Tells you exactly how much money you can safely spend today based on your monthly income and savings targets.
+- **Dual Currency (USD & KHR):** Seamlessly handles US Dollars and Cambodian Riel with real-time conversion (`$1 = 4,100 KHR`).
+- **Quick Logging:**
+  - Standard clean keypad (< 5 seconds).
+  - Voice logging (speak naturally: *"Spent five dollars on coffee"*).
+  - AI Receipt OCR & Bakong KHQR slip scanning with Google Gemini.
+- **Works Offline:** Progressive Web App (PWA) with automatic offline queue that syncs your data when you are back online.
+- **Budgets & Rollovers:** Set category limits and roll over any unspent money into a savings buffer for next month.
+- **Savings Goals:** Visual milestone rings, contribution presets, and celebration confetti when goals are reached.
+- **Bills & Recurring Payments:** 30-day upcoming cash flow timeline and automated background charge logging.
+- **Reports & Heatmaps:** 365-day spending heatmap calendar, financial health score, and downloadable monthly PDF statements.
+- **Supabase Keep-Alive:** Built-in scheduler to ensure your free-tier Supabase database never goes to sleep from inactivity.
+
+---
+
 ## ⚡ Tech Stack
 
-- **Framework:** [Next.js](https://nextjs.org/) (App Router, Turbopack, TypeScript)
+- **Framework:** [Next.js](https://nextjs.org/) (App Router, Turbopack, React 19, TypeScript)
 - **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
-- **Database & Auth:** [Supabase](https://supabase.com/) (PostgreSQL, Supabase Auth, Row Level Security)
+- **Database & Auth:** [Supabase](https://supabase.com/) (PostgreSQL with Row Level Security)
 - **Validation:** [Zod](https://zod.dev/) & [React Hook Form](https://react-hook-form.com/)
 - **Charts:** [Recharts](https://recharts.org/)
-- **Dates:** [date-fns](https://date-fns.org/)
+- **AI Engine:** Google Gemini AI (for receipt scanning & weekly digests)
 - **Testing:** [Vitest](https://vitest.dev/)
 
 ---
 
 ## 🚀 Getting Started
 
-### 1. Install Dependencies
+### 1. Clone & Install Dependencies
 ```bash
+git clone https://github.com/Immonkei/Finora.git
+cd Finora
 npm install
 ```
 
@@ -30,27 +49,38 @@ Copy `.env.example` to `.env.local`:
 ```bash
 cp .env.example .env.local
 ```
-Add your Supabase project credentials:
+
+Fill in your own credentials in `.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Optional: Google Gemini for Receipt OCR and AI reports
+GEMINI_API_KEY=your-gemini-key
+
+# Optional: Secret token for recurring cron jobs
+CRON_SECRET=your-cron-secret
 ```
 
-### 3. Run Development Server
+### 3. Database Setup (Supabase)
+Run the migration scripts in order using the Supabase SQL Editor:
+1. `supabase/migrations/20261008000001_initial_schema.sql` (Tables, functions, and RLS policies)
+2. `supabase/migrations/20261009000001_enable_realtime.sql` (Live real-time updates)
+3. `supabase/migrations/20261010000001_recurring_cron.sql` (Recurring billing schedules)
+4. `supabase/migrations/20261018000001_keep_alive_heartbeat.sql` (Database keep-alive ping)
+
+### 4. Run Development Server
 ```bash
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### 4. Database Setup (Supabase)
-Run the initial migration located at:
-`supabase/migrations/20261008000001_initial_schema.sql`
-This establishes all core tables (`profiles`, `accounts`, `categories`, `transactions`, `budgets`, `savings_goals`, `recurring_rules`, `notifications`), triggers, RLS policies, and RPC report functions.
-
-### 5. Running Tests
+### 5. Run Tests & Linter
 ```bash
 npm test
+npm run lint
 ```
 
 ---
@@ -58,37 +88,34 @@ npm test
 ## 📁 Project Structure
 
 ```
-├── public/                 # Static assets & brand logo
+├── docs/                   # Detailed project specifications and notes
+├── public/                 # Static brand assets, icons, manifest, service worker
 ├── src/
-│   ├── app/
-│   │   ├── (auth)/         # Auth routes (login, register, reset-password)
-│   │   ├── (app)/          # App shell routes (today, week, month, transactions, goals, settings)
-│   │   ├── layout.tsx      # Root layout
-│   │   └── page.tsx        # Landing page
-│   ├── components/
-│   │   ├── ui/             # Reusable UI primitives (Button, Card, Input, Badge)
-│   │   └── app-nav.tsx     # Mobile bottom bar & desktop sidebar navigation
-│   ├── features/
-│   │   ├── transactions/   # Zod schema, types, actions & components
-│   │   ├── budgets/        # Budget management schema
-│   │   ├── goals/          # Savings goals schema
-│   │   └── recurring/      # Recurring rules schema
-│   ├── lib/
-│   │   ├── supabase/       # Supabase client, server, and middleware helpers
-│   │   ├── money.ts        # Minor unit conversions, formatting, and allowance formulas
-│   │   ├── dates.ts        # Timezone-aware date boundaries and formatting
-│   │   └── utils.ts        # Tailwind class merger
-│   ├── proxy.ts            # Next.js route proxy / session middleware
-│   └── types/
-│       └── database.ts     # Supabase database types
+│   ├── app/                # Next.js App Router pages and API routes
+│   │   ├── (auth)/         # Login, register, and password reset
+│   │   ├── (app)/          # Main dashboard, week, month, recurring, insights, goals, settings
+│   │   └── api/            # Server API routes (cron, receipts, statements, AI)
+│   ├── components/         # Reusable UI components and charts
+│   ├── features/           # Feature modules (transactions, budgets, goals, recurring, reports)
+│   ├── lib/                # Utility helpers (Supabase client/server, money math, offline queue)
+│   └── types/              # Database types
 └── supabase/
-    └── migrations/         # PostgreSQL schema migrations and RLS policies
+    └── migrations/         # PostgreSQL schema files
 ```
+
+For full system architecture and requirement details, check [docs/project-specification.md](docs/project-specification.md).
 
 ---
 
-## 🔒 Security & Architecture Decisions
-- **Money stored as integers (minor units):** Prevents floating-point rounding errors across USD and KHR.
-- **Row Level Security (RLS) on every table:** User data isolation is enforced at the database layer.
-- **Server Actions for writes:** Validates input with Zod prior to database persistence.
-- **Soft deletes:** Preserves transaction records for undo actions without skewing historical reports.
+## 🔒 Security & Privacy
+
+- **Row Level Security (RLS):** Every database query is strictly filtered by user ID at the database layer. No user can ever view another user's data.
+- **Server-Side Secrets:** Private keys like `SUPABASE_SERVICE_ROLE_KEY` and `GEMINI_API_KEY` are only accessible on the server and are never sent to the browser.
+- **Integer Math:** All money amounts are stored in smallest integer units (cents / riel) to eliminate floating-point rounding errors.
+- **Soft Deletes:** Deleting a transaction preserves an audit trail and allows for immediate 10-second undos.
+
+---
+
+## 📄 License
+
+This project is personal and open for portfolio review.
