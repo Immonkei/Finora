@@ -9,6 +9,7 @@ import {
   Sparkles,
   Globe,
   Award,
+  Calendar,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,9 @@ import { detectSpendingLeaks, type LeakTransaction } from "@/features/reports/le
 import { calculateStreaks } from "@/features/reports/streaks";
 import { createClient } from "@/lib/supabase/client";
 import { CategoryDonutChart, transformCategoryChartData } from "@/components/charts";
+import { SpendingHeatmap, type DaySpendingData } from "@/features/reports/components/spending-heatmap";
+import { FinancialHealthCard } from "@/features/reports/components/financial-health-card";
+import { calculateFinancialHealthScore } from "@/features/reports/health-score";
 
 export default function InsightsPage() {
   const [currencyMode, setCurrencyMode] = React.useState<"USD" | "KHR">("USD");
@@ -26,6 +30,10 @@ export default function InsightsPage() {
   const [liveThisMonthSpent, setLiveThisMonthSpent] = React.useState<bigint>(0n);
   const [liveLastMonthSpent, setLiveLastMonthSpent] = React.useState<bigint>(0n);
   const [liveMonthlyBudget, setLiveMonthlyBudget] = React.useState<bigint>(0n);
+  const [heatmapData, setHeatmapData] = React.useState<Record<string, DaySpendingData>>({});
+  const [activeGoalsCount, setActiveGoalsCount] = React.useState<number>(0);
+  const [completedGoalsCount, setCompletedGoalsCount] = React.useState<number>(0);
+  const [monthDayInfo, setMonthDayInfo] = React.useState({ daysInMonth: 30, currentDay: 15 });
 
   React.useEffect(() => {
     async function loadInsightsData() {
@@ -37,6 +45,10 @@ export default function InsightsPage() {
         if (!user) return;
 
         const now = new Date();
+        setMonthDayInfo({
+          daysInMonth: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(),
+          currentDay: now.getDate(),
+        });
         const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
 
         // 1. Current Budget
@@ -139,12 +151,58 @@ export default function InsightsPage() {
           });
         }
         setLiveLastMonthSpent(lastTotal);
+
+        // 4. Past 365 Days Transactions for Heatmap
+        const oneYearAgo = new Date();
+        oneYearAgo.setDate(oneYearAgo.getDate() - 365);
+
+        const { data: yearTxs } = await supabase
+          .from("transactions")
+          .select("base_amount, occurred_at")
+          .eq("user_id", user.id)
+          .eq("type", "expense")
+          .is("deleted_at", null)
+          .gte("occurred_at", oneYearAgo.toISOString());
+
+        const hMap: Record<string, DaySpendingData> = {};
+        if (yearTxs) {
+          yearTxs.forEach((t) => {
+            const dStr = t.occurred_at.slice(0, 10);
+            if (!hMap[dStr]) {
+              hMap[dStr] = { date: dStr, spentMinor: 0n, count: 0 };
+            }
+            hMap[dStr].spentMinor += BigInt(t.base_amount);
+            hMap[dStr].count += 1;
+          });
+        }
+        setHeatmapData(hMap);
+
+        // 5. Savings Goals for Health Score
+        const { data: goalsData } = await supabase
+          .from("savings_goals")
+          .select("saved_amount, target_amount")
+          .eq("user_id", user.id);
+
+        let activeG = 0;
+        let completedG = 0;
+        if (goalsData) {
+          goalsData.forEach((g) => {
+            if (BigInt(g.saved_amount) >= BigInt(g.target_amount)) {
+              completedG++;
+            } else {
+              activeG++;
+            }
+          });
+        }
+        setActiveGoalsCount(activeG);
+        setCompletedGoalsCount(completedG);
       } catch {
         setLiveTransactions([]);
         setLiveStreakDays([]);
         setLiveThisMonthSpent(0n);
         setLiveLastMonthSpent(0n);
         setLiveMonthlyBudget(0n);
+        setHeatmapData({});
       }
     }
     loadInsightsData();
@@ -157,6 +215,30 @@ export default function InsightsPage() {
   );
 
   const streakStats = calculateStreaks(liveStreakDays);
+
+  const healthScore = React.useMemo(() => {
+    return calculateFinancialHealthScore({
+      monthlyBudgetMinor: liveMonthlyBudget,
+      monthlySpentMinor: liveThisMonthSpent,
+      daysInMonth: monthDayInfo.daysInMonth,
+      currentDay: monthDayInfo.currentDay,
+      leaksCount: leaks.length,
+      currentStreakDays: streakStats.currentUnderBudgetStreak,
+      noSpendDaysCount: streakStats.noSpendDaysCount,
+      activeGoalsCount,
+      completedGoalsCount,
+    });
+  }, [
+    liveMonthlyBudget,
+    liveThisMonthSpent,
+    monthDayInfo.daysInMonth,
+    monthDayInfo.currentDay,
+    leaks.length,
+    streakStats.currentUnderBudgetStreak,
+    streakStats.noSpendDaysCount,
+    activeGoalsCount,
+    completedGoalsCount,
+  ]);
 
   const thisMonthSpent = liveThisMonthSpent;
   const lastMonthSpent = liveLastMonthSpent;
@@ -304,6 +386,25 @@ export default function InsightsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Financial Health Score (Spec 3.3 Enhanced) */}
+      <FinancialHealthCard health={healthScore} />
+
+      {/* 365-Day Spending Heatmap Calendar */}
+      <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-emerald-500" />
+            365-Day Spending Heatmap
+          </CardTitle>
+          <CardDescription>
+            Daily financial tracking activity and habit discipline across the past 52 weeks
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SpendingHeatmap data={heatmapData} currencyMode={currencyMode} />
+        </CardContent>
+      </Card>
 
       {/* Spending Leaks Detector (Spec 3.3 #16 & 9.3) */}
       <Card>
