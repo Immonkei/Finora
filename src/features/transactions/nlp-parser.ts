@@ -15,6 +15,7 @@ export interface ParsedTransaction {
 }
 
 import { matchCategoryNameFromText } from "./categories";
+import { parseVoiceExpense } from "./voice-parser";
 
 export function parseNaturalLanguageInput(rawInput: string): ParsedTransaction | null {
   const text = rawInput.trim();
@@ -28,7 +29,19 @@ export function parseNaturalLanguageInput(rawInput: string): ParsedTransaction |
   const numberRegex = /(?:\$|៛)?\s*(\d+(?:\.\d{1,2})?)/i;
   const match = text.match(numberRegex);
 
-  if (!match) return null;
+  if (!match) {
+    // Fall back to voice-parser which supports spoken number words (e.g. "twenty five dollars on groceries")
+    const voiceRes = parseVoiceExpense(text);
+    if (voiceRes) {
+      return {
+        amount: voiceRes.amount,
+        currency: voiceRes.currency,
+        note: voiceRes.note,
+        categoryName: voiceRes.categoryName,
+      };
+    }
+    return null;
+  }
 
   const amount = parseFloat(match[1]);
   if (isNaN(amount) || amount <= 0) return null;

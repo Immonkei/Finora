@@ -17,12 +17,15 @@ import {
   HeartPulse,
   Banknote,
   Briefcase,
+  Mic,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { createTransaction } from "../actions";
 import { parseNaturalLanguageInput } from "../nlp-parser";
+import { parseVoiceExpense } from "../voice-parser";
+import { useSpeechRecognition } from "../hooks/use-speech-recognition";
 import { enqueueOfflineTransaction } from "@/lib/offline-queue";
 import { usePWA } from "@/components/pwa-provider";
 import { createClient } from "@/lib/supabase/client";
@@ -64,8 +67,18 @@ export function QuickAddDialog({
 }: QuickAddDialogProps) {
   const { isOffline } = usePWA();
   const [categoriesList, setCategoriesList] = React.useState(DEFAULT_CATEGORIES);
-  const [entryMode, setEntryMode] = React.useState<"keypad" | "nlp">("keypad");
+  const [entryMode, setEntryMode] = React.useState<"keypad" | "nlp" | "voice">("keypad");
   const [nlpText, setNlpText] = React.useState("");
+
+  const {
+    transcript,
+    isListening,
+    isSupported: isSpeechSupported,
+    error: speechError,
+    startListening,
+    stopListening,
+    resetTranscript,
+  } = useSpeechRecognition();
 
   const [type, setType] = React.useState<"expense" | "income" | "transfer">("expense");
   const [amountStr, setAmountStr] = React.useState("");
@@ -149,14 +162,16 @@ export function QuickAddDialog({
       const timer = setTimeout(() => {
         if (entryMode === "keypad") {
           inputRef.current?.focus();
-        } else {
+        } else if (entryMode === "nlp") {
           nlpInputRef.current?.focus();
         }
         setErrorMessage(null);
       }, 60);
       return () => clearTimeout(timer);
+    } else {
+      if (isListening) stopListening();
     }
-  }, [isOpen, entryMode]);
+  }, [isOpen, entryMode, isListening, stopListening]);
 
   if (!isOpen) return null;
 
@@ -174,6 +189,26 @@ export function QuickAddDialog({
       if (matchedCat) {
         setSelectedCategory(matchedCat.id);
       }
+    }
+  };
+
+  // Handle Voice Parse on speech recognition result
+  const handleVoiceTranscript = (spokenText: string) => {
+    if (!spokenText.trim()) return;
+    const parsed = parseVoiceExpense(spokenText);
+    if (parsed) {
+      setAmountStr(parsed.amount.toString());
+      setCurrency(parsed.currency);
+      setNote(parsed.note);
+      const matchedCat = categoriesList.find(
+        (c) => c.name.toLowerCase() === parsed.categoryName.toLowerCase()
+      );
+      if (matchedCat) {
+        setSelectedCategory(matchedCat.id);
+      }
+      toast.success("Voice Logged!", {
+        description: `${parsed.note} • ${parsed.currency === "USD" ? "$" : "៛"}${parsed.amount}`,
+      });
     }
   };
 
@@ -271,6 +306,13 @@ export function QuickAddDialog({
         finalNote = parsed.note;
         finalCurrency = parsed.currency;
       }
+    } else if (entryMode === "voice" && transcript) {
+      const parsed = parseVoiceExpense(transcript);
+      if (parsed) {
+        finalAmount = parsed.amount;
+        finalNote = parsed.note;
+        finalCurrency = parsed.currency;
+      }
     }
 
     if (isNaN(finalAmount) || finalAmount <= 0) {
@@ -303,6 +345,7 @@ export function QuickAddDialog({
       setAmountStr("");
       setNote("");
       setNlpText("");
+      resetTranscript();
       setReceiptImage(null);
       onSuccess?.();
       onClose();
@@ -338,6 +381,7 @@ export function QuickAddDialog({
         setAmountStr("");
         setNote("");
         setNlpText("");
+        resetTranscript();
         setReceiptImage(null);
         setRemoteReceiptUrl(null);
         onSuccess?.();
@@ -367,10 +411,16 @@ export function QuickAddDialog({
       setAmountStr("");
       setNote("");
       setNlpText("");
+      resetTranscript();
       setReceiptImage(null);
       onSuccess?.();
       onClose();
     }
+  };
+
+  const handleModalClose = () => {
+    if (isListening) stopListening();
+    onClose();
   };
 
   return (
@@ -395,11 +445,14 @@ export function QuickAddDialog({
             )}
           </div>
 
-          {/* Mode Switcher: Keypad vs NLP vs Scan */}
+          {/* Mode Switcher: Keypad vs NLP vs Voice vs Scan */}
           <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
             <button
               type="button"
-              onClick={() => setEntryMode("keypad")}
+              onClick={() => {
+                if (isListening) stopListening();
+                setEntryMode("keypad");
+              }}
               className={cn(
                 "px-2.5 py-1 text-xs font-semibold rounded-lg transition-all",
                 entryMode === "keypad"
@@ -411,7 +464,10 @@ export function QuickAddDialog({
             </button>
             <button
               type="button"
-              onClick={() => setEntryMode("nlp")}
+              onClick={() => {
+                if (isListening) stopListening();
+                setEntryMode("nlp");
+              }}
               className={cn(
                 "px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all",
                 entryMode === "nlp"
@@ -423,7 +479,27 @@ export function QuickAddDialog({
             </button>
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                setEntryMode("voice");
+                if (isSpeechSupported && !isListening) {
+                  startListening((finalText) => handleVoiceTranscript(finalText));
+                }
+              }}
+              className={cn(
+                "px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all",
+                entryMode === "voice"
+                  ? "bg-white dark:bg-zinc-900 text-brand-600 dark:text-accent-400 shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-300"
+              )}
+            >
+              <Mic className={cn("h-3 w-3", isListening && "text-rose-500 animate-pulse")} /> Voice
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (isListening) stopListening();
+                fileInputRef.current?.click();
+              }}
               className="px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 text-zinc-500 hover:text-brand-600 dark:hover:text-accent-400 transition-all cursor-pointer"
               title="Snap or upload a receipt photo or ABA / Bakong KHQR payment screenshot"
             >
@@ -432,7 +508,7 @@ export function QuickAddDialog({
           </div>
 
           <button
-            onClick={onClose}
+            onClick={handleModalClose}
             className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
             <X className="h-5 w-5" />
@@ -459,21 +535,151 @@ export function QuickAddDialog({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Natural Language Mode (Spec 3.4 #21) */}
-          {entryMode === "nlp" ? (
+          {/* Voice Mode */}
+          {entryMode === "voice" ? (
+            <div className="space-y-3">
+              <div className="relative flex flex-col items-center justify-center p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-950/80 border border-zinc-200/80 dark:border-zinc-800 text-center overflow-hidden">
+                {/* Background glow when listening */}
+                {isListening && (
+                  <div className="absolute inset-0 bg-brand-500/5 dark:bg-brand-500/10 animate-pulse pointer-events-none" />
+                )}
+
+                {/* Animated Central Mic Button */}
+                <div className="relative my-2">
+                  {isListening && (
+                    <>
+                      <span className="absolute -inset-2.5 rounded-full bg-rose-500/25 animate-ping" />
+                      <span className="absolute -inset-5 rounded-full bg-rose-500/15 animate-pulse" />
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isListening) {
+                        stopListening();
+                      } else {
+                        startListening((finalText) => handleVoiceTranscript(finalText));
+                      }
+                    }}
+                    disabled={!isSpeechSupported}
+                    className={cn(
+                      "relative z-10 w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95 cursor-pointer",
+                      isListening
+                        ? "bg-rose-500 text-white shadow-rose-500/40 ring-4 ring-rose-200 dark:ring-rose-950"
+                        : "bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 text-white shadow-brand-600/30 hover:scale-105"
+                    )}
+                    title={isListening ? "Tap to stop listening" : "Tap to speak"}
+                  >
+                    {isListening ? (
+                      <Mic className="h-7 w-7 animate-pulse" />
+                    ) : (
+                      <Mic className="h-7 w-7" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Status & Live Speech Bubble */}
+                <div className="mt-2 space-y-1.5 w-full max-w-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    {isListening
+                      ? "Listening... Speak naturally"
+                      : transcript
+                      ? "Voice Transcript"
+                      : isSpeechSupported
+                      ? "Tap to Speak Expense"
+                      : "Speech recognition not supported in this browser"}
+                  </p>
+
+                  {transcript ? (
+                    <div className="text-sm font-medium text-zinc-800 dark:text-zinc-100 italic bg-white dark:bg-zinc-900 py-2 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm inline-block max-w-full truncate">
+                      &ldquo;{transcript}&rdquo;
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                      <button
+                        type="button"
+                        onClick={() => handleVoiceTranscript("Coffee $2.50")}
+                        className="px-2 py-0.5 rounded-md bg-zinc-200/70 hover:bg-zinc-200 dark:bg-zinc-800/80 dark:hover:bg-zinc-800 transition-colors"
+                      >
+                        &ldquo;Coffee $2.50&rdquo;
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleVoiceTranscript("PassApp 8000 riel")}
+                        className="px-2 py-0.5 rounded-md bg-zinc-200/70 hover:bg-zinc-200 dark:bg-zinc-800/80 dark:hover:bg-zinc-800 transition-colors"
+                      >
+                        &ldquo;PassApp 8000 riel&rdquo;
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleVoiceTranscript("Lunch 12 dollars")}
+                        className="px-2 py-0.5 rounded-md bg-zinc-200/70 hover:bg-zinc-200 dark:bg-zinc-800/80 dark:hover:bg-zinc-800 transition-colors"
+                      >
+                        &ldquo;Lunch 12 dollars&rdquo;
+                      </button>
+                    </div>
+                  )}
+
+                  {speechError && (
+                    <p className="text-xs font-medium text-rose-500 pt-1">{speechError}</p>
+                  )}
+                </div>
+
+                {/* Voice Extracted Banner */}
+                {amountStr && (
+                  <div className="w-full mt-3 p-2.5 bg-brand-50/90 dark:bg-brand-950/50 border border-brand-200 dark:border-brand-800/50 rounded-xl text-xs flex items-center justify-between text-brand-900 dark:text-brand-200 text-left animate-in fade-in">
+                    <div className="truncate">
+                      <span>Voice Extracted: </span>
+                      <strong className="tabular-nums">
+                        {currency === "USD" ? "$" : "៛"}{amountStr}
+                      </strong>{" "}
+                      <span>for </span>
+                      <strong>{note || "Expense"}</strong>
+                    </div>
+                    <Badge variant="outline" className="border-brand-500/40 text-[10px] shrink-0 ml-2">
+                      {currency}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : entryMode === "nlp" ? (
             <div className="space-y-2">
               <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 flex items-center justify-between">
-                <span>Type naturally: &quot;coffee 2.5&quot; or &quot;taxi 8000 khr&quot;</span>
+                <span>Type or speak: &quot;coffee 2.5&quot; or &quot;taxi 8000 khr&quot;</span>
                 <span className="text-[10px] text-accent-600 dark:text-accent-400 font-bold uppercase">AI Smart Parse</span>
               </label>
-              <Input
-                ref={nlpInputRef}
-                placeholder="e.g. iced latte 3.50, lunch 12, grab bike 6000 khr"
-                value={nlpText}
-                onChange={(e) => handleNlpChange(e.target.value)}
-                className="text-base py-3"
-                autoFocus
-              />
+              <div className="relative">
+                <Input
+                  ref={nlpInputRef}
+                  placeholder="e.g. iced latte 3.50, lunch 12, grab bike 6000 khr"
+                  value={nlpText}
+                  onChange={(e) => handleNlpChange(e.target.value)}
+                  className="text-base py-3 pr-10"
+                  autoFocus
+                />
+                {isSpeechSupported && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isListening) {
+                        stopListening();
+                      } else {
+                        startListening((text) => handleNlpChange(text));
+                      }
+                    }}
+                    className={cn(
+                      "absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors",
+                      isListening
+                        ? "text-rose-500 bg-rose-50 dark:bg-rose-950/60 animate-pulse"
+                        : "text-zinc-400 hover:text-brand-600 dark:hover:text-accent-400"
+                    )}
+                    title={isListening ? "Stop listening" : "Dictate with voice"}
+                  >
+                    <Mic className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
               {amountStr && (
                 <div className="p-3 bg-brand-50/80 dark:bg-brand-950/40 border border-brand-200/50 dark:border-brand-800/40 rounded-xl text-xs flex items-center justify-between text-brand-900 dark:text-brand-200">
                   <span>Detected: <strong>{currency === "USD" ? "$" : "៛"}{amountStr}</strong> for <strong>{note || "Expense"}</strong></span>

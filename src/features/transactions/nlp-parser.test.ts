@@ -27,6 +27,14 @@ describe("Natural Language Parser", () => {
     expect(res?.categoryName).toBe("Housing & Bills");
   });
 
+  it("parses spoken phrase fallback with number words", () => {
+    const res = parseNaturalLanguageInput("twenty five dollars on groceries at lucky supermarket");
+    expect(res).not.toBeNull();
+    expect(res?.amount).toBe(25);
+    expect(res?.currency).toBe("USD");
+    expect(res?.categoryName).toBe("Groceries");
+  });
+
   it("returns null for non-monetary text", () => {
     expect(parseNaturalLanguageInput("hello world without money")).toBeNull();
     expect(parseNaturalLanguageInput("")).toBeNull();
