@@ -14,9 +14,6 @@ import {
   Image as ImageIcon,
   Zap,
   WifiOff,
-  HeartPulse,
-  Banknote,
-  Briefcase,
   Mic,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,25 +28,13 @@ import { usePWA } from "@/components/pwa-provider";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { CATEGORY_ICONS } from "@/features/categories/components/category-manager";
 
 interface QuickAddDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
 }
-
-const ICON_MAP: Record<string, typeof Utensils> = {
-  utensils: Utensils,
-  "shopping-cart": ShoppingCart,
-  car: Car,
-  home: Home,
-  tv: Tv,
-  "shopping-bag": ShoppingBag,
-  "heart-pulse": HeartPulse,
-  banknote: Banknote,
-  briefcase: Briefcase,
-  sparkles: Sparkles,
-};
 
 const DEFAULT_CATEGORIES = [
   { id: "cat-1", name: "Food & Drinks", color: "#EF4444", icon: Utensils },
@@ -120,7 +105,7 @@ export function QuickAddDialog({
               id: c.id,
               name: c.name,
               color: c.color || "#3B82F6",
-              icon: (c.icon && ICON_MAP[c.icon]) || Sparkles,
+              icon: (c.icon && CATEGORY_ICONS[c.icon]) || Sparkles,
             }));
             // Spec FR-T5: Category is preselected with the last used category
             let preselectedId = mapped[0].id;

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatMoney, calculateForecast } from "@/lib/money";
+import { formatMoney, calculateForecast, formatKhrApproximation } from "@/lib/money";
 import { getDaysPassedInMonth, getDaysLeftInMonth } from "@/lib/dates";
 import { useMounted } from "@/lib/hooks";
 import { createClient } from "@/lib/supabase/client";
@@ -207,6 +207,9 @@ export default function MonthPage() {
             <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(spentThisMonthMinor, "USD")}
             </CardTitle>
+            <p className="text-[11px] text-zinc-400 tabular-nums">
+              {formatKhrApproximation(spentThisMonthMinor)}
+            </p>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">
@@ -221,6 +224,9 @@ export default function MonthPage() {
             <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(averagePerDayMinor, "USD")}
             </CardTitle>
+            <p className="text-[11px] text-zinc-400 tabular-nums">
+              {formatKhrApproximation(averagePerDayMinor)} / day
+            </p>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -242,6 +248,9 @@ export default function MonthPage() {
             <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(forecastMinor, "USD")}
             </CardTitle>
+            <p className="text-[11px] text-zinc-400 tabular-nums">
+              {formatKhrApproximation(forecastMinor)}
+            </p>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">

@@ -15,7 +15,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatMoney, toMinorUnits } from "@/lib/money";
+import {
+  formatMoney,
+  toMinorUnits,
+  convertUsdToKhrMinor,
+  DEFAULT_USD_TO_KHR_RATE,
+} from "@/lib/money";
 import { detectSpendingLeaks, type LeakTransaction } from "@/features/reports/leak-detector";
 import { calculateStreaks } from "@/features/reports/streaks";
 import { createClient } from "@/lib/supabase/client";
@@ -265,7 +270,8 @@ export default function InsightsPage() {
 
   const totalLeakMinor = React.useMemo(() => {
     return leaks.reduce((acc, l) => {
-      const converted = currencyMode === "KHR" ? l.totalMinor * 40n : l.totalMinor;
+      const converted =
+        currencyMode === "KHR" ? convertUsdToKhrMinor(l.totalMinor) : l.totalMinor;
       return acc + converted;
     }, 0n);
   }, [leaks, currencyMode]);
@@ -274,7 +280,8 @@ export default function InsightsPage() {
     return transformCategoryChartData(
       leaks.map((l) => ({
         name: l.title,
-        spentMinor: currencyMode === "KHR" ? l.totalMinor * 40n : l.totalMinor,
+        spentMinor:
+          currencyMode === "KHR" ? convertUsdToKhrMinor(l.totalMinor) : l.totalMinor,
         color: l.categoryColor,
       })),
       currencyMode
@@ -540,7 +547,7 @@ export default function InsightsPage() {
                 <Badge variant="outline" className="text-[10px]">Live</Badge>
               </div>
               <p className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                1 USD = 4,000 KHR
+                1 USD = {DEFAULT_USD_TO_KHR_RATE.toLocaleString()} KHR
               </p>
               <p className="text-xs text-zinc-500">
                 Transactions in Riel are computed into base USD minor units without altering previous historical conversions.
@@ -557,11 +564,11 @@ export default function InsightsPage() {
                 </Badge>
               </div>
               <p className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                {formatMoney(liveMonthlyBudget * 40n, "KHR")}
+                {formatMoney(convertUsdToKhrMinor(liveMonthlyBudget), "KHR")}
               </p>
               <p className="text-xs text-zinc-500">
                 {liveMonthlyBudget > 0n
-                  ? `Daily allowance target in KHR: ~${formatMoney((liveMonthlyBudget * 40n) / 30n, "KHR")} / day.`
+                  ? `Daily allowance target in KHR: ~${formatMoney(convertUsdToKhrMinor(liveMonthlyBudget) / 30n, "KHR")} / day.`
                   : "Set a monthly budget to see your daily allowance calculated in Cambodian Riel."}
               </p>
             </div>

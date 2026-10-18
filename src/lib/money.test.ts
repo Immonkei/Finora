@@ -5,6 +5,8 @@ import {
   formatMoney,
   calculateDailyAllowance,
   calculateForecast,
+  convertUsdToKhrMinor,
+  formatKhrApproximation,
 } from "./money";
 
 describe("Money Utilities", () => {
@@ -47,5 +49,15 @@ describe("Money Utilities", () => {
     const result = calculateForecast(BigInt(10000), 10, 20);
     expect(result.averagePerDayMinor).toBe(BigInt(1000));
     expect(result.forecastMinor).toBe(BigInt(30000));
+  });
+
+  it("converts USD cents to KHR riel accurately using integer math", () => {
+    // $1.00 (100 cents) at 4100 rate = 4100 riel
+    expect(convertUsdToKhrMinor(100n)).toBe(4100n);
+    // $10.00 (1000 cents) = 41,000 riel
+    expect(convertUsdToKhrMinor(1000n)).toBe(41000n);
+    // $0.50 (50 cents) = 2050 riel
+    expect(convertUsdToKhrMinor(50n)).toBe(2050n);
+    expect(formatKhrApproximation(1000n)).toContain("41,000");
   });
 });

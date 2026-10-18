@@ -35,6 +35,32 @@ export const CURRENCY_CONFIG: Record<
   },
 };
 
+export const DEFAULT_USD_TO_KHR_RATE = 4100;
+
+/**
+ * Converts USD minor units (cents) to KHR minor units (riel) using integer math.
+ * 1 USD ($1.00 = 100 cents) = 4,100 KHR.
+ */
+export function convertUsdToKhrMinor(
+  usdMinor: bigint | number,
+  rate: number = DEFAULT_USD_TO_KHR_RATE
+): bigint {
+  const minor = typeof usdMinor === "bigint" ? usdMinor : BigInt(Math.round(usdMinor));
+  return (minor * BigInt(Math.round(rate))) / 100n;
+}
+
+/**
+ * Formats a clean KHR approximation string from USD minor units.
+ * Example: formatKhrApproximation(1000n) -> "≈ ៛41,000"
+ */
+export function formatKhrApproximation(
+  usdMinor: bigint | number,
+  rate: number = DEFAULT_USD_TO_KHR_RATE
+): string {
+  const khr = convertUsdToKhrMinor(usdMinor, rate);
+  return `≈ ៛${khr.toLocaleString()}`;
+}
+
 /**
  * Converts user input decimal amount to integer minor units (bigint).
  * Example: toMinorUnits(12.50, 'USD') -> 1250n

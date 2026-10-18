@@ -24,12 +24,13 @@ import {
   ShieldCheck,
   X,
   Wallet,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, formatKhrApproximation } from "@/lib/money";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -44,7 +45,7 @@ import {
   type CategoryBudgetInput,
 } from "../rollover";
 
-export const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   utensils: Utensils,
   "shopping-cart": ShoppingCart,
   car: Car,
@@ -326,7 +327,7 @@ export function CategoryManager() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">
-              ≈ ៛{((Number(summary.totalBaseBudgetMinor) * 41) / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })} / month
+              {formatKhrApproximation(summary.totalBaseBudgetMinor)} / month
             </p>
           </CardContent>
         </Card>
@@ -449,7 +450,7 @@ export function CategoryManager() {
                               <strong className="text-zinc-900 dark:text-zinc-200 font-semibold">
                                 {formatMoney(budgetMinor, "USD")}
                               </strong>{" "}
-                              / mo (≈ ៛{((Number(budgetMinor) * 41) / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })})
+                              / mo ({formatKhrApproximation(budgetMinor)})
                             </>
                           ) : (
                             "No budget limit set"

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { type UpcomingCharge } from "../projection";
-import { formatMoney, type CurrencyCode } from "@/lib/money";
+import { formatMoney, formatKhrApproximation, type CurrencyCode } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
 import { CalendarClock, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -152,7 +152,7 @@ export function CashFlowTimeline({ charges, className }: CashFlowTimelineProps) 
                       {formatMoney(charge.amountMinor, (charge.currency as CurrencyCode) || "USD")}
                     </span>
                     <p className="text-[10px] text-zinc-400 tabular-nums">
-                      ≈ ៛{(Number(charge.amountMinor) * 41).toLocaleString()}
+                      {formatKhrApproximation(charge.amountMinor)}
                     </p>
                   </div>
                 </div>
