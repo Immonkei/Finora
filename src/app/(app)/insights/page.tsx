@@ -10,9 +10,11 @@ import {
   Globe,
   Award,
   Calendar,
+  FileText,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatMoney, toMinorUnits } from "@/lib/money";
 import { detectSpendingLeaks, type LeakTransaction } from "@/features/reports/leak-detector";
 import { calculateStreaks } from "@/features/reports/streaks";
@@ -21,6 +23,7 @@ import { CategoryDonutChart, transformCategoryChartData } from "@/components/cha
 import { SpendingHeatmap, type DaySpendingData } from "@/features/reports/components/spending-heatmap";
 import { FinancialHealthCard } from "@/features/reports/components/financial-health-card";
 import { calculateFinancialHealthScore } from "@/features/reports/health-score";
+import { MonthlyStatementModal } from "@/features/reports/components/monthly-statement-modal";
 
 export default function InsightsPage() {
   const [currencyMode, setCurrencyMode] = React.useState<"USD" | "KHR">("USD");
@@ -34,6 +37,7 @@ export default function InsightsPage() {
   const [activeGoalsCount, setActiveGoalsCount] = React.useState<number>(0);
   const [completedGoalsCount, setCompletedGoalsCount] = React.useState<number>(0);
   const [monthDayInfo, setMonthDayInfo] = React.useState({ daysInMonth: 30, currentDay: 15 });
+  const [isStatementOpen, setIsStatementOpen] = React.useState(false);
 
   React.useEffect(() => {
     async function loadInsightsData() {
@@ -290,28 +294,41 @@ export default function InsightsPage() {
           </h1>
         </div>
 
-        {/* Multi-Currency Toggle (Spec 3.3 #19) */}
-        <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl self-start sm:self-auto">
-          <button
-            onClick={() => setCurrencyMode("USD")}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              currencyMode === "USD"
-                ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
-            }`}
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {/* Multi-Currency Toggle (Spec 3.3 #19) */}
+          <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
+            <button
+              onClick={() => setCurrencyMode("USD")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                currencyMode === "USD"
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
+              }`}
+            >
+              USD ($)
+            </button>
+            <button
+              onClick={() => setCurrencyMode("KHR")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                currencyMode === "KHR"
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
+              }`}
+            >
+              KHR (៛)
+            </button>
+          </div>
+
+          <Button
+            onClick={() => setIsStatementOpen(true)}
+            variant="outline"
+            size="sm"
+            className="gap-2 font-semibold text-xs border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-950/50 shadow-xs h-9"
           >
-            USD ($)
-          </button>
-          <button
-            onClick={() => setCurrencyMode("KHR")}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              currencyMode === "KHR"
-                ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
-            }`}
-          >
-            KHR (៛)
-          </button>
+            <FileText className="w-4 h-4 text-brand-600 dark:text-accent-400" />
+            <span className="hidden sm:inline">Export Statement</span>
+            <span className="sm:hidden">PDF</span>
+          </Button>
         </div>
       </div>
 
@@ -551,6 +568,11 @@ export default function InsightsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <MonthlyStatementModal
+        isOpen={isStatementOpen}
+        onClose={() => setIsStatementOpen(false)}
+      />
     </div>
   );
 }

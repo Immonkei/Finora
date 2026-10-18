@@ -7,6 +7,9 @@ import { formatMoney, calculateForecast } from "@/lib/money";
 import { getDaysPassedInMonth, getDaysLeftInMonth } from "@/lib/dates";
 import { useMounted } from "@/lib/hooks";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
+import { MonthlyStatementModal } from "@/features/reports/components/monthly-statement-modal";
 import {
   BudgetPaceAreaChart,
   CategoryDonutChart,
@@ -39,6 +42,7 @@ export default function MonthPage() {
     totalMonthlyLimitMinor: bigint;
     categoryBudgets: CatBudgetItem[];
   } | null>(null);
+  const [isStatementOpen, setIsStatementOpen] = React.useState(false);
 
   React.useEffect(() => {
     async function loadMonthData() {
@@ -160,13 +164,27 @@ export default function MonthPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
-          Monthly Analytics & Budgets
-        </p>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-          This Month
-        </h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
+            Monthly Analytics & Budgets
+          </p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            This Month
+          </h1>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setIsStatementOpen(true)}
+            variant="outline"
+            size="sm"
+            className="gap-2 font-semibold text-xs border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-950/50 shadow-xs"
+          >
+            <FileText className="w-4 h-4 text-brand-600 dark:text-accent-400" />
+            <span>Export Statement (PDF)</span>
+          </Button>
+        </div>
       </div>
 
       {/* Overview Cards */}
@@ -360,6 +378,11 @@ export default function MonthPage() {
           </CardContent>
         </Card>
       </div>
+
+      <MonthlyStatementModal
+        isOpen={isStatementOpen}
+        onClose={() => setIsStatementOpen(false)}
+      />
     </div>
   );
 }
