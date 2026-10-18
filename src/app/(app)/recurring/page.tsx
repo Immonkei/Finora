@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   Calendar,
   Power,
+  CalendarClock,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -19,10 +21,14 @@ import {
   createRecurringRule,
   toggleRecurringRule,
   processDueRecurringRules,
+  deleteRecurringRule,
 } from "@/features/recurring/actions";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeTable } from "@/lib/supabase/realtime";
 import { formatDisplayDate } from "@/lib/dates";
+import { CashFlowTimeline } from "@/features/recurring/components/cash-flow-timeline";
+import { projectUpcomingCharges } from "@/features/recurring/projection";
+import { useMounted } from "@/lib/hooks";
 
 interface RecurringRuleItem {
   id: string;
@@ -32,6 +38,7 @@ interface RecurringRuleItem {
   frequency: "daily" | "weekly" | "monthly";
   category: string;
   nextRun: string;
+  rawNextRun: string;
   active: boolean;
 }
 
@@ -72,6 +79,7 @@ export default function RecurringPage() {
             frequency: r.frequency as "daily" | "weekly" | "monthly",
             category: cat?.name || "Housing & Bills",
             nextRun: formatDisplayDate(r.next_run),
+            rawNextRun: r.next_run,
             active: r.active,
           };
         });
@@ -97,11 +105,28 @@ export default function RecurringPage() {
     },
   });
 
+  const isMounted = useMounted();
   const activeRules = rules.filter((r) => r.active);
   const totalMonthlyObligation = activeRules.reduce(
     (acc, r) => acc + r.amountMinor,
     BigInt(0)
   );
+
+  const upcomingCharges = React.useMemo(() => {
+    if (!isMounted) return [];
+    return projectUpcomingCharges(
+      rules.map((r) => ({
+        id: r.id,
+        name: r.name,
+        amountMinor: r.amountMinor,
+        currency: r.currency,
+        frequency: r.frequency,
+        category: r.category,
+        nextRunDate: r.rawNextRun,
+        active: r.active,
+      }))
+    );
+  }, [rules, isMounted]);
 
   const handleToggle = async (id: string, currentState: boolean) => {
     setRules((prev) =>
@@ -116,6 +141,24 @@ export default function RecurringPage() {
           : "Transactions will be auto-generated on due dates",
       }
     );
+  };
+
+  const handleDeleteRule = async (id: string, ruleName: string) => {
+    if (!window.confirm(`Are you sure you want to delete "${ruleName}"?`)) {
+      return;
+    }
+
+    try {
+      const res = await deleteRecurringRule(id);
+      if (res.success) {
+        setRules((prev) => prev.filter((r) => r.id !== id));
+        toast.success(`Rule "${ruleName}" deleted`);
+      } else {
+        toast.error("Failed to delete rule", { description: res.error });
+      }
+    } catch {
+      toast.error("Could not delete recurring rule");
+    }
   };
 
   const handleProcessDue = async () => {
@@ -229,6 +272,22 @@ export default function RecurringPage() {
         </Card>
       </div>
 
+      {/* 30-Day Upcoming Cash Flow & Bills Timeline */}
+      <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <CalendarClock className="h-4 w-4 text-brand-600 dark:text-accent-400" />
+            30-Day Upcoming Cash Flow & Bills
+          </CardTitle>
+          <CardDescription>
+            Chronological projection of all upcoming committed charges and recurring obligations
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CashFlowTimeline charges={upcomingCharges} />
+        </CardContent>
+      </Card>
+
       {/* Rules List */}
       <Card>
         <CardHeader className="pb-4">
@@ -288,8 +347,8 @@ export default function RecurringPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 mr-1">
                   {formatMoney(rule.amountMinor, "USD")}
                 </p>
                 <Button
@@ -301,6 +360,14 @@ export default function RecurringPage() {
                   <Power className="h-3.5 w-3.5 mr-1" />
                   {rule.active ? "Pause" : "Resume"}
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteRule(rule.id, rule.name)}
+                  className="text-zinc-400 hover:text-rose-500 dark:hover:text-rose-400 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  title="Delete recurring rule"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
             </div>
           ))

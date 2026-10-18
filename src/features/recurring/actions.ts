@@ -165,6 +165,36 @@ export async function toggleRecurringRule(
 }
 
 /**
+ * Deletes a recurring rule.
+ */
+export async function deleteRecurringRule(id: string): Promise<ActionResult> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    revalidatePath("/recurring");
+    return { success: true };
+  }
+
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("recurring_rules")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath("/recurring");
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to delete recurring rule",
+    };
+  }
+}
+
+/**
  * Idempotent processor for due recurring rules (Spec 9.5 & FR-R3).
  * Inserts transactions with unique (recurring_id, occurred_at) constraint preventing duplicates.
  */
