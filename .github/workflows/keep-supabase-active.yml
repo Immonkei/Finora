@@ -1,0 +1,55 @@
+name: Keep Supabase Active
+
+on:
+  schedule:
+    # Run every 3 days at 04:00 UTC (Supabase pauses after 7 days of inactivity)
+    - cron: '0 4 */3 * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  keep-alive:
+    name: Ping Supabase Database
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          echo "Starting Supabase keep-alive ping..."
+          
+          # 1. Direct Supabase Database REST query (resets inactivity timer)
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            echo "Pinging Supabase REST API at $SUPABASE_URL..."
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X GET "${SUPABASE_URL}/rest/v1/categories?select=id&limit=1" \
+              -H "apikey: ${SUPABASE_ANON_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+              -H "Range: 0-0")
+            
+            echo "Supabase REST API response code: $HTTP_STATUS"
+            if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 400 ]; then
+              echo "✅ Supabase project is active and healthy!"
+            else
+              echo "⚠️ Supabase returned status $HTTP_STATUS"
+            fi
+          else
+            echo "Notice: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY not set in GitHub repository secrets."
+          fi
+
+          # 2. Ping deployed Next.js App keep-alive endpoint if APP_URL is configured
+          if [ -n "$APP_URL" ]; then
+            echo "Pinging Next.js keep-alive endpoint at ${APP_URL}/api/cron/keep-alive..."
+            AUTH_HEADER=""
+            if [ -n "$CRON_SECRET" ]; then
+              AUTH_HEADER="Authorization: Bearer ${CRON_SECRET}"
+            fi
+            
+            curl -s -i -X GET "${APP_URL}/api/cron/keep-alive?public=true" \
+              -H "$AUTH_HEADER" || echo "App ping completed."
+          fi
+          
+          echo "Keep-alive job finished successfully at $(date -u)"

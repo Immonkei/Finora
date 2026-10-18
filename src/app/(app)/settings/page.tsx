@@ -10,17 +10,22 @@ import {
   LogOut,
   Users,
   Smartphone,
+  Database,
+  Activity,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PWAInstallCard, OfflineQueueCard } from "@/components/pwa-provider";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 import { createClient } from "@/lib/supabase/client";
 import { updateUserSettings, deleteUserAccount } from "@/features/settings/actions";
 import { createNotification } from "@/features/notifications/actions";
 import { CategoryManager } from "@/features/categories/components/category-manager";
+import { triggerKeepAlivePing } from "@/features/settings/keep-alive-action";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -65,6 +70,32 @@ export default function SettingsPage() {
   }, []);
 
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [isPingingSupabase, setIsPingingSupabase] = React.useState(false);
+  const [lastPingResult, setLastPingResult] = React.useState<{ latencyMs: number; timestamp: string } | null>(null);
+
+  const handleTestKeepAlive = async () => {
+    setIsPingingSupabase(true);
+    try {
+      const res = await triggerKeepAlivePing();
+      if (res.success) {
+        setLastPingResult({
+          latencyMs: res.latencyMs,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        });
+        toast.success("Supabase project is active!", {
+          description: `Ping response: ${res.latencyMs}ms. Inactivity timer refreshed.`,
+        });
+      } else {
+        toast.error("Supabase ping failed", {
+          description: res.error || res.message,
+        });
+      }
+    } catch {
+      toast.error("Could not ping Supabase");
+    } finally {
+      setIsPingingSupabase(false);
+    }
+  };
 
   const handleSaveSettings = async () => {
     try {
@@ -399,6 +430,69 @@ export default function SettingsPage() {
               <span className="text-zinc-400">Service Worker:</span>
               <p className="font-semibold text-zinc-800 dark:text-zinc-200">Active (v1.2.0)</p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Supabase Keep-Alive & Suspension Guard */}
+      <Card className="border-emerald-200/80 dark:border-emerald-900/60 bg-emerald-50/20 dark:bg-emerald-950/10">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+              <Database className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> Supabase Anti-Suspension Scheduler
+            </CardTitle>
+            <Badge variant="outline" className="text-xs px-2.5 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 bg-emerald-100/50 dark:bg-emerald-900/30 font-semibold">
+              <Activity className="w-3 h-3 mr-1 inline animate-pulse text-emerald-600" />
+              Active Guard
+            </Badge>
+          </div>
+          <CardDescription>
+            Automated keep-alive scheduler that runs every 3 days to prevent Supabase free-tier project inactivity pause.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800">
+              <span className="text-zinc-400 block text-[11px]">GitHub Actions Cron:</span>
+              <p className="font-semibold text-zinc-800 dark:text-zinc-200 mt-0.5">Every 3 Days (04:00 UTC)</p>
+            </div>
+            <div className="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800">
+              <span className="text-zinc-400 block text-[11px]">Vercel Scheduled Cron:</span>
+              <p className="font-semibold text-zinc-800 dark:text-zinc-200 mt-0.5">Daily at 03:00 UTC</p>
+            </div>
+            <div className="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800">
+              <span className="text-zinc-400 block text-[11px]">Keep-Alive Endpoint:</span>
+              <p className="font-mono text-[11px] text-brand-600 dark:text-accent-400 mt-0.5 truncate">/api/cron/keep-alive</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
+            <div>
+              <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                {lastPingResult ? (
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                    Last ping responded in {lastPingResult.latencyMs}ms at {lastPingResult.timestamp}
+                  </span>
+                ) : (
+                  "Test your live database connection and refresh inactivity timer"
+                )}
+              </p>
+              <p className="text-[11px] text-zinc-500">
+                Sends an authenticated ping query to Postgres to ensure the instance is warm
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleTestKeepAlive}
+              disabled={isPingingSupabase}
+              className="gap-2 text-xs font-semibold shrink-0 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200"
+            >
+              <RefreshCw className={cn("w-3.5 h-3.5", isPingingSupabase ? "animate-spin" : "")} />
+              <span>{isPingingSupabase ? "Pinging..." : "Send Keep-Alive Ping"}</span>
+            </Button>
           </div>
         </CardContent>
       </Card>
