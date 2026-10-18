@@ -62,7 +62,7 @@ export default function Home() {
         </p>
 
         <div className="mt-8 flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-          <Link href="/today" className="w-full sm:w-auto">
+          <Link href="/register" className="w-full sm:w-auto">
             <Button size="lg" className="w-full sm:w-auto gap-2 shadow-lg shadow-brand-600/20 px-8 text-base font-semibold">
               Get Started Free <ArrowRight className="h-4 w-4" />
             </Button>
