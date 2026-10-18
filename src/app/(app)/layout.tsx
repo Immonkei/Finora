@@ -1,6 +1,7 @@
 import { DesktopSidebar, MobileNavBar } from "@/components/app-nav";
 import { NotificationBell } from "@/components/notification-bell";
 import { FinoraLogo } from "@/components/finora-logo";
+import { AIChatDrawer } from "@/components/ai-chat-drawer";
 import Link from "next/link";
 
 export default function AppLayout({
@@ -30,6 +31,7 @@ export default function AppLayout({
         </main>
       </div>
       <MobileNavBar />
+      <AIChatDrawer />
     </div>
   );
 }
