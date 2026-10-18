@@ -29,6 +29,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CATEGORY_ICONS } from "@/features/categories/components/category-manager";
+import { DEFAULT_USD_TO_KHR_RATE } from "@/lib/money";
 
 interface QuickAddDialogProps {
   isOpen: boolean;
@@ -408,109 +409,124 @@ export function QuickAddDialog({
     onClose();
   };
 
+  const parsedAmt = parseFloat(amountStr) || 0;
+  const secondaryEstimate =
+    currency === "USD"
+      ? `≈ ៛${Math.round(parsedAmt * DEFAULT_USD_TO_KHR_RATE).toLocaleString()}`
+      : `≈ $${(parsedAmt / DEFAULT_USD_TO_KHR_RATE).toFixed(2)}`;
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
       <div
-        className="w-full max-w-lg rounded-t-3xl sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 space-y-4 animate-in slide-in-from-bottom duration-200"
+        className="w-full max-w-lg rounded-t-[28px] sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-2xl p-4 sm:p-6 space-y-3.5 max-h-[92vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200"
         role="dialog"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between pb-1 border-b border-zinc-100 dark:border-zinc-800">
+        {/* Mobile Pull Handle Bar */}
+        <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto -mt-1 mb-0.5 sm:hidden shrink-0" />
+
+        {/* Header: Title, Status & Close */}
+        <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800/80 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-accent-400">
+            <span className="p-1.5 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-accent-400">
               <Sparkles className="h-4 w-4" />
             </span>
-            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-              Quick Log
-            </h2>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
+                Quick Log
+              </h2>
+            </div>
             {isOffline && (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded-full">
+              <span className="flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded-full ml-1">
                 <WifiOff className="h-3 w-3" /> Offline
               </span>
             )}
           </div>
 
-          {/* Mode Switcher: Keypad vs NLP vs Voice vs Scan */}
-          <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
-            <button
-              type="button"
-              onClick={() => {
-                if (isListening) stopListening();
-                setEntryMode("keypad");
-              }}
-              className={cn(
-                "px-2.5 py-1 text-xs font-semibold rounded-lg transition-all",
-                entryMode === "keypad"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-300"
-              )}
-            >
-              Keypad
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (isListening) stopListening();
-                setEntryMode("nlp");
-              }}
-              className={cn(
-                "px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all",
-                entryMode === "nlp"
-                  ? "bg-white dark:bg-zinc-900 text-brand-600 dark:text-accent-400 shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-300"
-              )}
-            >
-              <Zap className="h-3 w-3" /> AI Text
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEntryMode("voice");
-                if (isSpeechSupported && !isListening) {
-                  startListening((finalText) => handleVoiceTranscript(finalText));
-                }
-              }}
-              className={cn(
-                "px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all",
-                entryMode === "voice"
-                  ? "bg-white dark:bg-zinc-900 text-brand-600 dark:text-accent-400 shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-300"
-              )}
-            >
-              <Mic className={cn("h-3 w-3", isListening && "text-rose-500 animate-pulse")} /> Voice
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (isListening) stopListening();
-                fileInputRef.current?.click();
-              }}
-              className="px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 text-zinc-500 hover:text-brand-600 dark:hover:text-accent-400 transition-all cursor-pointer"
-              title="Snap or upload a receipt photo or ABA / Bakong KHQR payment screenshot"
-            >
-              <Camera className="h-3 w-3" /> Scan Slip
-            </button>
-          </div>
-
           <button
             onClick={handleModalClose}
-            className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            aria-label="Close dialog"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
+        {/* Mode Switcher Bar */}
+        <div className="grid grid-cols-4 p-1 rounded-xl bg-zinc-100/90 dark:bg-zinc-800/90 gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              if (isListening) stopListening();
+              setEntryMode("keypad");
+            }}
+            className={cn(
+              "py-1.5 text-xs font-semibold rounded-lg transition-all text-center cursor-pointer",
+              entryMode === "keypad"
+                ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 shadow-xs"
+                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
+            )}
+          >
+            Keypad
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (isListening) stopListening();
+              setEntryMode("nlp");
+            }}
+            className={cn(
+              "py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-all text-center cursor-pointer",
+              entryMode === "nlp"
+                ? "bg-white dark:bg-zinc-900 text-brand-600 dark:text-accent-400 shadow-xs"
+                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
+            )}
+          >
+            <Zap className="h-3 w-3 shrink-0" />
+            <span className="truncate">AI Text</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEntryMode("voice");
+              if (isSpeechSupported && !isListening) {
+                startListening((finalText) => handleVoiceTranscript(finalText));
+              }
+            }}
+            className={cn(
+              "py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-all text-center cursor-pointer",
+              entryMode === "voice"
+                ? "bg-white dark:bg-zinc-900 text-brand-600 dark:text-accent-400 shadow-xs"
+                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
+            )}
+          >
+            <Mic className={cn("h-3 w-3 shrink-0", isListening && "text-rose-500 animate-pulse")} />
+            <span className="truncate">Voice</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (isListening) stopListening();
+              fileInputRef.current?.click();
+            }}
+            className="py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 text-zinc-500 hover:text-brand-600 dark:hover:text-accent-400 transition-all cursor-pointer text-center"
+            title="Snap or upload a receipt photo or ABA / Bakong KHQR payment screenshot"
+          >
+            <Camera className="h-3 w-3 shrink-0" />
+            <span className="truncate">Scan Slip</span>
+          </button>
+        </div>
+
         {/* Type Segmented Buttons */}
-        <div className="flex rounded-xl bg-zinc-100 dark:bg-zinc-800 p-1">
+        <div className="grid grid-cols-3 rounded-xl bg-zinc-100/90 dark:bg-zinc-800/90 p-1 shrink-0">
           {(["expense", "income", "transfer"] as const).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setType(t)}
               className={cn(
-                "flex-1 py-1.5 text-xs font-semibold rounded-lg capitalize transition-all",
+                "py-1.5 text-xs font-semibold rounded-lg capitalize transition-all text-center cursor-pointer",
                 type === t
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                   : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
               )}
             >
@@ -519,7 +535,7 @@ export function QuickAddDialog({
           ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5 flex-1 overflow-y-auto pr-0.5">
           {/* Voice Mode */}
           {entryMode === "voice" ? (
             <div className="space-y-3">
@@ -576,7 +592,7 @@ export function QuickAddDialog({
                   </p>
 
                   {transcript ? (
-                    <div className="text-sm font-medium text-zinc-800 dark:text-zinc-100 italic bg-white dark:bg-zinc-900 py-2 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm inline-block max-w-full truncate">
+                    <div className="text-sm font-medium text-zinc-800 dark:text-zinc-100 italic bg-white dark:bg-zinc-900 py-2 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xs inline-block max-w-full truncate">
                       &ldquo;{transcript}&rdquo;
                     </div>
                   ) : (
@@ -640,7 +656,7 @@ export function QuickAddDialog({
                   placeholder="e.g. iced latte 3.50, lunch 12, grab bike 6000 khr"
                   value={nlpText}
                   onChange={(e) => handleNlpChange(e.target.value)}
-                  className="text-base py-3 pr-10"
+                  className="text-base py-3 pr-10 rounded-xl"
                   autoFocus
                 />
                 {isSpeechSupported && (
@@ -654,7 +670,7 @@ export function QuickAddDialog({
                       }
                     }}
                     className={cn(
-                      "absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors",
+                      "absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors cursor-pointer",
                       isListening
                         ? "text-rose-500 bg-rose-50 dark:bg-rose-950/60 animate-pulse"
                         : "text-zinc-400 hover:text-brand-600 dark:hover:text-accent-400"
@@ -673,17 +689,12 @@ export function QuickAddDialog({
               )}
             </div>
           ) : (
-            /* Keypad Mode (Large numeric focus) */
-            <div className="relative flex items-center justify-center p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800">
-              <div className="flex items-baseline gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCurrency(currency === "USD" ? "KHR" : "USD")}
-                  className="text-2xl font-bold text-zinc-400 hover:text-brand-600 dark:hover:text-accent-400 transition-colors select-none"
-                  title="Tap to switch currency"
-                >
+            /* Keypad Mode (Clean numeric focus with hidden spin buttons & live dual currency) */
+            <div className="relative flex flex-col items-center justify-center py-3 px-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800">
+              <div className="flex items-center justify-center w-full relative">
+                <span className="text-2xl sm:text-3xl font-extrabold text-zinc-400 dark:text-zinc-500 select-none mr-1">
                   {currency === "USD" ? "$" : "៛"}
-                </button>
+                </span>
                 <input
                   ref={inputRef}
                   type="number"
@@ -692,17 +703,24 @@ export function QuickAddDialog({
                   placeholder="0.00"
                   value={amountStr}
                   onChange={(e) => setAmountStr(e.target.value)}
-                  className="w-48 bg-transparent text-center text-4xl sm:text-5xl font-extrabold text-zinc-900 dark:text-zinc-50 focus:outline-none placeholder:text-zinc-300 dark:placeholder:text-zinc-700"
+                  className="w-44 sm:w-56 bg-transparent text-center text-4xl sm:text-5xl font-extrabold text-zinc-900 dark:text-zinc-50 focus:outline-none placeholder:text-zinc-300 dark:placeholder:text-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setCurrency(currency === "USD" ? "KHR" : "USD")}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-xs font-bold px-2.5 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 shadow-xs hover:border-brand-500 hover:text-brand-600 dark:hover:text-accent-400 transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                  title="Tap to switch currency"
+                >
+                  <span>{currency}</span>
+                  <span className="text-[10px] text-zinc-400">⇄</span>
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setCurrency(currency === "USD" ? "KHR" : "USD")}
-                className="absolute right-4 text-xs font-semibold px-2 py-1 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
-              >
-                {currency}
-              </button>
+
+              {/* Real-time dual currency approximation */}
+              <div className="mt-1 text-[11px] font-medium text-zinc-400 dark:text-zinc-500 tabular-nums">
+                {parsedAmt > 0 ? secondaryEstimate : (currency === "USD" ? "≈ ៛0" : "≈ $0.00")}
+              </div>
             </div>
           )}
 
@@ -743,13 +761,13 @@ export function QuickAddDialog({
             </div>
           )}
 
-          {/* Categories Grid (Large tap targets for 5s logging) */}
+          {/* Categories Grid (2 columns on mobile, 3 on tablet/desktop to avoid truncated text) */}
           {type === "expense" && (
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              <label className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
                 Category
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 sm:max-h-56 overflow-y-auto pr-1">
                 {categoriesList.map((cat) => {
                   const Icon = cat.icon;
                   const isSelected = selectedCategory === cat.id;
@@ -759,19 +777,21 @@ export function QuickAddDialog({
                       type="button"
                       onClick={() => setSelectedCategory(cat.id)}
                       className={cn(
-                        "flex items-center gap-2 p-2 rounded-xl border text-left text-xs font-medium transition-all",
+                        "flex items-center gap-2 p-2 sm:p-2.5 rounded-xl border text-left text-xs font-medium transition-all cursor-pointer active:scale-[0.98]",
                         isSelected
-                          ? "border-brand-600 bg-brand-50/70 text-brand-900 ring-1 ring-brand-500 dark:border-accent-500 dark:bg-brand-950/40 dark:text-accent-200"
-                          : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                          ? "border-brand-600 bg-brand-50/80 text-brand-900 ring-2 ring-brand-500/30 dark:border-accent-500 dark:bg-brand-950/40 dark:text-accent-200"
+                          : "border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
                       )}
                     >
                       <span
-                        className="w-5 h-5 rounded-lg flex items-center justify-center text-white shrink-0"
+                        className="w-6 h-6 rounded-lg flex items-center justify-center text-white shrink-0 shadow-xs"
                         style={{ backgroundColor: cat.color }}
                       >
-                        <Icon className="h-3 w-3" />
+                        <Icon className="h-3.5 w-3.5" />
                       </span>
-                      <span className="truncate text-[11px]">{cat.name}</span>
+                      <span className="truncate text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                        {cat.name}
+                      </span>
                     </button>
                   );
                 })}
@@ -779,13 +799,13 @@ export function QuickAddDialog({
             </div>
           )}
 
-          {/* Note & Receipt Upload Row (Spec 3.4 #22) */}
+          {/* Note & Receipt Upload Row */}
           <div className="flex items-center gap-2">
             <Input
               placeholder="Note (optional)"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="text-xs flex-1"
+              className="text-xs h-10 flex-1 rounded-xl"
               maxLength={100}
             />
 
@@ -802,8 +822,13 @@ export function QuickAddDialog({
               variant={receiptImage ? "default" : "outline"}
               size="icon"
               onClick={() => fileInputRef.current?.click()}
-              title="Attach receipt photo"
-              className="shrink-0 h-10 w-10 rounded-xl"
+              title="Attach receipt or payment slip photo"
+              className={cn(
+                "shrink-0 h-10 w-10 rounded-xl transition-all cursor-pointer",
+                receiptImage
+                  ? "bg-brand-600 text-white"
+                  : "border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              )}
             >
               <Camera className="h-4 w-4" />
             </Button>
@@ -811,7 +836,7 @@ export function QuickAddDialog({
 
           {/* Receipt Preview if attached */}
           {receiptImage && (
-            <div className="flex items-center justify-between p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs">
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs">
               <span className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 font-medium truncate">
                 <ImageIcon className="h-3.5 w-3.5 text-accent-500 shrink-0" />
                 {isUploadingReceipt
@@ -826,7 +851,7 @@ export function QuickAddDialog({
                   setReceiptImage(null);
                   setRemoteReceiptUrl(null);
                 }}
-                className="text-rose-500 hover:text-rose-700 text-xs font-semibold px-1"
+                className="text-rose-500 hover:text-rose-700 text-xs font-semibold px-1 cursor-pointer"
               >
                 Remove
               </button>
@@ -839,17 +864,21 @@ export function QuickAddDialog({
             </p>
           )}
 
-          {/* Submit Action */}
+          {/* Submit Action (Contextual dynamic label) */}
           <Button
             type="submit"
             size="lg"
             disabled={isSubmitting}
-            className="w-full text-base font-semibold shadow-md shadow-brand-600/20"
+            className="w-full h-11 sm:h-12 text-sm sm:text-base font-bold rounded-xl shadow-md shadow-brand-600/20 active:scale-[0.99] transition-all cursor-pointer"
           >
             {isSubmitting
               ? "Saving..."
               : isOffline
               ? "Save Offline (Queued)"
+              : type === "income"
+              ? "Save Income"
+              : type === "transfer"
+              ? "Save Transfer"
               : "Save Expense"}
           </Button>
         </form>
