@@ -92,7 +92,7 @@ export function MonthlyStatementModal({
         // 1. Transactions
         const { data: dbTxs } = await supabase
           .from("transactions")
-          .select("id, occurred_at, type, base_amount, amount, currency, note, categories(name), accounts(name)")
+          .select("id, occurred_at, type, base_amount, amount, currency, note, categories(name), accounts!account_id(name)")
           .eq("user_id", user.id)
           .is("deleted_at", null)
           .gte("occurred_at", startIso)

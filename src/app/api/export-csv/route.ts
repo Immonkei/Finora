@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("transactions")
-      .select("*, categories(name), accounts(name)")
+      .select("*, categories(name), accounts!account_id(name)")
       .eq("user_id", user.id)
       .is("deleted_at", null)
       .order("occurred_at", { ascending: false });

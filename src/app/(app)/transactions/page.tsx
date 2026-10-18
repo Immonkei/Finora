@@ -52,7 +52,7 @@ export default function TransactionsPage() {
 
       const { data: txs } = await supabase
         .from("transactions")
-        .select("*, categories(name, color), accounts(name)")
+        .select("*, categories(name, color), accounts!account_id(name)")
         .eq("user_id", user.id)
         .is("deleted_at", null)
         .order("occurred_at", { ascending: false });
