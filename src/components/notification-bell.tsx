@@ -3,14 +3,12 @@
 import * as React from "react";
 import { Bell, AlertTriangle, AlertCircle, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
 import { format } from "date-fns";
 import { useLocale, useT } from "@/lib/i18n";
 
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeTable } from "@/lib/supabase/realtime";
 import {
-  createNotification,
   markAllNotificationsRead,
   deleteNotification as deleteNotificationAction,
   checkDailyReminder,
@@ -104,25 +102,6 @@ export function NotificationBell() {
     }
   };
 
-  const sendTestNotification = async () => {
-    try {
-      const res = await createNotification({
-        kind: "warning_80",
-        message: t("testMessage", {
-          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        }),
-      });
-
-      if (res.success) {
-        toast.success(t("testSent"));
-      } else {
-        toast.error(t("testFailed"), { description: res.error });
-      }
-    } catch {
-      toast.error(t("testFailed"));
-    }
-  };
-
   return (
     <div className="relative">
       <button
@@ -163,15 +142,8 @@ export function NotificationBell() {
 
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-80 overflow-y-auto space-y-2">
             {notifications.length === 0 ? (
-              <div className="py-6 text-center text-xs text-zinc-500 space-y-2">
+              <div className="py-8 text-center text-xs text-zinc-500">
                 <p>{t("empty")}</p>
-                <button
-                  type="button"
-                  onClick={sendTestNotification}
-                  className="text-brand-600 dark:text-accent-400 font-semibold text-xs hover:underline"
-                >
-                  {t("sendTestToSupabase")}
-                </button>
               </div>
             ) : (
               notifications.map((n) => (
@@ -218,14 +190,10 @@ export function NotificationBell() {
           </div>
 
           <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-[11px] text-zinc-400">
-            <span>{t("realtimeLive")}</span>
-            <button
-              type="button"
-              onClick={sendTestNotification}
-              className="text-brand-600 dark:text-accent-400 hover:underline font-medium"
-            >
-              {t("triggerTest")}
-            </button>
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              {t("realtimeLive")}
+            </span>
           </div>
         </div>
       )}

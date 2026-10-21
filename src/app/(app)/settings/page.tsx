@@ -26,7 +26,6 @@ import { LOCALES, LOCALE_LABELS, useLocale, useT } from "@/lib/i18n";
 
 import { createClient } from "@/lib/supabase/client";
 import { updateUserSettings, deleteUserAccount } from "@/features/settings/actions";
-import { createNotification } from "@/features/notifications/actions";
 import { CategoryManager } from "@/features/categories/components/category-manager";
 import { ProfileCard } from "@/features/profile/profile-card";
 import { triggerKeepAlivePing } from "@/features/settings/keep-alive-action";
@@ -153,24 +152,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSendTestAlert = async () => {
-    try {
-      const res = await createNotification({
-        kind: "warning_80",
-        message: t("testAlertMessage", {
-          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        }),
-      });
-
-      if (res.success) {
-        toast.success(t("testAlertSent"));
-      } else {
-        toast.error(t("testAlertFailed"), { description: res.error });
-      }
-    } catch {
-      toast.error(t("testAlertError"));
-    }
-  };
 
   const handleDeleteAccount = async () => {
     const confirmed = confirm(t("deleteConfirm"));
@@ -428,21 +409,6 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2 border-t border-zinc-100 dark:border-zinc-800">
-                <div>
-                  <p className="text-sm font-medium">{t("testNotification")}</p>
-                  <p className="text-xs text-zinc-500">{t("testNotificationHint")}</p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSendTestAlert}
-                  className="gap-1.5 self-start sm:self-auto"
-                >
-                  <Bell className="h-3.5 w-3.5 text-accent-500" /> {t("sendTestAlert")}
-                </Button>
-              </div>
             </CardContent>
           </Card>
 
