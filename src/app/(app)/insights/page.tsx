@@ -28,8 +28,11 @@ import { SpendingHeatmap, type DaySpendingData } from "@/features/reports/compon
 import { FinancialHealthCard } from "@/features/reports/components/financial-health-card";
 import { calculateFinancialHealthScore } from "@/features/reports/health-score";
 import { MonthlyStatementModal } from "@/features/reports/components/monthly-statement-modal";
+import { useT } from "@/lib/i18n";
 
 export default function InsightsPage() {
+  const t = useT("insights");
+  const tc = useT("common");
   const [currencyMode, setCurrencyMode] = React.useState<"USD" | "KHR">("USD");
   const [leakThreshold, setLeakThreshold] = React.useState<number>(5.0);
   const [liveTransactions, setLiveTransactions] = React.useState<LeakTransaction[] | null>(null);
@@ -44,6 +47,9 @@ export default function InsightsPage() {
   const [isStatementOpen, setIsStatementOpen] = React.useState(false);
 
   React.useEffect(() => {
+    const expenseLabel = tc("expense");
+    const uncategorizedLabel = t("uncategorized");
+
     async function loadInsightsData() {
       try {
         const supabase = createClient();
@@ -84,9 +90,9 @@ export default function InsightsPage() {
           const mapped: LeakTransaction[] = data.map((t) => {
             const cat = Array.isArray(t.categories) ? t.categories[0] : t.categories;
             return {
-              note: t.note || "Expense",
+              note: t.note || expenseLabel,
               baseAmountMinor: BigInt(t.base_amount),
-              categoryName: cat?.name || "Uncategorized",
+              categoryName: cat?.name || uncategorizedLabel,
               categoryColor: cat?.color || "#EF4444",
             };
           });
@@ -214,7 +220,7 @@ export default function InsightsPage() {
       }
     }
     loadInsightsData();
-  }, []);
+  }, [t, tc]);
 
   const activeTransactions = liveTransactions ?? [];
   const leaks = detectSpendingLeaks(
@@ -257,11 +263,10 @@ export default function InsightsPage() {
       ? Math.abs(Math.round(Number((monthlySavingsMinor * 100n) / lastMonthSpent)))
       : 0;
 
-  // Currency multiplier (1 USD = 4,000 KHR)
+  // Shared USD -> KHR rate (riel per dollar)
   const formatInsightMoney = (minorUnits: bigint) => {
     if (currencyMode === "KHR") {
-      // Convert USD cents to KHR riel (x40)
-      const khrRiel = minorUnits * 40n;
+      const khrRiel = convertUsdToKhrMinor(minorUnits);
       return formatMoney(khrRiel, "KHR");
     }
     return formatMoney(minorUnits, "USD");
@@ -288,19 +293,19 @@ export default function InsightsPage() {
   }, [leaks, currencyMode]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
-            Trends &amp; Analytics
+            {t("eyebrow")}
           </p>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Spending Insights
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            {t("title")}
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+        <div className="mobile-scroll-x flex items-center gap-2 self-start sm:self-auto flex-wrap">
           {/* Multi-Currency Toggle (Spec 3.3 #19) */}
           <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
             <button
@@ -329,32 +334,32 @@ export default function InsightsPage() {
             onClick={() => setIsStatementOpen(true)}
             variant="outline"
             size="sm"
-            className="gap-2 font-semibold text-xs border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-950/50 shadow-xs h-9"
+            className="gap-2 whitespace-nowrap font-semibold text-xs border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-950/50 shadow-xs h-9"
           >
             <FileText className="w-4 h-4 text-brand-600 dark:text-accent-400" />
-            <span className="hidden sm:inline">Export Statement</span>
-            <span className="sm:hidden">PDF</span>
+            <span className="hidden sm:inline">{t("exportStatement")}</span>
+            <span className="sm:hidden">{t("exportShort")}</span>
           </Button>
         </div>
       </div>
 
       {/* Streaks Banner (Spec 3.3 #20) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="mobile-carousel grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 text-white border-0 shadow-lg relative overflow-hidden">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-amber-100 uppercase tracking-wider">
-                Under-Budget Streak
+                {t("streakTitle")}
               </span>
               <Flame className="h-5 w-5 text-amber-200" />
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
-              {streakStats.currentUnderBudgetStreak} Days
+            <CardTitle className="text-2xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
+              {t("daysCount", { count: streakStats.currentUnderBudgetStreak })}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-amber-100/90 font-medium">
-              Personal best: {streakStats.longestStreak} consecutive days
+              {t("personalBest", { count: streakStats.longestStreak })}
             </p>
           </CardContent>
         </Card>
@@ -362,16 +367,16 @@ export default function InsightsPage() {
         <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">No-Spend Days</CardDescription>
+              <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t("noSpendTitle")}</CardDescription>
               <Award className="h-5 w-5 text-accent-500" />
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
-              {streakStats.noSpendDaysCount} Days
+            <CardTitle className="text-2xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
+              {t("daysCount", { count: streakStats.noSpendDaysCount })}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Zero expense days logged this week
+              {t("noSpendHint")}
             </p>
           </CardContent>
         </Card>
@@ -379,10 +384,10 @@ export default function InsightsPage() {
         <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Period Delta</CardDescription>
+              <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t("periodDelta")}</CardDescription>
               {lastMonthSpent === 0n ? (
                 <Badge variant="secondary" className="text-[10px] font-semibold">
-                  New Baseline
+                  {t("newBaseline")}
                 </Badge>
               ) : isMonthSaved ? (
                 <Badge variant="default" className="text-[10px] font-semibold gap-1 bg-emerald-600 hover:bg-emerald-700">
@@ -394,17 +399,17 @@ export default function InsightsPage() {
                 </Badge>
               )}
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
+            <CardTitle className="text-2xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
               {formatInsightMoney(monthlySavingsMinor >= 0n ? monthlySavingsMinor : -monthlySavingsMinor)}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               {lastMonthSpent === 0n
-                ? "First active month tracking"
+                ? t("firstMonth")
                 : isMonthSaved
-                ? "Saved compared to last month"
-                : "Increase vs last month"}
+                ? t("savedVsLastMonth")
+                : t("increaseVsLastMonth")}
             </p>
           </CardContent>
         </Card>
@@ -418,10 +423,10 @@ export default function InsightsPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Calendar className="h-4 w-4 text-emerald-500" />
-            365-Day Spending Heatmap
+            {t("heatmapTitle")}
           </CardTitle>
           <CardDescription>
-            Daily financial tracking activity and habit discipline across the past 52 weeks
+            {t("heatmapSubtitle")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -435,14 +440,14 @@ export default function InsightsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle className="text-base flex items-center gap-2">
-                <Coffee className="h-4 w-4 text-amber-600" /> Spending Leak Detector
+                <Coffee className="h-4 w-4 text-amber-600" /> {t("leakTitle")}
               </CardTitle>
               <CardDescription>
-                Frequent minor purchases (&lt;${leakThreshold.toFixed(0)}) that quietly add up
+                {t("leakSubtitle", { threshold: leakThreshold.toFixed(0) })}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-zinc-500">Threshold:</span>
+              <span className="text-zinc-500 whitespace-nowrap">{t("threshold")}</span>
               {[3, 5, 10].map((val) => (
                 <button
                   key={val}
@@ -462,13 +467,13 @@ export default function InsightsPage() {
         <CardContent>
           {leaks.length === 0 ? (
             <p className="text-sm text-zinc-500 p-4 text-center">
-              No repeated spending leaks detected below this threshold!
+              {t("noLeaks")}
             </p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="lg:col-span-5 flex flex-col items-center justify-center p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/40 dark:bg-zinc-900/40">
                 <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-2 self-start">
-                  Leak Distribution Share
+                  {t("leakShare")}
                 </p>
                 <CategoryDonutChart
                   data={leakChartData}
@@ -492,31 +497,31 @@ export default function InsightsPage() {
                         <Coffee className="h-5 w-5" />
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 truncate">
                             {leak.title}
                           </p>
-                          <Badge variant="secondary" className="text-[10px] shrink-0">
-                            {leak.count}x repeated
+                          <Badge variant="secondary" className="text-[10px] shrink-0 whitespace-nowrap">
+                            {t("repeated", { count: leak.count })}
                           </Badge>
                         </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
-                          Category: {leak.category}
+                          {t("categoryLabel", { category: leak.category })}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-t-0 pt-2 sm:pt-0 shrink-0">
                       <div className="text-left sm:text-right">
-                        <p className="text-xs text-zinc-400">Monthly Total</p>
+                        <p className="text-xs text-zinc-400">{t("monthlyTotal")}</p>
                         <p className="font-bold text-sm text-zinc-900 dark:text-zinc-100 tabular-nums">
                           {formatInsightMoney(leak.totalMinor)}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-zinc-400">Annual Projection</p>
+                        <p className="text-xs text-zinc-400">{t("annualProjection")}</p>
                         <p className="font-extrabold text-sm text-rose-600 dark:text-rose-400 tabular-nums">
-                          {formatInsightMoney(leak.projectedAnnualMinor)} / yr
+                          {t("perYear", { amount: formatInsightMoney(leak.projectedAnnualMinor) })}
                         </p>
                       </div>
                     </div>
@@ -532,34 +537,34 @@ export default function InsightsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Globe className="h-4 w-4 text-brand-600 dark:text-accent-400" /> Multi-Currency Valuation
+            <Globe className="h-4 w-4 text-brand-600 dark:text-accent-400" /> {t("multiCurrencyTitle")}
           </CardTitle>
           <CardDescription>
-            Stored exchange rate transparency for dual-currency economies
+            {t("multiCurrencySubtitle")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2">
-              <div className="flex justify-between items-center text-xs text-zinc-500">
-                <span>Active Exchange Rate</span>
-                <Badge variant="outline" className="text-[10px]">Live</Badge>
+              <div className="flex justify-between items-center gap-2 text-xs text-zinc-500">
+                <span className="min-w-0">{t("activeRate")}</span>
+                <Badge variant="outline" className="text-[10px] shrink-0">{t("live")}</Badge>
               </div>
               <p className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
                 1 USD = {DEFAULT_USD_TO_KHR_RATE.toLocaleString()} KHR
               </p>
               <p className="text-xs text-zinc-500">
-                Transactions in Riel are computed into base USD minor units without altering previous historical conversions.
+                {t("rateNote")}
               </p>
             </div>
 
             <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2">
-              <div className="flex justify-between items-center text-xs text-zinc-500">
-                <span>Monthly Budget in Dual-Currency</span>
-                <Badge variant="secondary" className="text-[10px]">
+              <div className="flex justify-between items-center gap-2 text-xs text-zinc-500">
+                <span className="min-w-0">{t("dualBudget")}</span>
+                <Badge variant="secondary" className="text-[10px] shrink-0 whitespace-nowrap">
                   {liveMonthlyBudget > 0n
-                    ? `${formatMoney(liveMonthlyBudget, "USD")} Limit`
-                    : "No Budget Set"}
+                    ? t("budgetLimit", { amount: formatMoney(liveMonthlyBudget, "USD") })
+                    : t("noBudget")}
                 </Badge>
               </div>
               <p className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
@@ -567,8 +572,10 @@ export default function InsightsPage() {
               </p>
               <p className="text-xs text-zinc-500">
                 {liveMonthlyBudget > 0n
-                  ? `Daily allowance target in KHR: ~${formatMoney(convertUsdToKhrMinor(liveMonthlyBudget) / 30n, "KHR")} / day.`
-                  : "Set a monthly budget to see your daily allowance calculated in Cambodian Riel."}
+                  ? t("dailyAllowanceKhr", {
+                      amount: formatMoney(convertUsdToKhrMinor(liveMonthlyBudget) / 30n, "KHR"),
+                    })
+                  : t("setBudgetHint")}
               </p>
             </div>
           </div>

@@ -34,6 +34,7 @@ import { formatMoney, formatKhrApproximation } from "@/lib/money";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import {
   createCategory,
   updateCategory,
@@ -85,6 +86,8 @@ interface CategoryRecord {
 }
 
 export function CategoryManager() {
+  const t = useT("categories");
+  const tCommon = useT("common");
   const [categories, setCategories] = React.useState<CategoryRecord[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -120,16 +123,16 @@ export function CategoryManager() {
         .order("name", { ascending: true });
 
       if (error) {
-        toast.error("Failed to load categories", { description: error.message });
+        toast.error(t("loadFailed"), { description: error.message });
       } else if (data) {
         setCategories(data);
       }
     } catch {
-      toast.error("Failed to load categories");
+      toast.error(t("loadFailed"));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -168,7 +171,7 @@ export function CategoryManager() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) {
-      toast.error("Please enter a category name");
+      toast.error(t("nameRequired"));
       return;
     }
 
@@ -190,11 +193,11 @@ export function CategoryManager() {
         });
 
         if (res.success) {
-          toast.success("Category updated");
+          toast.success(t("updated"));
           setIsModalOpen(false);
           await loadCategories();
         } else {
-          toast.error("Failed to update category", { description: res.error });
+          toast.error(t("updateFailed"), { description: res.error });
         }
       } else {
         const res = await createCategory({
@@ -206,16 +209,16 @@ export function CategoryManager() {
         });
 
         if (res.success) {
-          toast.success("Category created");
+          toast.success(t("created"));
           setIsModalOpen(false);
           await loadCategories();
         } else {
-          toast.error("Failed to create category", { description: res.error });
+          toast.error(t("createFailed"), { description: res.error });
         }
       }
     } catch (err) {
-      toast.error("Error saving category", {
-        description: err instanceof Error ? err.message : "Please try again",
+      toast.error(t("saveError"), {
+        description: err instanceof Error ? err.message : t("tryAgain"),
       });
     } finally {
       setIsSubmitting(false);
@@ -224,20 +227,20 @@ export function CategoryManager() {
 
   // Delete Category
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"? Existing transactions will keep their records.`)) {
+    if (!confirm(t("deleteConfirm", { name }))) {
       return;
     }
 
     try {
       const res = await deleteCategory(id);
       if (res.success) {
-        toast.success(`Deleted category "${name}"`);
+        toast.success(t("deleted", { name }));
         await loadCategories();
       } else {
-        toast.error("Failed to delete category", { description: res.error });
+        toast.error(t("deleteFailed"), { description: res.error });
       }
     } catch {
-      toast.error("Error deleting category");
+      toast.error(t("deleteError"));
     }
   };
 
@@ -247,13 +250,13 @@ export function CategoryManager() {
     try {
       const res = await seedDefaultCategoriesIfEmpty();
       if (res.success) {
-        toast.success("Loaded default personal finance categories");
+        toast.success(t("seeded"));
         await loadCategories();
       } else {
-        toast.error("Failed to seed categories", { description: res.error });
+        toast.error(t("seedFailed"), { description: res.error });
       }
     } catch {
-      toast.error("Error seeding categories");
+      toast.error(t("seedError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -281,10 +284,10 @@ export function CategoryManager() {
         <div>
           <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-brand-600 dark:text-accent-400" />
-            Categories & Rollover Allowances
+            {t("title")}
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Personalize spending categories, monthly limits, and enable unspent allowance rollovers
+            {t("subtitle")}
           </p>
         </div>
 
@@ -298,7 +301,7 @@ export function CategoryManager() {
               className="text-xs gap-1.5"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              Load Defaults
+              {t("loadDefaults")}
             </Button>
           )}
 
@@ -308,18 +311,18 @@ export function CategoryManager() {
             className="bg-brand-600 hover:bg-brand-700 text-white text-xs gap-1.5 shadow-sm"
           >
             <Plus className="w-4 h-4" />
-            Add Category
+            {t("addCategory")}
           </Button>
         </div>
       </div>
 
       {/* Rollover Status Dashboard */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="mobile-carousel grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Budgeted */}
         <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
             <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              Total Category Budgets
+              {t("totalBudgets")}
             </CardDescription>
             <CardTitle className="text-2xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(summary.totalBaseBudgetMinor, "USD")}
@@ -327,7 +330,7 @@ export function CategoryManager() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">
-              {formatKhrApproximation(summary.totalBaseBudgetMinor)} / month
+              {t("perMonth", { amount: formatKhrApproximation(summary.totalBaseBudgetMinor) })}
             </p>
           </CardContent>
         </Card>
@@ -335,22 +338,22 @@ export function CategoryManager() {
         {/* Active Rollover Categories */}
         <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                Rollover Disciplines
+                {t("rolloverDisciplines")}
               </CardDescription>
-              <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300 dark:border-emerald-800">
-                Disciplined
+              <Badge variant="outline" className="text-[10px] whitespace-nowrap shrink-0 text-emerald-600 border-emerald-300 dark:border-emerald-800">
+                {t("disciplined")}
               </Badge>
             </div>
             <CardTitle className="text-2xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {summary.activeRolloverCount}{" "}
-              <span className="text-sm font-medium text-zinc-400">of {categories.length}</span>
+              <span className="text-sm font-medium text-zinc-400">{t("ofTotal", { count: categories.length })}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Categories that roll unspent allowance to reward frugality
+              {t("rolloverHint")}
             </p>
           </CardContent>
         </Card>
@@ -360,15 +363,15 @@ export function CategoryManager() {
           <CardHeader className="pb-2">
             <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300 flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5" />
-              Surplus Protection
+              {t("surplusProtection")}
             </CardDescription>
             <CardTitle className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mt-1">
-              Frugality Carry-Forward
+              {t("carryForward")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
-              Unspent budget carries over into next month, expanding your spending room or savings margin automatically.
+              {t("carryForwardHint")}
             </p>
           </CardContent>
         </Card>
@@ -380,10 +383,10 @@ export function CategoryManager() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base font-bold text-zinc-900 dark:text-zinc-50">
-                Configured Categories ({categories.length})
+                {t("configured", { count: categories.length })}
               </CardTitle>
               <CardDescription className="text-xs text-zinc-500 dark:text-zinc-400">
-                Used for instant voice logging, KHQR slip tagging, and monthly statements
+                {t("configuredHint")}
               </CardDescription>
             </div>
           </div>
@@ -397,10 +400,10 @@ export function CategoryManager() {
             <div className="text-center py-12 space-y-3">
               <Wallet className="w-10 h-10 text-zinc-300 dark:text-zinc-600 mx-auto stroke-1" />
               <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                No custom categories configured yet.
+                {t("emptyTitle")}
               </p>
               <p className="text-xs text-zinc-500 max-w-sm mx-auto">
-                Add your own tailored categories or load the recommended Cambodian / SEA expense defaults.
+                {t("emptyHint")}
               </p>
               <Button
                 size="sm"
@@ -408,7 +411,7 @@ export function CategoryManager() {
                 onClick={handleSeedDefaults}
                 className="mt-2 text-xs"
               >
-                Load Recommended Defaults
+                {t("loadRecommended")}
               </Button>
             </div>
           ) : (
@@ -430,17 +433,17 @@ export function CategoryManager() {
                         <IconComponent className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
                             {cat.name}
                           </h4>
                           {cat.rollover ? (
-                            <Badge className="text-[10px] bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 font-bold px-1.5 py-0">
-                              Rollover
+                            <Badge className="text-[10px] shrink-0 whitespace-nowrap bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 font-bold px-1.5 py-0">
+                              {t("badgeRollover")}
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-[10px] text-zinc-400 border-zinc-200 dark:border-zinc-700 font-normal px-1.5 py-0">
-                              Fixed
+                            <Badge variant="outline" className="text-[10px] shrink-0 whitespace-nowrap text-zinc-400 border-zinc-200 dark:border-zinc-700 font-normal px-1.5 py-0">
+                              {t("badgeFixed")}
                             </Badge>
                           )}
                         </div>
@@ -450,10 +453,10 @@ export function CategoryManager() {
                               <strong className="text-zinc-900 dark:text-zinc-200 font-semibold">
                                 {formatMoney(budgetMinor, "USD")}
                               </strong>{" "}
-                              / mo ({formatKhrApproximation(budgetMinor)})
+                              {t("perMonthShort", { khr: formatKhrApproximation(budgetMinor) })}
                             </>
                           ) : (
-                            "No budget limit set"
+                            t("noBudget")
                           )}
                         </p>
                       </div>
@@ -465,7 +468,8 @@ export function CategoryManager() {
                         type="button"
                         onClick={() => handleOpenEdit(cat)}
                         className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors"
-                        title="Edit category"
+                        title={t("editCategory")}
+                        aria-label={t("editCategory")}
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
@@ -473,7 +477,8 @@ export function CategoryManager() {
                         type="button"
                         onClick={() => handleDelete(cat.id, cat.name)}
                         className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
-                        title="Delete category"
+                        title={t("deleteCategory")}
+                        aria-label={t("deleteCategory")}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -488,16 +493,18 @@ export function CategoryManager() {
 
       {/* Add / Edit Category Dialog */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
           <div
-            className="w-full max-w-md rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-200"
+            className="mobile-sheet w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-5 sm:p-6 space-y-4 animate-in zoom-in-95 duration-200"
             role="dialog"
           >
             <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
               <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-50">
-                {editingCategory ? "Edit Category" : "New Category"}
+                {editingCategory ? t("dialogEdit") : t("dialogNew")}
               </h3>
               <button
+                type="button"
+                aria-label={tCommon("close")}
                 onClick={() => setIsModalOpen(false)}
                 className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
@@ -509,12 +516,12 @@ export function CategoryManager() {
               {/* Name */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
-                  Category Name
+                  {t("fieldName")}
                 </label>
                 <Input
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g., Coffee & Cafes, Motorcycle Fuel..."
+                  placeholder={t("namePlaceholder")}
                   required
                   autoFocus
                   className="text-sm font-medium"
@@ -524,7 +531,7 @@ export function CategoryManager() {
               {/* Monthly Budget */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
-                  Monthly Budget Limit (USD)
+                  {t("fieldBudget")}
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-sm">
@@ -536,13 +543,13 @@ export function CategoryManager() {
                     min="0"
                     value={formBudgetStr}
                     onChange={(e) => setFormBudgetStr(e.target.value)}
-                    placeholder="0.00 (optional)"
+                    placeholder={t("budgetPlaceholder")}
                     className="pl-7 text-sm font-medium"
                   />
                 </div>
                 {parseFloat(formBudgetStr) > 0 && (
                   <p className="text-[11px] text-zinc-500 tabular-nums">
-                    ≈ ៛{(Math.round(parseFloat(formBudgetStr) * 4100)).toLocaleString()} KHR per month
+                    {t("khrPerMonth", { amount: Math.round(parseFloat(formBudgetStr) * 4100).toLocaleString("en-US") })}
                   </p>
                 )}
               </div>
@@ -550,7 +557,7 @@ export function CategoryManager() {
               {/* Color Swatch Picker */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
-                  Color Theme
+                  {t("fieldColor")}
                 </label>
                 <div className="flex flex-wrap gap-2 pt-1">
                   {COLOR_PALETTE.map((color) => (
@@ -573,7 +580,7 @@ export function CategoryManager() {
               {/* Icon Selector */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
-                  Icon
+                  {t("fieldIcon")}
                 </label>
                 <div className="grid grid-cols-7 gap-1.5 max-h-36 overflow-y-auto p-1 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-950">
                   {Object.entries(CATEGORY_ICONS).map(([key, Icon]) => (
@@ -605,10 +612,10 @@ export function CategoryManager() {
                 />
                 <label htmlFor="rolloverToggle" className="cursor-pointer text-xs">
                   <span className="font-bold text-zinc-900 dark:text-zinc-100 block">
-                    Enable Rollover Allowance
+                    {t("enableRollover")}
                   </span>
                   <span className="text-zinc-500 dark:text-zinc-400 block mt-0.5">
-                    Unspent budget rolls over into next month, accumulating as a surplus reward.
+                    {t("enableRolloverHint")}
                   </span>
                 </label>
               </div>
@@ -622,14 +629,14 @@ export function CategoryManager() {
                   disabled={isSubmitting}
                   className="text-xs"
                 >
-                  Cancel
+                  {tCommon("cancel")}
                 </Button>
                 <Button
                   type="submit"
                   disabled={isSubmitting}
                   className="bg-brand-600 hover:bg-brand-700 text-white text-xs gap-1.5"
                 >
-                  {isSubmitting ? "Saving..." : editingCategory ? "Save Changes" : "Create Category"}
+                  {isSubmitting ? tCommon("saving") : editingCategory ? t("saveChanges") : t("createCategory")}
                 </Button>
               </div>
             </form>

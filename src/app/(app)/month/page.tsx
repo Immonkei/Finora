@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { formatMoney, calculateForecast, formatKhrApproximation } from "@/lib/money";
 import { getDaysPassedInMonth, getDaysLeftInMonth } from "@/lib/dates";
 import { useMounted } from "@/lib/hooks";
+import { useLocale, useT } from "@/lib/i18n";
+import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,8 @@ interface CatBudgetItem {
 }
 
 export default function MonthPage() {
+  const t = useT("month");
+  const { dateLocale } = useLocale();
   const isMounted = useMounted();
   const currentDate = isMounted ? new Date() : null;
 
@@ -135,7 +139,7 @@ export default function MonthPage() {
     ? new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
     : 31;
   const monthName = currentDate
-    ? currentDate.toLocaleDateString("en-US", { month: "short" })
+    ? format(currentDate, "MMM", { locale: dateLocale })
     : "Oct";
 
   const totalMonthlyLimitMinor = liveData ? liveData.totalMonthlyLimitMinor : 0n;
@@ -180,18 +184,18 @@ export default function MonthPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
-            Monthly Analytics & Budgets
+            {t("eyebrow")}
           </p>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            This Month
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            {t("title")}
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="mobile-scroll-x flex items-center gap-2 flex-wrap">
           <Link href="/settings#categories">
             <Button
               variant="outline"
@@ -199,7 +203,7 @@ export default function MonthPage() {
               className="gap-1.5 font-semibold text-xs border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 shadow-xs"
             >
               <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-accent-400" />
-              <span>Categories & Rollover</span>
+              <span className="whitespace-nowrap">{t("categoriesRollover")}</span>
             </Button>
           </Link>
 
@@ -210,17 +214,17 @@ export default function MonthPage() {
             className="gap-2 font-semibold text-xs border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-950/50 shadow-xs"
           >
             <FileText className="w-4 h-4 text-brand-600 dark:text-accent-400" />
-            <span>Export Statement (PDF)</span>
+            <span className="whitespace-nowrap">{t("exportStatement")}</span>
           </Button>
         </div>
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="mobile-carousel grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
-            <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Spent So Far</CardDescription>
-            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
+            <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t("spentSoFar")}</CardDescription>
+            <CardTitle className="text-xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(spentThisMonthMinor, "USD")}
             </CardTitle>
             <p className="text-[11px] text-zinc-400 tabular-nums">
@@ -229,39 +233,42 @@ export default function MonthPage() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">
-              Budget: {formatMoney(totalMonthlyLimitMinor, "USD")} ({percentUsed}%)
+              {t("budgetLine", {
+                amount: formatMoney(totalMonthlyLimitMinor, "USD"),
+                percent: percentUsed,
+              })}
             </p>
           </CardContent>
         </Card>
 
         <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
-            <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Daily Average</CardDescription>
-            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
+            <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t("dailyAverage")}</CardDescription>
+            <CardTitle className="text-xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(averagePerDayMinor, "USD")}
             </CardTitle>
             <p className="text-[11px] text-zinc-400 tabular-nums">
-              {formatKhrApproximation(averagePerDayMinor)} / day
+              {t("perDay", { amount: formatKhrApproximation(averagePerDayMinor) })}
             </p>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Across past {daysPassed} days
+              {t("acrossPastDays", { count: daysPassed })}
             </p>
           </CardContent>
         </Card>
 
         <Card className={`border-zinc-200/80 dark:border-zinc-800/80 shadow-xs ${isOverspendRisk ? "border-rose-300 dark:border-rose-900/80 ring-1 ring-rose-500/20" : ""}`}>
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Month Forecast</CardDescription>
+            <div className="flex items-center justify-between gap-2">
+              <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 min-w-0">{t("monthForecast")}</CardDescription>
               {isOverspendRisk ? (
-                <Badge variant="destructive" className="text-[10px] font-semibold">At Risk</Badge>
+                <Badge variant="destructive" className="text-[10px] font-semibold whitespace-nowrap shrink-0">{t("atRisk")}</Badge>
               ) : (
-                <Badge variant="default" className="text-[10px] font-semibold bg-emerald-600 hover:bg-emerald-700">On Track</Badge>
+                <Badge variant="default" className="text-[10px] font-semibold whitespace-nowrap shrink-0 bg-emerald-600 hover:bg-emerald-700">{t("onTrack")}</Badge>
               )}
             </div>
-            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
+            <CardTitle className="text-xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(forecastMinor, "USD")}
             </CardTitle>
             <p className="text-[11px] text-zinc-400 tabular-nums">
@@ -271,8 +278,8 @@ export default function MonthPage() {
           <CardContent>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               {isOverspendRisk
-                ? "Paced to exceed monthly budget"
-                : "Expected to finish safely under budget"}
+                ? t("pacedToExceed")
+                : t("expectedUnder")}
             </p>
           </CardContent>
         </Card>
@@ -283,17 +290,17 @@ export default function MonthPage() {
         <CardHeader className="pb-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <div>
-              <CardTitle className="text-base font-semibold">Spending Pace Trajectory</CardTitle>
+              <CardTitle className="text-base font-semibold">{t("paceTitle")}</CardTitle>
               <CardDescription>
-                Cumulative spending vs ideal linear pace and end-of-month projection
+                {t("paceDesc")}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2 mt-1 sm:mt-0">
               <Badge
                 variant={isOverspendRisk ? "destructive" : "secondary"}
-                className={`text-[11px] font-bold ${!isOverspendRisk ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80" : ""}`}
+                className={`text-[11px] font-bold whitespace-nowrap ${!isOverspendRisk ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80" : ""}`}
               >
-                {isOverspendRisk ? "Ahead of Pace (Risk)" : "On Ideal Pace"}
+                {isOverspendRisk ? t("aheadOfPace") : t("onIdealPace")}
               </Badge>
             </div>
           </div>
@@ -307,13 +314,16 @@ export default function MonthPage() {
       <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold">Total Monthly Budget</CardTitle>
+            <CardTitle className="text-base font-semibold">{t("totalMonthlyBudget")}</CardTitle>
             <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
               {percentUsed}%
             </span>
           </div>
           <CardDescription className="tabular-nums">
-            {formatMoney(spentThisMonthMinor, "USD")} of {formatMoney(totalMonthlyLimitMinor, "USD")} spent
+            {t("spentOf", {
+              spent: formatMoney(spentThisMonthMinor, "USD"),
+              limit: formatMoney(totalMonthlyLimitMinor, "USD"),
+            })}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -324,8 +334,12 @@ export default function MonthPage() {
             />
           </div>
           <div className="flex justify-between items-center text-xs text-zinc-500 dark:text-zinc-400 mt-2 font-medium">
-            <span className="tabular-nums">Remaining: {formatMoney(totalMonthlyLimitMinor - spentThisMonthMinor, "USD")}</span>
-            <span className="tabular-nums">{daysLeft} days remaining</span>
+            <span className="tabular-nums">
+              {t("remaining", {
+                amount: formatMoney(totalMonthlyLimitMinor - spentThisMonthMinor, "USD"),
+              })}
+            </span>
+            <span className="tabular-nums">{t("daysRemaining", { count: daysLeft })}</span>
           </div>
         </CardContent>
       </Card>
@@ -335,19 +349,19 @@ export default function MonthPage() {
         {/* Interactive Recharts Category Donut Chart */}
         <Card className="lg:col-span-6 border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader>
-            <CardTitle className="text-base font-semibold">Category Breakdown</CardTitle>
+            <CardTitle className="text-base font-semibold">{t("categoryBreakdown")}</CardTitle>
             <CardDescription>
-              Hover slices to inspect detailed category share
+              {t("categoryBreakdownDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {categoryBudgets.length === 0 ? (
               <div className="py-12 text-center text-sm text-zinc-500">
                 <p className="font-medium text-zinc-700 dark:text-zinc-300">
-                  No category spending yet this month.
+                  {t("noCategorySpending")}
                 </p>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Expenses you log this month will appear here.
+                  {t("noCategorySpendingHint")}
                 </p>
               </div>
             ) : (
@@ -363,19 +377,19 @@ export default function MonthPage() {
         {/* Category Budget Limits with Alerts */}
         <Card className="lg:col-span-6 border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader>
-            <CardTitle className="text-base font-semibold">Category Budgets</CardTitle>
+            <CardTitle className="text-base font-semibold">{t("categoryBudgets")}</CardTitle>
             <CardDescription>
-              Green (&lt;80%), Yellow (80-100%), Red (&gt;100%)
+              {t("categoryBudgetsLegend")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {categoryBudgets.length === 0 ? (
               <div className="py-12 text-center text-sm text-zinc-500">
                 <p className="font-medium text-zinc-700 dark:text-zinc-300">
-                  No category budgets active.
+                  {t("noCategoryBudgets")}
                 </p>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Spending will track against category targets here.
+                  {t("noCategoryBudgetsHint")}
                 </p>
               </div>
             ) : (

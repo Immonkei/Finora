@@ -4,6 +4,8 @@ import * as React from "react";
 import { Bell, AlertTriangle, AlertCircle, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { useLocale, useT } from "@/lib/i18n";
 
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeTable } from "@/lib/supabase/realtime";
@@ -17,13 +19,20 @@ import {
 interface NotificationItem {
   id: string;
   kind: "warning_80" | "limit_100" | "reminder";
-  title: string;
   message: string;
-  time: string;
+  createdAt: string;
   read: boolean;
 }
 
+const KIND_TITLE_KEYS = {
+  limit_100: "titleLimit",
+  warning_80: "titleWarning",
+  reminder: "titleReminder",
+} as const;
+
 export function NotificationBell() {
+  const t = useT("notifications");
+  const { dateLocale } = useLocale();
   const [isOpen, setIsOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<NotificationItem[]>([]);
 
@@ -49,17 +58,8 @@ export function NotificationBell() {
         const mapped: NotificationItem[] = data.map((n) => ({
           id: n.id,
           kind: n.kind as "warning_80" | "limit_100" | "reminder",
-          title:
-            n.kind === "limit_100"
-              ? "Budget Limit Reached (100%)"
-              : n.kind === "warning_80"
-              ? "Budget Warning (80%)"
-              : "Logging Reminder",
           message: n.message,
-          time: new Date(n.created_at).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
+          createdAt: n.created_at,
           read: n.read,
         }));
         setNotifications(mapped);
@@ -108,16 +108,18 @@ export function NotificationBell() {
     try {
       const res = await createNotification({
         kind: "warning_80",
-        message: `Live Realtime Test: Budget monitoring active. Current time ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
+        message: t("testMessage", {
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        }),
       });
 
       if (res.success) {
-        toast.success("Test alert sent to Supabase!");
+        toast.success(t("testSent"));
       } else {
-        toast.error("Failed to trigger alert", { description: res.error });
+        toast.error(t("testFailed"), { description: res.error });
       }
     } catch {
-      toast.error("Failed to trigger alert");
+      toast.error(t("testFailed"));
     }
   };
 
@@ -126,7 +128,7 @@ export function NotificationBell() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-xl text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-        aria-label="Notifications"
+        aria-label={unreadCount > 0 ? t("bellLabelUnread", { count: unreadCount }) : t("bellLabel")}
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
@@ -139,22 +141,22 @@ export function NotificationBell() {
       {isOpen && (
         <div className="absolute right-0 top-12 z-50 w-80 sm:w-96 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
-                Budget Alerts
+                {t("title")}
               </h3>
               {unreadCount > 0 && (
-                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                  {unreadCount} new
+                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 whitespace-nowrap">
+                  {t("newCount", { count: unreadCount })}
                 </Badge>
               )}
             </div>
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="text-xs text-brand-600 hover:text-brand-700 dark:text-accent-400 font-medium"
+                className="text-xs text-brand-600 hover:text-brand-700 dark:text-accent-400 font-medium whitespace-nowrap"
               >
-                Mark all read
+                {t("markAllRead")}
               </button>
             )}
           </div>
@@ -162,13 +164,13 @@ export function NotificationBell() {
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-80 overflow-y-auto space-y-2">
             {notifications.length === 0 ? (
               <div className="py-6 text-center text-xs text-zinc-500 space-y-2">
-                <p>No notifications right now.</p>
+                <p>{t("empty")}</p>
                 <button
                   type="button"
                   onClick={sendTestNotification}
                   className="text-brand-600 dark:text-accent-400 font-semibold text-xs hover:underline"
                 >
-                  Send test alert to Supabase
+                  {t("sendTestToSupabase")}
                 </button>
               </div>
             ) : (
@@ -187,16 +189,17 @@ export function NotificationBell() {
                     ) : (
                       <Bell className="h-4 w-4 text-accent-500 shrink-0 mt-0.5" />
                     )}
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
                         <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 leading-tight">
-                          {n.title}
+                          {t(KIND_TITLE_KEYS[n.kind] ?? "titleReminder")}
                         </p>
                         <button
                           type="button"
                           onClick={() => deleteNotification(n.id)}
                           className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-0.5 rounded"
-                          title="Dismiss"
+                          title={t("dismiss")}
+                          aria-label={t("dismiss")}
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -205,7 +208,7 @@ export function NotificationBell() {
                         {n.message}
                       </p>
                       <span className="text-[10px] text-zinc-400 mt-1 block">
-                        {n.time}
+                        {format(new Date(n.createdAt), "p", { locale: dateLocale })}
                       </span>
                     </div>
                   </div>
@@ -215,13 +218,13 @@ export function NotificationBell() {
           </div>
 
           <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-[11px] text-zinc-400">
-            <span>Supabase Realtime Live</span>
+            <span>{t("realtimeLive")}</span>
             <button
               type="button"
               onClick={sendTestNotification}
               className="text-brand-600 dark:text-accent-400 hover:underline font-medium"
             >
-              Trigger Test Alert
+              {t("triggerTest")}
             </button>
           </div>
         </div>

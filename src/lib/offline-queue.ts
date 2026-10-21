@@ -7,6 +7,7 @@ export interface QueuedTransaction {
   amount: number;
   currency: "USD" | "KHR";
   account_id?: string;
+  to_account_id?: string;
   category_id?: string;
   note?: string;
   occurred_at: string;
@@ -131,6 +132,7 @@ export async function flushOfflineQueue(silent = false): Promise<{
           amount: item.amount,
           currency: item.currency,
           account_id: item.account_id || "00000000-0000-0000-0000-000000000001",
+          to_account_id: item.to_account_id,
           category_id: item.category_id,
           note: item.note,
           occurred_at: item.occurred_at,

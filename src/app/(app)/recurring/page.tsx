@@ -29,27 +29,49 @@ import { formatDisplayDate } from "@/lib/dates";
 import { CashFlowTimeline } from "@/features/recurring/components/cash-flow-timeline";
 import { projectUpcomingCharges } from "@/features/recurring/projection";
 import { useMounted } from "@/lib/hooks";
+import { useLocale, useT } from "@/lib/i18n";
+
+type Frequency = "daily" | "weekly" | "monthly";
+
+// Stored frequency codes stay English; only the label is translated
+const FREQUENCY_KEYS = {
+  daily: "freqDaily",
+  weekly: "freqWeekly",
+  monthly: "freqMonthly",
+} as const;
+
+// Option values are the stored category names; labels are translated
+const CATEGORY_OPTIONS = [
+  { value: "Housing & Bills", key: "catHousing" },
+  { value: "Food & Drinks", key: "catFood" },
+  { value: "Transport", key: "catTransport" },
+  { value: "Entertainment", key: "catEntertainment" },
+  { value: "Health & Medical", key: "catHealth" },
+] as const;
 
 interface RecurringRuleItem {
   id: string;
   name: string;
   amountMinor: bigint;
   currency: string;
-  frequency: "daily" | "weekly" | "monthly";
+  frequency: Frequency;
+  /** Empty when the rule has no category; a fallback label is shown at render */
   category: string;
-  nextRun: string;
   rawNextRun: string;
   active: boolean;
 }
 
 export default function RecurringPage() {
+  const t = useT("recurring");
+  const tc = useT("common");
+  const { dateLocale } = useLocale();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isProcessing, setIsProcessing] = React.useState(false);
 
   // Form states
   const [name, setName] = React.useState("");
   const [amountStr, setAmountStr] = React.useState("");
-  const [frequency, setFrequency] = React.useState<"daily" | "weekly" | "monthly">("monthly");
+  const [frequency, setFrequency] = React.useState<Frequency>("monthly");
   const [category, setCategory] = React.useState("Housing & Bills");
 
   const [rules, setRules] = React.useState<RecurringRuleItem[]>([]);
@@ -73,12 +95,11 @@ export default function RecurringPage() {
           const cat = Array.isArray(r.categories) ? r.categories[0] : r.categories;
           return {
             id: r.id,
-            name: r.note || "Subscription",
+            name: r.note || "",
             amountMinor: BigInt(r.amount),
             currency: r.currency,
-            frequency: r.frequency as "daily" | "weekly" | "monthly",
-            category: cat?.name || "Housing & Bills",
-            nextRun: formatDisplayDate(r.next_run),
+            frequency: r.frequency as Frequency,
+            category: cat?.name || "",
             rawNextRun: r.next_run,
             active: r.active,
           };
@@ -117,34 +138,29 @@ export default function RecurringPage() {
     return projectUpcomingCharges(
       rules.map((r) => ({
         id: r.id,
-        name: r.name,
+        name: r.name || t("defaultName"),
         amountMinor: r.amountMinor,
         currency: r.currency,
         frequency: r.frequency,
-        category: r.category,
+        category: r.category || t("catHousing"),
         nextRunDate: r.rawNextRun,
         active: r.active,
       }))
     );
-  }, [rules, isMounted]);
+  }, [rules, isMounted, t]);
 
   const handleToggle = async (id: string, currentState: boolean) => {
     setRules((prev) =>
       prev.map((r) => (r.id === id ? { ...r, active: !currentState } : r))
     );
     await toggleRecurringRule(id, !currentState);
-    toast.success(
-      currentState ? "Rule paused" : "Rule activated",
-      {
-        description: currentState
-          ? "Transactions will not be auto-created"
-          : "Transactions will be auto-generated on due dates",
-      }
-    );
+    toast.success(currentState ? t("pausedToast") : t("activatedToast"), {
+      description: currentState ? t("pausedDescription") : t("activatedDescription"),
+    });
   };
 
   const handleDeleteRule = async (id: string, ruleName: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${ruleName}"?`)) {
+    if (!window.confirm(t("confirmDelete", { name: ruleName }))) {
       return;
     }
 
@@ -152,12 +168,12 @@ export default function RecurringPage() {
       const res = await deleteRecurringRule(id);
       if (res.success) {
         setRules((prev) => prev.filter((r) => r.id !== id));
-        toast.success(`Rule "${ruleName}" deleted`);
+        toast.success(t("deletedToast", { name: ruleName }));
       } else {
-        toast.error("Failed to delete rule", { description: res.error });
+        toast.error(t("deleteFailed"), { description: res.error });
       }
     } catch {
-      toast.error("Could not delete recurring rule");
+      toast.error(t("deleteError"));
     }
   };
 
@@ -167,12 +183,12 @@ export default function RecurringPage() {
     setIsProcessing(false);
 
     if (res.success) {
-      toast.success("Recurring rules checked!", {
-        description: `Processed ${res.data?.processedCount || 0} due transaction(s).`,
+      toast.success(t("checkedToast"), {
+        description: t("processedDescription", { count: res.data?.processedCount || 0 }),
       });
       loadRules();
     } else {
-      toast.error("Process failed", { description: res.error });
+      toast.error(t("processFailed"), { description: res.error });
     }
   };
 
@@ -180,7 +196,7 @@ export default function RecurringPage() {
     e.preventDefault();
     const num = parseFloat(amountStr);
     if (isNaN(num) || num <= 0) {
-      toast.error("Please enter a valid amount");
+      toast.error(t("invalidAmount"));
       return;
     }
 
@@ -196,77 +212,77 @@ export default function RecurringPage() {
     });
 
     if (res.success) {
-      toast.success("Recurring rule created!", {
-        description: `${name || "Subscription"} scheduled in Supabase.`,
+      toast.success(t("createdToast"), {
+        description: t("createdDescription", { name: name || t("defaultName") }),
       });
       setIsDialogOpen(false);
       setName("");
       setAmountStr("");
       loadRules();
     } else {
-      toast.error("Failed to create rule", { description: res.error });
+      toast.error(t("createFailed"), { description: res.error });
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
-            Subscriptions & Bills
+            {t("eyebrow")}
           </p>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Recurring Expenses
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            {t("title")}
           </h1>
         </div>
-        <div className="flex gap-2">
+        <div className="mobile-scroll-x flex gap-2">
           <Button
             variant="outline"
             onClick={handleProcessDue}
             disabled={isProcessing}
-            className="gap-2"
+            className="gap-2 whitespace-nowrap"
           >
             <Play className="h-4 w-4 text-brand-600 dark:text-accent-400" />
-            {isProcessing ? "Processing..." : "Process Due"}
+            {isProcessing ? t("processing") : t("processDue")}
           </Button>
-          <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> Add Rule
+          <Button onClick={() => setIsDialogOpen(true)} className="gap-2 whitespace-nowrap">
+            <Plus className="h-4 w-4" /> {t("addRule")}
           </Button>
         </div>
       </div>
 
       {/* Top Banner Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="mobile-carousel grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card className="bg-gradient-to-br from-brand-900 via-[#0e2a3e] to-[#081420] text-white border border-brand-800/60 shadow-lg">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-brand-200/90 uppercase tracking-wider font-bold">
-                Monthly Obligation
+                {t("monthlyObligation")}
               </span>
               <Repeat className="h-4 w-4 text-accent-300" />
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
+            <CardTitle className="text-2xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
               {formatMoney(totalMonthlyObligation, "USD")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-brand-200/80">
-              Total committed across {activeRules.length} active repeating rules
+              {t("totalCommitted", { count: activeRules.length })}
             </p>
           </CardContent>
         </Card>
 
         <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
-            <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Automation Status</CardDescription>
+            <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t("automationStatus")}</CardDescription>
             <CardTitle className="text-lg font-bold flex items-center gap-2 mt-1">
-              <CheckCircle2 className="h-5 w-5 text-accent-500" /> Auto-Logging Enabled
+              <CheckCircle2 className="h-5 w-5 text-accent-500 shrink-0" /> {t("autoLoggingEnabled")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Transactions are scheduled via pg_cron and idempotent checks prevent duplicate entries.
+              {t("automationHint")}
             </p>
           </CardContent>
         </Card>
@@ -276,11 +292,11 @@ export default function RecurringPage() {
       <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <CalendarClock className="h-4 w-4 text-brand-600 dark:text-accent-400" />
-            30-Day Upcoming Cash Flow & Bills
+            <CalendarClock className="h-4 w-4 text-brand-600 dark:text-accent-400 shrink-0" />
+            {t("upcomingTitle")}
           </CardTitle>
           <CardDescription>
-            Chronological projection of all upcoming committed charges and recurring obligations
+            {t("upcomingSubtitle")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -291,30 +307,30 @@ export default function RecurringPage() {
       {/* Rules List */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-base font-semibold">Recurring Rules</CardTitle>
+          <CardTitle className="text-base font-semibold">{t("rulesTitle")}</CardTitle>
           <CardDescription>
-            Active subscriptions and repeating bills automatically logged
+            {t("rulesSubtitle")}
           </CardDescription>
         </CardHeader>
         <CardContent className="divide-y divide-zinc-100 dark:divide-zinc-800 p-0">
           {rules.length === 0 ? (
             <div className="p-12 text-center text-sm text-zinc-500 space-y-2">
               <p className="font-medium text-zinc-700 dark:text-zinc-300">
-                No recurring rules set up yet.
+                {t("emptyTitle")}
               </p>
               <p className="text-xs text-zinc-400">
-                Add subscriptions or monthly bills like rent and wifi to automate your bookkeeping.
+                {t("emptyHint")}
               </p>
             </div>
           ) : (
             rules.map((rule) => (
             <div
               key={rule.id}
-              className="flex items-center justify-between p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors"
+              className="flex items-center justify-between gap-2 p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors"
             >
-              <div className="flex items-center gap-3.5">
+              <div className="flex items-center gap-3.5 min-w-0">
                 <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold ${
+                  className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-xs font-bold ${
                     rule.active
                       ? "bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-accent-400"
                       : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400"
@@ -322,49 +338,53 @@ export default function RecurringPage() {
                 >
                   <Repeat className="h-5 w-5" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
                     <p
-                      className={`font-medium text-sm ${
+                      className={`font-medium text-sm truncate ${
                         rule.active
                           ? "text-zinc-900 dark:text-zinc-100"
                           : "text-zinc-400 line-through"
                       }`}
                     >
-                      {rule.name}
+                      {rule.name || t("defaultName")}
                     </p>
-                    <Badge variant="secondary" className="text-[10px] uppercase">
-                      {rule.frequency}
+                    <Badge variant="secondary" className="text-[10px] uppercase shrink-0 whitespace-nowrap">
+                      {t(FREQUENCY_KEYS[rule.frequency] ?? "freqMonthly")}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    <span>{rule.category}</span>
+                    <span className="truncate">{rule.category || t("catHousing")}</span>
                     <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" /> Next: {rule.nextRun}
+                    <span className="flex items-center gap-1 whitespace-nowrap">
+                      <Calendar className="h-3 w-3" />{" "}
+                      {t("nextRun", {
+                        date: formatDisplayDate(rule.rawNextRun, undefined, dateLocale),
+                      })}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 mr-1">
+              <div className="flex items-center gap-2 shrink-0">
+                <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 mr-1 whitespace-nowrap">
                   {formatMoney(rule.amountMinor, "USD")}
                 </p>
                 <Button
                   variant={rule.active ? "outline" : "secondary"}
                   size="sm"
                   onClick={() => handleToggle(rule.id, rule.active)}
-                  className="text-xs h-8"
+                  className="text-xs h-8 whitespace-nowrap"
                 >
                   <Power className="h-3.5 w-3.5 mr-1" />
-                  {rule.active ? "Pause" : "Resume"}
+                  {rule.active ? t("pause") : t("resume")}
                 </Button>
                 <button
                   type="button"
                   onClick={() => handleDeleteRule(rule.id, rule.name)}
                   className="text-zinc-400 hover:text-rose-500 dark:hover:text-rose-400 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                  title="Delete recurring rule"
+                  title={t("deleteRule")}
+                  aria-label={t("deleteRule")}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -377,18 +397,18 @@ export default function RecurringPage() {
 
       {/* Add Rule Dialog */}
       {isDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="mobile-sheet w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-5 sm:p-6 space-y-4">
             <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-              New Recurring Rule
+              {t("newRuleTitle")}
             </h2>
             <form onSubmit={handleCreateRule} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-                  Subscription or Bill Name
+                  {t("nameLabel")}
                 </label>
                 <Input
-                  placeholder="e.g. Netflix, Gym, Rent"
+                  placeholder={t("namePlaceholder")}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -397,7 +417,7 @@ export default function RecurringPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-                  Amount ($ USD)
+                  {t("amountLabel")}
                 </label>
                 <Input
                   type="number"
@@ -411,35 +431,35 @@ export default function RecurringPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-                  Frequency
+                  {t("frequencyLabel")}
                 </label>
                 <select
                   value={frequency}
                   onChange={(e) =>
-                    setFrequency(e.target.value as "daily" | "weekly" | "monthly")
+                    setFrequency(e.target.value as Frequency)
                   }
                   className="w-full h-11 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 text-sm"
                 >
-                  <option value="monthly">Monthly (e.g. 1st of month)</option>
-                  <option value="weekly">Weekly (every 7 days)</option>
-                  <option value="daily">Daily</option>
+                  <option value="monthly">{t("optionMonthly")}</option>
+                  <option value="weekly">{t("optionWeekly")}</option>
+                  <option value="daily">{t("optionDaily")}</option>
                 </select>
               </div>
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-                  Category
+                  {tc("category")}
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full h-11 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 text-sm"
                 >
-                  <option value="Housing & Bills">Housing & Bills</option>
-                  <option value="Food & Drinks">Food & Drinks</option>
-                  <option value="Transport">Transport</option>
-                  <option value="Entertainment">Entertainment</option>
-                  <option value="Health & Medical">Health & Medical</option>
+                  {CATEGORY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {t(opt.key)}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -450,10 +470,10 @@ export default function RecurringPage() {
                   onClick={() => setIsDialogOpen(false)}
                   className="flex-1"
                 >
-                  Cancel
+                  {tc("cancel")}
                 </Button>
                 <Button type="submit" className="flex-1">
-                  Save Rule
+                  {t("saveRule")}
                 </Button>
               </div>
             </form>

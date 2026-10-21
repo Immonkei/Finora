@@ -30,29 +30,49 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CATEGORY_ICONS } from "@/features/categories/components/category-manager";
 import { DEFAULT_USD_TO_KHR_RATE } from "@/lib/money";
+import { useT } from "@/lib/i18n";
+import { useAccounts } from "@/features/accounts/use-accounts";
+import { AccountChips } from "@/features/accounts/components/account-chips";
+import type { txDialogs } from "@/lib/i18n/messages/txDialogs";
 
 interface QuickAddDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  /** Image shared into the app (e.g. an ABA/KHQR slip); scanned as soon as the dialog opens */
+  initialFile?: File | null;
 }
 
-const DEFAULT_CATEGORIES = [
-  { id: "cat-1", name: "Food & Drinks", color: "#EF4444", icon: Utensils },
-  { id: "cat-2", name: "Groceries", color: "#F59E0B", icon: ShoppingCart },
-  { id: "cat-3", name: "Transport", color: "#3B82F6", icon: Car },
-  { id: "cat-4", name: "Housing & Bills", color: "#8B5CF6", icon: Home },
-  { id: "cat-5", name: "Entertainment", color: "#EC4899", icon: Tv },
-  { id: "cat-6", name: "Shopping", color: "#10B981", icon: ShoppingBag },
+interface QuickAddCategory {
+  id: string;
+  name: string;
+  color: string;
+  icon: typeof Utensils;
+  /** Translated label for the built-in fallback categories; user categories show their own name */
+  labelKey?: keyof typeof txDialogs.en;
+}
+
+const LAST_ACCOUNT_KEY = "finora-last-account";
+
+const DEFAULT_CATEGORIES: QuickAddCategory[] = [
+  { id: "cat-1", name: "Food & Drinks", color: "#EF4444", icon: Utensils, labelKey: "catFood" },
+  { id: "cat-2", name: "Groceries", color: "#F59E0B", icon: ShoppingCart, labelKey: "catGroceries" },
+  { id: "cat-3", name: "Transport", color: "#3B82F6", icon: Car, labelKey: "catTransport" },
+  { id: "cat-4", name: "Housing & Bills", color: "#8B5CF6", icon: Home, labelKey: "catHousing" },
+  { id: "cat-5", name: "Entertainment", color: "#EC4899", icon: Tv, labelKey: "catEntertainment" },
+  { id: "cat-6", name: "Shopping", color: "#10B981", icon: ShoppingBag, labelKey: "catShopping" },
 ];
 
 export function QuickAddDialog({
   isOpen,
   onClose,
   onSuccess,
+  initialFile = null,
 }: QuickAddDialogProps) {
+  const t = useT("txDialogs");
+  const tc = useT("common");
   const { isOffline } = usePWA();
-  const [categoriesList, setCategoriesList] = React.useState(DEFAULT_CATEGORIES);
+  const [categoriesList, setCategoriesList] = React.useState<QuickAddCategory[]>(DEFAULT_CATEGORIES);
   const [entryMode, setEntryMode] = React.useState<"keypad" | "nlp" | "voice">("keypad");
   const [nlpText, setNlpText] = React.useState("");
 
@@ -70,6 +90,36 @@ export function QuickAddDialog({
   const [amountStr, setAmountStr] = React.useState("");
   const [currency, setCurrency] = React.useState<"USD" | "KHR">("USD");
   const [selectedCategory, setSelectedCategory] = React.useState<string>(DEFAULT_CATEGORIES[0].id);
+
+  // Accounts: default to the last one used on this device, then the oldest account
+  const tAcc = useT("accounts");
+  const { accounts } = useAccounts({ withBalances: false, enabled: isOpen });
+  const [chosenAccountId, setChosenAccountId] = React.useState<string | null>(null);
+  const [chosenToAccountId, setChosenToAccountId] = React.useState<string | null>(null);
+  const [lastUsedAccountId] = React.useState<string | null>(() => {
+    try {
+      return typeof window === "undefined" ? null : window.localStorage.getItem(LAST_ACCOUNT_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const accountId =
+    accounts.find((a) => a.id === chosenAccountId)?.id ??
+    accounts.find((a) => a.id === lastUsedAccountId)?.id ??
+    accounts[0]?.id ??
+    null;
+  const toAccountId =
+    accounts.find((a) => a.id === chosenToAccountId && a.id !== accountId)?.id ??
+    accounts.find((a) => a.id !== accountId)?.id ??
+    null;
+  const rememberAccount = (id: string | null) => {
+    if (!id) return;
+    try {
+      window.localStorage.setItem(LAST_ACCOUNT_KEY, id);
+    } catch {
+      // storage unavailable; default falls back to the first account
+    }
+  };
   const [note, setNote] = React.useState("");
   const [receiptImage, setReceiptImage] = React.useState<string | null>(null);
   const [remoteReceiptUrl, setRemoteReceiptUrl] = React.useState<string | null>(null);
@@ -142,6 +192,96 @@ export function QuickAddDialog({
   const nlpInputRef = React.useRef<HTMLInputElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Shared by the camera/attach buttons and images shared into the app
+  const scanFile = React.useCallback(
+    async (file: File) => {
+      const localUrl = URL.createObjectURL(file);
+      setReceiptImage(localUrl);
+
+      if (!isOffline) {
+        setIsUploadingReceipt(true);
+        setIsScanningReceipt(true);
+        setScannedSummary(null);
+        toast.info(t("scanningToast"));
+
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+          const res = await fetch("/api/scan-receipt", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            if (data.receiptUrl) {
+              setRemoteReceiptUrl(data.receiptUrl);
+            }
+
+            // Auto-fill extracted fields
+            if (data.amount && data.amount > 0) {
+              setAmountStr(data.amount.toString());
+            }
+            if (data.currency) {
+              setCurrency(data.currency);
+            }
+            if (data.merchant) {
+              const noteText = data.transactionId
+                ? `${data.merchant} [Ref: ${data.transactionId}]`
+                : data.merchant;
+              setNote(noteText);
+            }
+            if (data.category) {
+              const matchedCat = categoriesList.find(
+                (c) => c.name.toLowerCase() === data.category.toLowerCase()
+              );
+              if (matchedCat) {
+                setSelectedCategory(matchedCat.id);
+              }
+            }
+
+            setScannedSummary({
+              merchant: data.merchant,
+              amount: data.amount,
+              category: data.category,
+              confidence: data.confidence,
+              source: data.source,
+              bankName: data.bankName,
+              transactionId: data.transactionId,
+            });
+
+            const sourceTitle = data.bankName
+              ? t("voucherDetected", { bank: data.bankName })
+              : t("receiptAutoFilled");
+
+            toast.success(`✨ ${sourceTitle}`, {
+              description: `${data.merchant || t("storeFallback")} • ${data.currency === "USD" ? "$" : "៛"}${data.amount || 0}`,
+            });
+          } else {
+            toast.error(t("scanFailed"), { description: data.error });
+          }
+        } catch {
+          toast.error(t("scanError"));
+        } finally {
+          setIsUploadingReceipt(false);
+          setIsScanningReceipt(false);
+        }
+      } else {
+        toast.info(t("attachedOffline"));
+      }
+    },
+    [isOffline, t, categoriesList]
+  );
+
+  // An image shared into Finora (Web Share Target) is scanned once on open
+  const scannedInitialFileRef = React.useRef<File | null>(null);
+  React.useEffect(() => {
+    if (isOpen && initialFile && scannedInitialFileRef.current !== initialFile) {
+      scannedInitialFileRef.current = initialFile;
+      void scanFile(initialFile);
+    }
+  }, [isOpen, initialFile, scanFile]);
+
   // Auto-focus when dialog opens (Spec FR-T4)
   React.useEffect(() => {
     if (isOpen) {
@@ -192,90 +332,15 @@ export function QuickAddDialog({
       if (matchedCat) {
         setSelectedCategory(matchedCat.id);
       }
-      toast.success("Voice Logged!", {
+      toast.success(t("voiceLogged"), {
         description: `${parsed.note} • ${parsed.currency === "USD" ? "$" : "៛"}${parsed.amount}`,
       });
     }
   };
 
-  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const localUrl = URL.createObjectURL(file);
-      setReceiptImage(localUrl);
-
-      if (!isOffline) {
-        setIsUploadingReceipt(true);
-        setIsScanningReceipt(true);
-        setScannedSummary(null);
-        toast.info("Scanning receipt with AI...");
-
-        try {
-          const formData = new FormData();
-          formData.append("file", file);
-          const res = await fetch("/api/scan-receipt", {
-            method: "POST",
-            body: formData,
-          });
-          const data = await res.json();
-
-          if (data.success) {
-            if (data.receiptUrl) {
-              setRemoteReceiptUrl(data.receiptUrl);
-            }
-
-            // Auto-fill extracted fields
-            if (data.amount && data.amount > 0) {
-              setAmountStr(data.amount.toString());
-            }
-            if (data.currency) {
-              setCurrency(data.currency);
-            }
-            if (data.merchant) {
-              const noteText = data.transactionId
-                ? `${data.merchant} [Ref: ${data.transactionId}]`
-                : data.merchant;
-              setNote(noteText);
-            }
-            if (data.category) {
-              const matchedCat = categoriesList.find(
-                (c) => c.name.toLowerCase() === data.category.toLowerCase()
-              );
-              if (matchedCat) {
-                setSelectedCategory(matchedCat.id);
-              }
-            }
-
-            setScannedSummary({
-              merchant: data.merchant,
-              amount: data.amount,
-              category: data.category,
-              confidence: data.confidence,
-              source: data.source,
-              bankName: data.bankName,
-              transactionId: data.transactionId,
-            });
-
-            const sourceTitle = data.bankName
-              ? `${data.bankName} Voucher detected!`
-              : "Receipt auto-filled!";
-
-            toast.success(`✨ ${sourceTitle}`, {
-              description: `${data.merchant || "Store"} • ${data.currency === "USD" ? "$" : "៛"}${data.amount || 0}`,
-            });
-          } else {
-            toast.error("Receipt scan failed", { description: data.error });
-          }
-        } catch {
-          toast.error("Could not scan receipt image");
-        } finally {
-          setIsUploadingReceipt(false);
-          setIsScanningReceipt(false);
-        }
-      } else {
-        toast.info("Receipt attached locally (offline mode)");
-      }
-    }
+    if (file) void scanFile(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -302,7 +367,7 @@ export function QuickAddDialog({
     }
 
     if (isNaN(finalAmount) || finalAmount <= 0) {
-      setErrorMessage("Please enter a valid amount greater than 0");
+      setErrorMessage(t("invalidAmount"));
       return;
     }
 
@@ -315,16 +380,20 @@ export function QuickAddDialog({
         type,
         amount: finalAmount,
         currency: finalCurrency,
+        account_id: accountId ?? undefined,
+        to_account_id: type === "transfer" ? toAccountId ?? undefined : undefined,
         category_id: type === "expense" ? selectedCategory : undefined,
         note: finalNote.trim() || undefined,
         occurred_at: new Date().toISOString(),
       });
 
       setIsSubmitting(false);
-      toast.info("Saved offline", {
-        description: `${finalCurrency === "USD" ? "$" : "៛"}${finalAmount.toFixed(
-          finalCurrency === "USD" ? 2 : 0
-        )} queued. Will automatically sync to cloud when connected.`,
+      toast.info(t("savedOffline"), {
+        description: t("savedOfflineDescription", {
+          amount: `${finalCurrency === "USD" ? "$" : "៛"}${finalAmount.toFixed(
+            finalCurrency === "USD" ? 2 : 0
+          )}`,
+        }),
       });
 
       // Reset form
@@ -343,7 +412,8 @@ export function QuickAddDialog({
         type,
         amount: finalAmount,
         currency: finalCurrency,
-        account_id: "00000000-0000-0000-0000-000000000001",
+        account_id: accountId ?? "00000000-0000-0000-0000-000000000001",
+        to_account_id: type === "transfer" ? toAccountId : undefined,
         category_id: type === "expense" ? selectedCategory : undefined,
         note: finalNote.trim() || undefined,
         receipt_url: remoteReceiptUrl || undefined,
@@ -353,14 +423,15 @@ export function QuickAddDialog({
       setIsSubmitting(false);
 
       if (res.success) {
+        rememberAccount(accountId);
         toast.success(
           type === "expense"
-            ? "Expense recorded!"
+            ? t("expenseRecorded")
             : type === "income"
-            ? "Income recorded!"
-            : "Transfer completed!",
+            ? t("incomeRecorded")
+            : t("transferCompleted"),
           {
-            description: `${finalCurrency === "USD" ? "$" : "៛"}${finalAmount.toFixed(finalCurrency === "USD" ? 2 : 0)} ${finalNote ? `• ${finalNote}` : ""}${remoteReceiptUrl || receiptImage ? " (Receipt attached)" : ""}`,
+            description: `${finalCurrency === "USD" ? "$" : "៛"}${finalAmount.toFixed(finalCurrency === "USD" ? 2 : 0)} ${finalNote ? `• ${finalNote}` : ""}${remoteReceiptUrl || receiptImage ? ` (${t("receiptAttached")})` : ""}`,
           }
         );
         // Reset form
@@ -373,8 +444,8 @@ export function QuickAddDialog({
         onSuccess?.();
         onClose();
       } else {
-        setErrorMessage(res.error || "Failed to save transaction");
-        toast.error("Could not save transaction", {
+        setErrorMessage(res.error || t("saveFailed"));
+        toast.error(t("couldNotSave"), {
           description: res.error,
         });
       }
@@ -384,14 +455,16 @@ export function QuickAddDialog({
         type,
         amount: finalAmount,
         currency: finalCurrency,
+        account_id: accountId ?? undefined,
+        to_account_id: type === "transfer" ? toAccountId ?? undefined : undefined,
         category_id: type === "expense" ? selectedCategory : undefined,
         note: finalNote.trim() || undefined,
         occurred_at: new Date().toISOString(),
       });
 
       setIsSubmitting(false);
-      toast.info("Network disconnected — saved offline", {
-        description: "Transaction queued locally and will sync when back online.",
+      toast.info(t("networkOffline"), {
+        description: t("networkOfflineDescription"),
       });
 
       setAmountStr("");
@@ -418,7 +491,7 @@ export function QuickAddDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
       <div
-        className="w-full max-w-lg rounded-t-[28px] sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-2xl p-4 sm:p-6 space-y-3.5 max-h-[92vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200"
+        className="mobile-sheet w-full max-w-lg rounded-t-[28px] sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-2xl p-4 sm:p-6 space-y-3.5 max-h-[92dvh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200"
         role="dialog"
       >
         {/* Mobile Pull Handle Bar */}
@@ -432,12 +505,12 @@ export function QuickAddDialog({
             </span>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
-                Quick Log
+                {t("quickLog")}
               </h2>
             </div>
             {isOffline && (
               <span className="flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded-full ml-1">
-                <WifiOff className="h-3 w-3" /> Offline
+                <WifiOff className="h-3 w-3" /> {t("offline")}
               </span>
             )}
           </div>
@@ -445,7 +518,7 @@ export function QuickAddDialog({
           <button
             onClick={handleModalClose}
             className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-            aria-label="Close dialog"
+            aria-label={t("closeDialog")}
           >
             <X className="h-5 w-5" />
           </button>
@@ -460,13 +533,13 @@ export function QuickAddDialog({
               setEntryMode("keypad");
             }}
             className={cn(
-              "py-1.5 text-xs font-semibold rounded-lg transition-all text-center cursor-pointer",
+              "min-w-0 truncate px-1 py-1.5 text-xs font-semibold rounded-lg transition-all text-center cursor-pointer",
               entryMode === "keypad"
                 ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 shadow-xs"
                 : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
             )}
           >
-            Keypad
+            {t("modeKeypad")}
           </button>
           <button
             type="button"
@@ -482,7 +555,7 @@ export function QuickAddDialog({
             )}
           >
             <Zap className="h-3 w-3 shrink-0" />
-            <span className="truncate">AI Text</span>
+            <span className="truncate">{t("modeAiText")}</span>
           </button>
           <button
             type="button"
@@ -500,7 +573,7 @@ export function QuickAddDialog({
             )}
           >
             <Mic className={cn("h-3 w-3 shrink-0", isListening && "text-rose-500 animate-pulse")} />
-            <span className="truncate">Voice</span>
+            <span className="truncate">{t("modeVoice")}</span>
           </button>
           <button
             type="button"
@@ -509,28 +582,28 @@ export function QuickAddDialog({
               fileInputRef.current?.click();
             }}
             className="py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 text-zinc-500 hover:text-brand-600 dark:hover:text-accent-400 transition-all cursor-pointer text-center"
-            title="Snap or upload a receipt photo or ABA / Bakong KHQR payment screenshot"
+            title={t("modeScanTitle")}
           >
             <Camera className="h-3 w-3 shrink-0" />
-            <span className="truncate">Scan Slip</span>
+            <span className="truncate">{t("modeScan")}</span>
           </button>
         </div>
 
         {/* Type Segmented Buttons */}
         <div className="grid grid-cols-3 rounded-xl bg-zinc-100/90 dark:bg-zinc-800/90 p-1 shrink-0">
-          {(["expense", "income", "transfer"] as const).map((t) => (
+          {(["expense", "income", "transfer"] as const).map((txType) => (
             <button
-              key={t}
+              key={txType}
               type="button"
-              onClick={() => setType(t)}
+              onClick={() => setType(txType)}
               className={cn(
-                "py-1.5 text-xs font-semibold rounded-lg capitalize transition-all text-center cursor-pointer",
-                type === t
+                "min-w-0 truncate py-1.5 text-xs font-semibold rounded-lg capitalize transition-all text-center cursor-pointer",
+                type === txType
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                   : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
               )}
             >
-              {t}
+              {tc(txType)}
             </button>
           ))}
         </div>
@@ -569,7 +642,7 @@ export function QuickAddDialog({
                         ? "bg-rose-500 text-white shadow-rose-500/40 ring-4 ring-rose-200 dark:ring-rose-950"
                         : "bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 text-white shadow-brand-600/30 hover:scale-105"
                     )}
-                    title={isListening ? "Tap to stop listening" : "Tap to speak"}
+                    title={isListening ? t("tapToStopListening") : t("tapToSpeak")}
                   >
                     {isListening ? (
                       <Mic className="h-7 w-7 animate-pulse" />
@@ -583,12 +656,12 @@ export function QuickAddDialog({
                 <div className="mt-2 space-y-1.5 w-full max-w-sm">
                   <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                     {isListening
-                      ? "Listening... Speak naturally"
+                      ? t("listening")
                       : transcript
-                      ? "Voice Transcript"
+                      ? t("voiceTranscript")
                       : isSpeechSupported
-                      ? "Tap to Speak Expense"
-                      : "Speech recognition not supported in this browser"}
+                      ? t("tapToSpeakExpense")
+                      : t("speechUnsupported")}
                   </p>
 
                   {transcript ? (
@@ -630,12 +703,12 @@ export function QuickAddDialog({
                 {amountStr && (
                   <div className="w-full mt-3 p-2.5 bg-brand-50/90 dark:bg-brand-950/50 border border-brand-200 dark:border-brand-800/50 rounded-xl text-xs flex items-center justify-between text-brand-900 dark:text-brand-200 text-left animate-in fade-in">
                     <div className="truncate">
-                      <span>Voice Extracted: </span>
+                      <span>{t("voiceExtracted")} </span>
                       <strong className="tabular-nums">
                         {currency === "USD" ? "$" : "៛"}{amountStr}
                       </strong>{" "}
-                      <span>for </span>
-                      <strong>{note || "Expense"}</strong>
+                      <span>{t("forConnector")} </span>
+                      <strong>{note || tc("expense")}</strong>
                     </div>
                     <Badge variant="outline" className="border-brand-500/40 text-[10px] shrink-0 ml-2">
                       {currency}
@@ -647,13 +720,13 @@ export function QuickAddDialog({
           ) : entryMode === "nlp" ? (
             <div className="space-y-2">
               <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 flex items-center justify-between">
-                <span>Type or speak: &quot;coffee 2.5&quot; or &quot;taxi 8000 khr&quot;</span>
-                <span className="text-[10px] text-accent-600 dark:text-accent-400 font-bold uppercase">AI Smart Parse</span>
+                <span className="min-w-0">{t("nlpHint")}</span>
+                <span className="text-[10px] text-accent-600 dark:text-accent-400 font-bold uppercase whitespace-nowrap shrink-0 ml-2">{t("aiSmartParse")}</span>
               </label>
               <div className="relative">
                 <Input
                   ref={nlpInputRef}
-                  placeholder="e.g. iced latte 3.50, lunch 12, grab bike 6000 khr"
+                  placeholder={t("nlpPlaceholder")}
                   value={nlpText}
                   onChange={(e) => handleNlpChange(e.target.value)}
                   className="text-base py-3 pr-10 rounded-xl"
@@ -675,7 +748,7 @@ export function QuickAddDialog({
                         ? "text-rose-500 bg-rose-50 dark:bg-rose-950/60 animate-pulse"
                         : "text-zinc-400 hover:text-brand-600 dark:hover:text-accent-400"
                     )}
-                    title={isListening ? "Stop listening" : "Dictate with voice"}
+                    title={isListening ? t("stopListening") : t("dictate")}
                   >
                     <Mic className="h-4 w-4" />
                   </button>
@@ -683,7 +756,7 @@ export function QuickAddDialog({
               </div>
               {amountStr && (
                 <div className="p-3 bg-brand-50/80 dark:bg-brand-950/40 border border-brand-200/50 dark:border-brand-800/40 rounded-xl text-xs flex items-center justify-between text-brand-900 dark:text-brand-200">
-                  <span>Detected: <strong>{currency === "USD" ? "$" : "៛"}{amountStr}</strong> for <strong>{note || "Expense"}</strong></span>
+                  <span className="min-w-0 truncate">{t("detected")} <strong>{currency === "USD" ? "$" : "៛"}{amountStr}</strong> {t("forConnector")} <strong>{note || tc("expense")}</strong></span>
                   <Badge variant="outline" className="border-brand-500/40">{currency}</Badge>
                 </div>
               )}
@@ -710,7 +783,7 @@ export function QuickAddDialog({
                   type="button"
                   onClick={() => setCurrency(currency === "USD" ? "KHR" : "USD")}
                   className="absolute right-0 top-1/2 -translate-y-1/2 text-xs font-bold px-2.5 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 shadow-xs hover:border-brand-500 hover:text-brand-600 dark:hover:text-accent-400 transition-all cursor-pointer flex items-center gap-1 active:scale-95"
-                  title="Tap to switch currency"
+                  title={t("switchCurrency")}
                 >
                   <span>{currency}</span>
                   <span className="text-[10px] text-zinc-400">⇄</span>
@@ -728,7 +801,7 @@ export function QuickAddDialog({
           {isScanningReceipt && (
             <div className="p-3 bg-accent-50/80 dark:bg-accent-950/40 border border-accent-200 dark:border-accent-800/60 rounded-xl text-xs flex items-center gap-2.5 text-accent-900 dark:text-accent-200 animate-pulse">
               <Sparkles className="h-4 w-4 text-accent-500 shrink-0 animate-spin" />
-              <span>Scanning receipt with AI: reading store, amount, and category...</span>
+              <span>{t("scanningBanner")}</span>
             </div>
           )}
 
@@ -743,7 +816,7 @@ export function QuickAddDialog({
                   <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 )}
                 <span className="truncate">
-                  {scannedSummary.bankName ? "Payment Extracted: " : "✨ Auto-filled: "}
+                  {scannedSummary.bankName ? `${t("paymentExtracted")} ` : `✨ ${t("autoFilled")} `}
                   <strong>{scannedSummary.merchant}</strong> •{" "}
                   <strong className="tabular-nums">
                     {currency === "USD" ? "$" : "៛"}{scannedSummary.amount}
@@ -753,11 +826,35 @@ export function QuickAddDialog({
               </div>
               <Badge variant="outline" className="border-emerald-500/40 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0 ml-2">
                 {scannedSummary.bankName
-                  ? "KHQR Slip"
+                  ? t("khqrSlip")
                   : scannedSummary.source === "gemini_vision"
                   ? "Gemini AI"
-                  : "Smart OCR"}
+                  : t("smartOcr")}
               </Badge>
+            </div>
+          )}
+
+          {/* Account picker: which wallet/bank this hits (and where a transfer goes) */}
+          {accounts.length > 0 && (
+            <div className="space-y-1.5">
+              <AccountChips
+                label={type === "transfer" ? tAcc("from") : tAcc("account")}
+                accounts={accounts}
+                value={accountId}
+                onChange={setChosenAccountId}
+              />
+              {type === "transfer" &&
+                (accounts.length > 1 ? (
+                  <AccountChips
+                    label={tAcc("to")}
+                    accounts={accounts}
+                    value={toAccountId}
+                    onChange={setChosenToAccountId}
+                    disabledId={accountId}
+                  />
+                ) : (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400">{tAcc("noOtherAccount")}</p>
+                ))}
             </div>
           )}
 
@@ -765,7 +862,7 @@ export function QuickAddDialog({
           {type === "expense" && (
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-                Category
+                {tc("category")}
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 sm:max-h-56 overflow-y-auto pr-1">
                 {categoriesList.map((cat) => {
@@ -790,7 +887,7 @@ export function QuickAddDialog({
                         <Icon className="h-3.5 w-3.5" />
                       </span>
                       <span className="truncate text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                        {cat.name}
+                        {cat.labelKey ? t(cat.labelKey) : cat.name}
                       </span>
                     </button>
                   );
@@ -802,7 +899,7 @@ export function QuickAddDialog({
           {/* Note & Receipt Upload Row */}
           <div className="flex items-center gap-2">
             <Input
-              placeholder="Note (optional)"
+              placeholder={t("notePlaceholder")}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="text-xs h-10 flex-1 rounded-xl"
@@ -822,7 +919,7 @@ export function QuickAddDialog({
               variant={receiptImage ? "default" : "outline"}
               size="icon"
               onClick={() => fileInputRef.current?.click()}
-              title="Attach receipt or payment slip photo"
+              title={t("attachReceipt")}
               className={cn(
                 "shrink-0 h-10 w-10 rounded-xl transition-all cursor-pointer",
                 receiptImage
@@ -840,10 +937,10 @@ export function QuickAddDialog({
               <span className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 font-medium truncate">
                 <ImageIcon className="h-3.5 w-3.5 text-accent-500 shrink-0" />
                 {isUploadingReceipt
-                  ? "Uploading to Supabase Storage..."
+                  ? t("uploadingReceipt")
                   : remoteReceiptUrl
-                  ? "Receipt stored in Supabase"
-                  : "Receipt photo attached"}
+                  ? t("receiptStored")
+                  : t("receiptPhotoAttached")}
               </span>
               <button
                 type="button"
@@ -853,7 +950,7 @@ export function QuickAddDialog({
                 }}
                 className="text-rose-500 hover:text-rose-700 text-xs font-semibold px-1 cursor-pointer"
               >
-                Remove
+                {t("remove")}
               </button>
             </div>
           )}
@@ -872,14 +969,14 @@ export function QuickAddDialog({
             className="w-full h-11 sm:h-12 text-sm sm:text-base font-bold rounded-xl shadow-md shadow-brand-600/20 active:scale-[0.99] transition-all cursor-pointer"
           >
             {isSubmitting
-              ? "Saving..."
+              ? tc("saving")
               : isOffline
-              ? "Save Offline (Queued)"
+              ? t("saveOffline")
               : type === "income"
-              ? "Save Income"
+              ? t("saveIncome")
               : type === "transfer"
-              ? "Save Transfer"
-              : "Save Expense"}
+              ? t("saveTransfer")
+              : t("saveExpense")}
           </Button>
         </form>
       </div>

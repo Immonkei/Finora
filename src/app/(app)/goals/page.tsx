@@ -14,17 +14,22 @@ import { useRealtimeTable } from "@/lib/supabase/realtime";
 import { createSavingsGoal, contributeSavingsGoal, deleteSavingsGoal } from "@/features/goals/actions";
 import { MilestoneRing, getMilestoneTier } from "@/features/goals/components/milestone-ring";
 import { fireConfetti } from "@/components/ui/confetti";
+import { useLocale, useT } from "@/lib/i18n";
 
 interface GoalItem {
   id: string;
   name: string;
   targetAmountMinor: bigint;
   savedAmountMinor: bigint;
-  deadline: string;
+  /** Raw "YYYY-MM-DD" deadline, or null for an open-ended goal; formatted at render */
+  deadline: string | null;
   weeklyNeededMinor: bigint;
 }
 
 export default function GoalsPage() {
+  const t = useT("goals");
+  const tc = useT("common");
+  const { dateLocale } = useLocale();
   const [goals, setGoals] = React.useState<GoalItem[]>([]);
 
   // Dialog states
@@ -76,7 +81,7 @@ export default function GoalsPage() {
             name: g.name,
             targetAmountMinor: BigInt(g.target_amount),
             savedAmountMinor: BigInt(g.saved_amount),
-            deadline: g.deadline ? formatDisplayDate(g.deadline) : "Open",
+            deadline: g.deadline ?? null,
             weeklyNeededMinor: computeWeeklyNeeded(
               g.target_amount,
               g.saved_amount,
@@ -109,7 +114,7 @@ export default function GoalsPage() {
     e.preventDefault();
     const target = parseFloat(targetAmountStr);
     if (!goalName.trim() || isNaN(target) || target <= 0) {
-      toast.error("Please enter a goal name and valid target amount");
+      toast.error(t("invalidGoal"));
       return;
     }
 
@@ -124,7 +129,7 @@ export default function GoalsPage() {
       });
 
       if (!res.success) {
-        toast.error("Failed to create goal", {
+        toast.error(t("createFailed"), {
           description: res.error,
         });
         return;
@@ -132,8 +137,8 @@ export default function GoalsPage() {
 
       loadGoals();
     } catch (err) {
-      toast.error("Failed to create goal", {
-        description: err instanceof Error ? err.message : "Unexpected error",
+      toast.error(t("createFailed"), {
+        description: err instanceof Error ? err.message : t("unexpectedError"),
       });
       return;
     }
@@ -143,7 +148,7 @@ export default function GoalsPage() {
       name: goalName.trim(),
       targetAmountMinor: targetMinor,
       savedAmountMinor: BigInt(0),
-      deadline: deadlineStr || "Open",
+      deadline: deadlineStr || null,
       weeklyNeededMinor: computeWeeklyNeeded(Number(targetMinor), 0, deadlineStr),
     };
 
@@ -153,8 +158,11 @@ export default function GoalsPage() {
     setTargetAmountStr("");
     setDeadlineStr("");
 
-    toast.success("Savings Goal created!", {
-      description: `Target ${formatMoney(targetMinor, "USD")} set for "${newGoal.name}"`,
+    toast.success(t("createdToast"), {
+      description: t("createdDescription", {
+        amount: formatMoney(targetMinor, "USD"),
+        name: newGoal.name,
+      }),
     });
   };
 
@@ -163,7 +171,7 @@ export default function GoalsPage() {
     if (!contributeGoal) return;
     const amount = parseFloat(contributionStr);
     if (isNaN(amount) || amount <= 0) {
-      toast.error("Please enter a valid amount");
+      toast.error(t("invalidAmount"));
       return;
     }
 
@@ -177,7 +185,7 @@ export default function GoalsPage() {
       });
 
       if (!res.success) {
-        toast.error("Failed to record contribution", {
+        toast.error(t("contributeFailed"), {
           description: res.error,
         });
         return;
@@ -185,8 +193,8 @@ export default function GoalsPage() {
 
       loadGoals();
     } catch (err) {
-      toast.error("Failed to record contribution", {
-        description: err instanceof Error ? err.message : "Unexpected error",
+      toast.error(t("contributeFailed"), {
+        description: err instanceof Error ? err.message : t("unexpectedError"),
       });
       return;
     }
@@ -209,18 +217,21 @@ export default function GoalsPage() {
 
     if (isCompleted) {
       fireConfetti({ particleCount: 160 });
-      toast.success("Goal Reached!", {
-        description: `Congratulations! You conquered your goal for "${contributeGoal.name}"!`,
+      toast.success(t("goalReachedToast"), {
+        description: t("goalReachedDescription", { name: contributeGoal.name }),
       });
     } else {
-      toast.success("Contribution recorded!", {
-        description: `Added ${formatMoney(contributionMinor, "USD")} to "${contributeGoal.name}"`,
+      toast.success(t("contributedToast"), {
+        description: t("contributedDescription", {
+          amount: formatMoney(contributionMinor, "USD"),
+          name: contributeGoal.name,
+        }),
       });
     }
   };
 
   const handleDeleteGoal = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete the savings goal "${name}"?`)) {
+    if (!window.confirm(t("confirmDelete", { name }))) {
       return;
     }
 
@@ -228,24 +239,24 @@ export default function GoalsPage() {
       const res = await deleteSavingsGoal({ goal_id: id });
       if (res.success) {
         setGoals((prev) => prev.filter((g) => g.id !== id));
-        toast.success(`Savings goal "${name}" deleted`);
+        toast.success(t("deletedToast", { name }));
       } else {
-        toast.error("Failed to delete goal", { description: res.error });
+        toast.error(t("deleteFailed"), { description: res.error });
       }
     } catch {
-      toast.error("Could not delete savings goal");
+      toast.error(t("deleteError"));
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
-            Financial Targets
+            {t("eyebrow")}
           </p>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Savings Goals
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            {t("title")}
           </h1>
         </div>
         <Button
@@ -254,7 +265,7 @@ export default function GoalsPage() {
           className="w-full sm:w-auto shadow-md shadow-brand-500/20"
         >
           <Plus className="h-5 w-5 mr-1" />
-          Create Goal
+          {t("createGoal")}
         </Button>
       </div>
 
@@ -265,13 +276,13 @@ export default function GoalsPage() {
               <Target className="h-6 w-6" />
             </span>
             <div className="space-y-1">
-              <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">No savings goals yet</h3>
+              <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">{t("emptyTitle")}</h3>
               <p className="text-sm text-zinc-500 max-w-sm">
-                Set a financial milestone like an emergency fund or travel budget, and track your progress weekly.
+                {t("emptyHint")}
               </p>
             </div>
             <Button onClick={() => setIsCreateOpen(true)} size="sm" className="mt-2">
-              <Plus className="h-4 w-4 mr-1" /> Create Goal
+              <Plus className="h-4 w-4 mr-1" /> {t("createGoal")}
             </Button>
           </div>
         </Card>
@@ -311,11 +322,16 @@ export default function GoalsPage() {
                             )}
                           >
                             {React.createElement(tier.icon, { className: "h-2.5 w-2.5 shrink-0" })}
-                            <span>{tier.label}</span>
+                            <span className="whitespace-nowrap">{t(tier.labelKey)}</span>
                           </span>
                         </div>
                         <CardDescription className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                          <Calendar className="h-3.5 w-3.5 text-zinc-400 shrink-0" /> Target: {g.deadline || "Open Target"}
+                          <Calendar className="h-3.5 w-3.5 text-zinc-400 shrink-0" />{" "}
+                          {t("targetDate", {
+                            date: g.deadline
+                              ? formatDisplayDate(g.deadline, undefined, dateLocale)
+                              : t("openTarget"),
+                          })}
                         </CardDescription>
                       </div>
                     </div>
@@ -323,7 +339,8 @@ export default function GoalsPage() {
                       type="button"
                       onClick={() => handleDeleteGoal(g.id, g.name)}
                       className="text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer shrink-0"
-                      title="Delete Goal"
+                      title={t("deleteGoal")}
+                      aria-label={t("deleteGoal")}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -335,13 +352,13 @@ export default function GoalsPage() {
                   <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-zinc-50/80 dark:bg-zinc-800/40 border border-zinc-200/70 dark:border-zinc-800">
                     <div className="space-y-1 min-w-0 flex-1">
                       <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-                        Accumulated
+                        {t("accumulated")}
                       </p>
-                      <div className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight">
+                      <div className="text-xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight">
                         {formatMoney(g.savedAmountMinor, "USD")}
                       </div>
                       <div className="text-xs text-zinc-600 dark:text-zinc-300 font-medium tabular-nums">
-                        Target: <span className="font-bold text-zinc-900 dark:text-zinc-100">{formatMoney(g.targetAmountMinor, "USD")}</span>
+                        {t("target")} <span className="font-bold text-zinc-900 dark:text-zinc-100">{formatMoney(g.targetAmountMinor, "USD")}</span>
                       </div>
                       <div className="text-[11px] text-zinc-400 dark:text-zinc-500 tabular-nums">
                         ≈ ៛{khrSaved.toLocaleString()} / ៛{khrTarget.toLocaleString()}
@@ -358,20 +375,20 @@ export default function GoalsPage() {
                     <div className="flex items-center justify-between p-2.5 px-3 rounded-xl bg-brand-50/70 dark:bg-brand-950/40 border border-brand-200/50 dark:border-brand-800/40 text-xs">
                       <div className="flex items-center gap-2 text-brand-900 dark:text-brand-200 font-medium">
                         <TrendingUp className="h-3.5 w-3.5 text-brand-600 dark:text-accent-400 shrink-0" />
-                        <span>Weekly Pace</span>
+                        <span>{t("weeklyPace")}</span>
                       </div>
-                      <span className="font-bold text-brand-700 dark:text-accent-300 tabular-nums">
-                        {formatMoney(g.weeklyNeededMinor, "USD")} / week
+                      <span className="font-bold text-brand-700 dark:text-accent-300 tabular-nums whitespace-nowrap">
+                        {t("perWeek", { amount: formatMoney(g.weeklyNeededMinor, "USD") })}
                       </span>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between p-2.5 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-800/40 text-xs">
                       <div className="flex items-center gap-2 text-emerald-900 dark:text-emerald-200 font-medium">
                         <Trophy className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                        <span>Milestone Conquered</span>
+                        <span>{t("milestoneConquered")}</span>
                       </div>
-                      <span className="font-bold text-emerald-700 dark:text-emerald-300">
-                        100% Achieved
+                      <span className="font-bold text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
+                        {t("achieved")}
                       </span>
                     </div>
                   )}
@@ -386,14 +403,14 @@ export default function GoalsPage() {
                     size="sm"
                     onClick={() => {
                       fireConfetti({ particleCount: 150 });
-                      toast.success("Milestone Celebrated!", {
-                        description: `Great job conquering "${g.name}"!`,
+                      toast.success(t("celebratedToast"), {
+                        description: t("celebratedDescription", { name: g.name }),
                       });
                     }}
                     className="w-full h-10 border-amber-300 dark:border-amber-700 bg-amber-50/50 hover:bg-amber-100 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 font-semibold cursor-pointer rounded-xl"
                   >
                     <Trophy className="h-4 w-4 mr-1.5 text-amber-500" />
-                    Celebrate Milestone
+                    {t("celebrateMilestone")}
                   </Button>
                 ) : (
                   <Button
@@ -403,7 +420,7 @@ export default function GoalsPage() {
                     className="w-full h-10 font-semibold shadow-xs cursor-pointer rounded-xl"
                   >
                     <Plus className="h-4 w-4 mr-1" />
-                    Contribute Funds
+                    {t("contributeFunds")}
                   </Button>
                 )}
               </div>
@@ -415,18 +432,18 @@ export default function GoalsPage() {
 
       {/* Create Goal Modal */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="mobile-sheet w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-5 sm:p-6 space-y-4">
             <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-              Create Savings Goal
+              {t("createTitle")}
             </h2>
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-                  Goal Name
+                  {t("goalName")}
                 </label>
                 <Input
-                  placeholder="e.g. Vacation, House Deposit, Bike"
+                  placeholder={t("goalNamePlaceholder")}
                   value={goalName}
                   onChange={(e) => setGoalName(e.target.value)}
                   required
@@ -435,7 +452,7 @@ export default function GoalsPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-                  Target Amount ($ USD)
+                  {t("targetAmount")}
                 </label>
                 <Input
                   type="number"
@@ -449,7 +466,7 @@ export default function GoalsPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-                  Deadline (Optional)
+                  {t("deadlineOptional")}
                 </label>
                 <Input
                   type="date"
@@ -465,10 +482,10 @@ export default function GoalsPage() {
                   onClick={() => setIsCreateOpen(false)}
                   className="flex-1"
                 >
-                  Cancel
+                  {tc("cancel")}
                 </Button>
                 <Button type="submit" className="flex-1">
-                  Save Goal
+                  {t("saveGoal")}
                 </Button>
               </div>
             </form>
@@ -478,21 +495,21 @@ export default function GoalsPage() {
 
       {/* Contribute Modal */}
       {contributeGoal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="mobile-sheet w-full max-w-sm rounded-t-3xl sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-5 sm:p-6 space-y-4">
             <div>
               <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-                Contribute to Goal
+                {t("contributeTitle")}
               </h2>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Adding funds toward &ldquo;{contributeGoal.name}&rdquo;
+                {t("addingFundsToward", { name: contributeGoal.name })}
               </p>
             </div>
             <form onSubmit={handleContribute} className="space-y-4">
               {/* Quick Contribution Preset Chips */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
-                  Quick Presets
+                  {t("quickPresets")}
                 </label>
                 <div className="flex flex-wrap gap-1.5">
                   {[10, 25, 50, 100].map((preset) => (
@@ -517,7 +534,7 @@ export default function GoalsPage() {
                       }}
                       className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/60 text-brand-700 dark:text-accent-300 transition-colors cursor-pointer"
                     >
-                      Full Remaining
+                      {t("fullRemaining")}
                     </button>
                   )}
                 </div>
@@ -525,7 +542,7 @@ export default function GoalsPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-                  Contribution Amount ($ USD)
+                  {t("contributionAmount")}
                 </label>
                 <Input
                   type="number"
@@ -545,10 +562,10 @@ export default function GoalsPage() {
                   onClick={() => setContributeGoal(null)}
                   className="flex-1"
                 >
-                  Cancel
+                  {tc("cancel")}
                 </Button>
                 <Button type="submit" className="flex-1">
-                  Add Funds
+                  {t("addFunds")}
                 </Button>
               </div>
             </form>

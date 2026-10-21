@@ -4,6 +4,7 @@ import * as React from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import { formatMoney, type CurrencyCode } from "@/lib/money";
 import { useMounted } from "@/lib/hooks";
+import { useT } from "@/lib/i18n";
 import { ChartTooltip } from "./chart-tooltip";
 import type { CategoryChartItem } from "./chart-data";
 
@@ -23,6 +24,7 @@ export function CategoryDonutChart({
   onSelectCategory,
 }: CategoryDonutChartProps) {
   const isMounted = useMounted();
+  const t = useT("charts");
   const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
 
   const activeItem = activeIndex !== null && data[activeIndex] ? data[activeIndex] : null;
@@ -46,7 +48,7 @@ export function CategoryDonutChart({
       <div
         className={`flex h-64 items-center justify-center rounded-2xl border border-zinc-200/60 bg-zinc-50/50 dark:border-zinc-800/60 dark:bg-zinc-900/30 ${className}`}
       >
-        <span className="text-xs text-zinc-400 animate-pulse">Loading chart...</span>
+        <span className="text-xs text-zinc-400 animate-pulse">{t("loadingChart")}</span>
       </div>
     );
   }
@@ -58,10 +60,10 @@ export function CategoryDonutChart({
       >
         <div className="h-12 w-12 rounded-full border-2 border-dashed border-zinc-300 dark:border-zinc-700 mb-3" />
         <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-          No Expenses Recorded
+          {t("noExpensesTitle")}
         </p>
         <p className="text-xs text-zinc-400 mt-1 max-w-[220px]">
-          Add transactions this month to see your category breakdown.
+          {t("noExpensesHint")}
         </p>
       </div>
     );
@@ -78,7 +80,7 @@ export function CategoryDonutChart({
                 <ChartTooltip
                   currency={currency}
                   hideLabel={false}
-                  title="Category Spend"
+                  title={t("categorySpend")}
                 />
               }
             />
@@ -118,7 +120,7 @@ export function CategoryDonutChart({
         {/* Center Donut Label */}
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
           <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 max-w-[120px] truncate">
-            {activeItem ? activeItem.name : "Total Spent"}
+            {activeItem ? activeItem.name : t("totalSpent")}
           </span>
           <span className="text-xl sm:text-2xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-0.5">
             {activeItem
@@ -126,7 +128,9 @@ export function CategoryDonutChart({
               : formatMoney(totalSpentMinor, currency)}
           </span>
           <span className="text-[11px] font-medium text-brand-600 dark:text-accent-400 tabular-nums">
-            {activeItem ? `${activeItem.percent}% of total` : `${data.length} categories`}
+            {activeItem
+              ? t("percentOfTotal", { percent: activeItem.percent })
+              : t("categoriesCount", { count: data.length })}
           </span>
         </div>
       </div>

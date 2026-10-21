@@ -1,14 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { Plus, ArrowDownLeft, Sparkles, TrendingUp, Wallet, Pencil, Trash2 } from "lucide-react";
+import { ArrowDownLeft, Sparkles, TrendingUp, Wallet, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney, calculateDailyAllowance } from "@/lib/money";
 import { formatDisplayDate, getDaysLeftInMonth } from "@/lib/dates";
-import { QuickAddDialog } from "@/features/transactions/components/quick-add-dialog";
 import { useMounted } from "@/lib/hooks";
+import { useLocale, useT } from "@/lib/i18n";
+import { firstName, useProfile } from "@/features/profile/use-profile";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeTable } from "@/lib/supabase/realtime";
 import { toast } from "sonner";
@@ -29,7 +30,10 @@ interface DisplayTx {
 }
 
 export default function TodayPage() {
-  const [isAddOpen, setIsAddOpen] = React.useState(false);
+  const t = useT("today");
+  const tc = useT("common");
+  const { dateLocale } = useLocale();
+  const { profile } = useProfile();
   const [editingTx, setEditingTx] = React.useState<EditableTransaction | null>(null);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const isMounted = useMounted();
@@ -153,15 +157,15 @@ export default function TodayPage() {
     }
     await deleteTransaction(tx.id);
 
-    toast("Transaction deleted", {
-      description: `${tx.note} • ${formatMoney(tx.amountMinor, "USD")} (10s undo window)`,
+    toast(t("deletedToast"), {
+      description: t("deletedDescription", { note: tx.note, amount: formatMoney(tx.amountMinor, "USD") }),
       duration: 10000,
       action: {
-        label: "Undo",
+        label: tc("undo"),
         onClick: async () => {
           await restoreTransaction(tx.id);
           loadTodayData();
-          toast.success("Transaction restored!");
+          toast.success(t("restoredToast"));
         },
       },
     });
@@ -196,37 +200,36 @@ export default function TodayPage() {
 
   const monthStatusText =
     monthlyBudgetMinor > 0n
-      ? `${Math.round(Number((monthlySpentMinor * 100n) / monthlyBudgetMinor))}% used`
-      : "No limit set";
+      ? t("percentUsed", { percent: Math.round(Number((monthlySpentMinor * 100n) / monthlyBudgetMinor)) })
+      : t("noLimitSet");
+
+  const name = firstName(profile?.fullName);
+  const hour = currentDate?.getHours() ?? 9;
+  const greeting = name
+    ? t(hour < 12 ? "greetingMorning" : hour < 18 ? "greetingAfternoon" : "greetingEvening", { name })
+    : null;
 
   const displayDateStr = currentDate
-    ? formatDisplayDate(currentDate, "EEEE, MMMM d")
-    : "Today";
+    ? formatDisplayDate(currentDate, "EEEE, MMMM d", dateLocale)
+    : tc("today");
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
-            {displayDateStr}
-          </p>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Today&apos;s Spending
-          </h1>
-        </div>
-        <Button
-          size="lg"
-          onClick={() => setIsAddOpen(true)}
-          className="w-full sm:w-auto shadow-md shadow-brand-500/20"
-        >
-          <Plus className="h-5 w-5 mr-1" />
-          Log Expense
-        </Button>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Page Header (logging lives in the thumb-reachable + button in the bottom bar / sidebar) */}
+      <div>
+        <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
+          {displayDateStr}
+        </p>
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          {t("title")}
+        </h1>
+        {greeting && (
+          <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">{greeting}</p>
+        )}
       </div>
 
       {/* Hero Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="mobile-carousel grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Daily Allowance Card */}
         <Card className="bg-gradient-to-br from-brand-600 via-[#164366] to-[#0a1e2f] text-white border border-brand-500/30 shadow-xl shadow-brand-950/20 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
@@ -235,19 +238,19 @@ export default function TodayPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <span className="text-brand-100/90 text-[11px] font-bold uppercase tracking-wider">
-                Daily Allowance
+                {t("dailyAllowance")}
               </span>
-              <Badge variant="outline" className="border-accent-300/40 bg-accent-500/15 text-accent-100 text-xs font-semibold backdrop-blur-xs">
-                {daysLeft} days left
+              <Badge variant="outline" className="border-accent-300/40 bg-accent-500/15 text-accent-100 text-xs font-semibold backdrop-blur-xs whitespace-nowrap">
+                {t("daysLeft", { count: daysLeft })}
               </Badge>
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
+            <CardTitle className="text-2xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
               {formatMoney(dailyAllowanceMinor, "USD")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-brand-100/80 mb-3 tabular-nums">
-              Remaining this month: <span className="font-semibold text-white">{formatMoney(remainingBudgetMinor, "USD")}</span>
+              {t("remainingThisMonth")} <span className="font-semibold text-white">{formatMoney(remainingBudgetMinor, "USD")}</span>
             </p>
             <div className="w-full bg-brand-950/70 rounded-full h-2 overflow-hidden ring-1 ring-white/10">
               <div
@@ -256,8 +259,8 @@ export default function TodayPage() {
               />
             </div>
             <div className="flex justify-between text-[11px] text-brand-100/80 mt-2 font-medium">
-              <span className="tabular-nums">Spent today: {formatMoney(spentTodayMinor, "USD")}</span>
-              <span className="tabular-nums">{allowanceUsedPercent}% of daily budget</span>
+              <span className="tabular-nums">{t("spentToday", { amount: formatMoney(spentTodayMinor, "USD") })}</span>
+              <span className="tabular-nums">{t("percentOfDailyBudget", { percent: allowanceUsedPercent })}</span>
             </div>
           </CardContent>
         </Card>
@@ -267,26 +270,26 @@ export default function TodayPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <span className="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold uppercase tracking-wider">
-                Total Spent Today
+                {t("totalSpentToday")}
               </span>
-              <Badge variant="secondary" className="text-xs font-semibold">
-                {todayTransactions.length} items
+              <Badge variant="secondary" className="text-xs font-semibold whitespace-nowrap">
+                {t("items", { count: todayTransactions.length })}
               </Badge>
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
+            <CardTitle className="text-2xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
               {formatMoney(spentTodayMinor, "USD")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
               <span className="flex items-center gap-1.5">
-                <Wallet className="h-3.5 w-3.5 text-zinc-400" /> Primary Account
+                <Wallet className="h-3.5 w-3.5 text-zinc-400" /> {t("primaryAccount")}
               </span>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-100">Cash (USD)</span>
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100">{t("cashUsd")}</span>
             </div>
             <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
               <span className="flex items-center gap-1.5">
-                <TrendingUp className="h-3.5 w-3.5 text-zinc-400" /> Month Status
+                <TrendingUp className="h-3.5 w-3.5 text-zinc-400" /> {t("monthStatus")}
               </span>
               <span className="font-semibold text-brand-600 dark:text-accent-400">
                 {monthStatusText}
@@ -298,25 +301,25 @@ export default function TodayPage() {
 
       {/* Today's Transactions List */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between py-4">
-          <div>
-            <CardTitle className="text-base font-semibold">Today&apos;s Activity</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 py-4">
+          <div className="min-w-0">
+            <CardTitle className="text-base font-semibold">{t("activityTitle")}</CardTitle>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Expenses and transfers logged today
+              {t("activitySubtitle")}
             </p>
           </div>
-          <Badge variant="outline" className="text-xs">
-            {todayTransactions.length} logged
+          <Badge variant="outline" className="text-xs whitespace-nowrap shrink-0">
+            {t("logged", { count: todayTransactions.length })}
           </Badge>
         </CardHeader>
         <CardContent className="divide-y divide-zinc-100 dark:divide-zinc-800 p-0">
           {todayTransactions.length === 0 ? (
             <div className="p-10 text-center text-sm text-zinc-500 space-y-2">
               <p className="font-medium text-zinc-700 dark:text-zinc-300">
-                No expenses logged today.
+                {t("emptyTitle")}
               </p>
               <p className="text-xs text-zinc-400">
-                Tap &quot;Log Expense&quot; above or Quick Add below to record your spending.
+                {t("emptyHint")}
               </p>
             </div>
           ) : (
@@ -357,7 +360,7 @@ export default function TodayPage() {
                     size="icon"
                     onClick={() => handleEditClick(tx)}
                     className="h-8 w-8 text-zinc-400 hover:text-brand-600 hover:bg-brand-50/60 dark:text-zinc-500 dark:hover:text-accent-400 dark:hover:bg-zinc-800/60"
-                    title="Edit transaction"
+                    title={t("editTransaction")}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -366,7 +369,7 @@ export default function TodayPage() {
                     size="icon"
                     onClick={() => handleDelete(tx)}
                     className="h-8 w-8 text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 dark:text-zinc-500 dark:hover:text-rose-400 dark:hover:bg-rose-500/20"
-                    title="Delete transaction (10s undo window)"
+                    title={t("deleteTransaction")}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -377,12 +380,6 @@ export default function TodayPage() {
         )}
         </CardContent>
       </Card>
-
-      <QuickAddDialog
-        isOpen={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
-        onSuccess={loadTodayData}
-      />
 
       <EditTransactionDialog
         isOpen={isEditOpen}

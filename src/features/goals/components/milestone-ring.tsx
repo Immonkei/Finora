@@ -3,6 +3,14 @@
 import * as React from "react";
 import { Check, Sprout, Compass, TrendingUp, Flame, Trophy, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
+
+export type MilestoneTierKey =
+  | "tierConquered"
+  | "tierFinalStretch"
+  | "tierHalfway"
+  | "tierQuarter"
+  | "tierStarting";
 
 interface MilestoneRingProps {
   percent: number; // 0 to 100+
@@ -12,8 +20,13 @@ interface MilestoneRingProps {
   showMilestoneBadge?: boolean;
 }
 
+/**
+ * `label` is the English fallback (kept for tests/logs); render
+ * `t(tier.labelKey)` from the "goals" namespace for the user-visible text.
+ */
 export function getMilestoneTier(percent: number): {
   label: string;
+  labelKey: MilestoneTierKey;
   badgeColor: string;
   ringGradientId: string;
   icon: LucideIcon;
@@ -21,6 +34,7 @@ export function getMilestoneTier(percent: number): {
   if (percent >= 100) {
     return {
       label: "Goal Conquered",
+      labelKey: "tierConquered",
       badgeColor: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
       ringGradientId: "grad-emerald",
       icon: Trophy,
@@ -29,6 +43,7 @@ export function getMilestoneTier(percent: number): {
   if (percent >= 75) {
     return {
       label: "Final Stretch",
+      labelKey: "tierFinalStretch",
       badgeColor: "bg-amber-50 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border-amber-200 dark:border-amber-800",
       ringGradientId: "grad-amber",
       icon: Flame,
@@ -37,6 +52,7 @@ export function getMilestoneTier(percent: number): {
   if (percent >= 50) {
     return {
       label: "Halfway There",
+      labelKey: "tierHalfway",
       badgeColor: "bg-sky-50 text-sky-700 dark:bg-sky-950/70 dark:text-sky-300 border-sky-200 dark:border-sky-800",
       ringGradientId: "grad-blue",
       icon: TrendingUp,
@@ -45,6 +61,7 @@ export function getMilestoneTier(percent: number): {
   if (percent >= 25) {
     return {
       label: "Quarter Way",
+      labelKey: "tierQuarter",
       badgeColor: "bg-violet-50 text-violet-700 dark:bg-violet-950/70 dark:text-violet-300 border-violet-200 dark:border-violet-800",
       ringGradientId: "grad-purple",
       icon: Compass,
@@ -52,6 +69,7 @@ export function getMilestoneTier(percent: number): {
   }
   return {
     label: "Starting Out",
+    labelKey: "tierStarting",
     badgeColor: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700",
     ringGradientId: "grad-brand",
     icon: Sprout,
@@ -65,6 +83,7 @@ export function MilestoneRing({
   className,
   showMilestoneBadge = true,
 }: MilestoneRingProps) {
+  const t = useT("goals");
   const clampedPercent = Math.min(100, Math.max(0, percent));
   const isCompleted = percent >= 100;
 
@@ -76,11 +95,7 @@ export function MilestoneRing({
   const tier = getMilestoneTier(percent);
 
   // Milestone points on the perimeter (25%, 50%, 75%)
-  const milestones = [
-    { p: 25, label: "25%" },
-    { p: 50, label: "50%" },
-    { p: 75, label: "75%" },
-  ];
+  const milestones = [{ p: 25 }, { p: 50 }, { p: 75 }];
 
   return (
     <div className={cn("flex flex-col items-center gap-2", className)}>
@@ -170,7 +185,7 @@ export function MilestoneRing({
                 <Check className="h-5 w-5 stroke-[2.5]" />
               </span>
               <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mt-1 uppercase tracking-wider">
-                Done
+                {t("ringDone")}
               </span>
             </div>
           ) : (
@@ -179,7 +194,7 @@ export function MilestoneRing({
                 {percent}%
               </span>
               <span className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-                Saved
+                {t("ringSaved")}
               </span>
             </div>
           )}
@@ -195,7 +210,7 @@ export function MilestoneRing({
           )}
         >
           {React.createElement(tier.icon, { className: "h-3 w-3 shrink-0" })}
-          <span>{tier.label}</span>
+          <span className="whitespace-nowrap">{t(tier.labelKey)}</span>
         </span>
       )}
     </div>

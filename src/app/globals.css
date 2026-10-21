@@ -16,7 +16,7 @@
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-sans), var(--font-khmer), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   --color-brand-50: #f0f6fa;
@@ -73,6 +73,94 @@ body {
 ::selection {
   background-color: rgba(79, 163, 179, 0.28);
   color: inherit;
+}
+
+/* Khmer script needs room for stacked subscript consonants and no negative tracking */
+html:lang(km) body {
+  letter-spacing: 0;
+  line-height: 1.7;
+}
+
+/* Native-app feel for the installed PWA */
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  overscroll-behavior-y: none;
+}
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+/* Safe-area helpers (require viewport-fit=cover) */
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Hide scrollbars on swipeable rows while keeping them scrollable */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Mobile layout patterns (below Tailwind's `sm` breakpoint).
+ * Unlayered rules win over Tailwind utilities, so these override the
+ * grid / flex-wrap classes they sit next to only on small screens.
+ */
+@media (max-width: 639.98px) {
+  /* Stat card grids become a swipeable, snapping card row */
+  .mobile-carousel {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 1rem;
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-carousel::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-carousel > * {
+    flex: 0 0 84%;
+    scroll-snap-align: start;
+  }
+
+  /* Action / filter rows scroll sideways instead of wrapping */
+  .mobile-scroll-x {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+    scrollbar-width: none;
+    align-self: stretch;
+  }
+  .mobile-scroll-x::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-scroll-x > * {
+    flex-shrink: 0;
+  }
+
+  /* Bottom sheets: scroll inside and clear the home indicator */
+  .mobile-sheet {
+    max-height: 92dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  }
 }
 
 /* Polished Tabular Numbers for Currency and Metrics */

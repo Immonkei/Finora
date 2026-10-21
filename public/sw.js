@@ -1,4 +1,7 @@
-const CACHE_NAME = "finora-pwa-v1.2.0";
+const CACHE_NAME = "finora-pwa-v1.2.2";
+// Holds the last image shared into Finora until the app picks it up
+const SHARE_CACHE_NAME = "finora-share";
+const SHARED_SLIP_KEY = "/__shared-slip";
 const PRECACHE_URLS = [
   "/",
   "/today",
@@ -9,8 +12,12 @@ const PRECACHE_URLS = [
   "/week",
   "/month",
   "/settings",
+  "/accounts",
   "/manifest.json",
   "/icon.png",
+  "/pwa-icon-192.png",
+  "/pwa-icon-512.png",
+  "/pwa-icon-maskable-512.png",
   "/apple-icon.png",
   "/finora-icon.png",
   "/finora-full.png",
@@ -39,7 +46,7 @@ self.addEventListener("activate", (event) => {
       .then((cacheNames) => {
         return Promise.all(
           cacheNames
-            .filter((name) => name !== CACHE_NAME)
+            .filter((name) => name !== CACHE_NAME && name !== SHARE_CACHE_NAME)
             .map((name) => caches.delete(name))
         );
       })
@@ -51,6 +58,36 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // Web Share Target: a slip/receipt image shared from the gallery or a bank app.
+  // Stash the file, then send the user to Today where Quick Add scans it.
+  if (request.method === "POST" && url.origin === self.location.origin && url.pathname === "/share-target") {
+    event.respondWith(
+      (async () => {
+        try {
+          const formData = await request.formData();
+          const file = formData.get("slip");
+          if (file && typeof file !== "string") {
+            const cache = await caches.open(SHARE_CACHE_NAME);
+            await cache.put(
+              SHARED_SLIP_KEY,
+              new Response(file, {
+                headers: {
+                  "Content-Type": file.type || "image/jpeg",
+                  "X-File-Name": encodeURIComponent(file.name || "slip.jpg"),
+                },
+              })
+            );
+            return Response.redirect("/today?shared=1", 303);
+          }
+        } catch (err) {
+          console.warn("[Finora SW] Share target failed:", err);
+        }
+        return Response.redirect("/today?add=1", 303);
+      })()
+    );
+    return;
+  }
 
   // Skip non-GET requests or Supabase/external API requests from caching
   if (request.method !== "GET" || url.origin !== self.location.origin) {

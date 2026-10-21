@@ -17,6 +17,7 @@ import {
   endOfMonth,
   getDaysInMonth,
   getDate,
+  type Locale,
 } from "date-fns";
 
 export const DEFAULT_TIMEZONE = "Asia/Phnom_Penh";
@@ -81,7 +82,11 @@ export function getMonthBounds(now: Date = new Date()): {
 /**
  * Standard date formatter
  */
-export function formatDisplayDate(date: Date | string, formatPattern = "MMM d, yyyy"): string {
+export function formatDisplayDate(
+  date: Date | string,
+  formatPattern = "MMM d, yyyy",
+  locale?: Locale
+): string {
   const d = typeof date === "string" ? new Date(date) : date;
-  return format(d, formatPattern);
+  return format(d, formatPattern, locale ? { locale } : undefined);
 }
