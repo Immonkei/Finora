@@ -209,31 +209,39 @@ Rules:
       geminiContents.shift();
     }
 
-    const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const primaryModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+    const modelsToTry = [primaryModel, "gemini-3.5-flash"].filter((v, i, a) => a.indexOf(v) === i);
 
-    const geminiRes = await fetch(geminiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: systemPrompt }],
-        },
-        contents: geminiContents,
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 600,
-        },
-      }),
-    });
+    let geminiRes: Response | null = null;
+    for (const m of modelsToTry) {
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
+      geminiRes = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: systemPrompt }],
+          },
+          contents: geminiContents,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 600,
+          },
+        }),
+      });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
+      if (geminiRes.ok) break;
+      if (geminiRes.status !== 503 && geminiRes.status !== 404) break;
+    }
+
+    if (!geminiRes || !geminiRes.ok) {
+      const errText = geminiRes ? await geminiRes.text() : "No response";
+      const status = geminiRes?.status || 500;
       return NextResponse.json(
         {
-          error: `Gemini API error (${geminiRes.status}): ${errText}`,
+          error: `Gemini API error (${status}): ${errText}`,
         },
-        { status: geminiRes.status }
+        { status }
       );
     }
 

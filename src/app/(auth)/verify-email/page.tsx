@@ -56,7 +56,7 @@ export default function VerifyEmailPage() {
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || code.length !== 6) return;
+    if (!email || code.length < 6) return;
     setVerifying(true);
     const supabase = createClient();
     let { error } = await supabase.auth.verifyOtp({ email, token: code, type: "signup" });
@@ -167,16 +167,16 @@ export default function VerifyEmailPage() {
                   id="otp"
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  maxLength={6}
+                  maxLength={8}
                   placeholder={t("codePlaceholder")}
                   value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
                   className="min-w-0 flex-1 text-center font-mono text-lg tracking-[0.4em] placeholder:font-sans placeholder:text-sm placeholder:tracking-normal"
                 />
                 <Button
                   type="submit"
                   variant="outline"
-                  disabled={!email || code.length !== 6 || verifying}
+                  disabled={!email || code.length < 6 || verifying}
                   className="w-full shrink-0 sm:w-auto"
                 >
                   {verifying ? t("verifying") : t("verifyCode")}

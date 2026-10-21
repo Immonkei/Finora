@@ -39,7 +39,7 @@ Google accounts arrive already verified, and their name and photo are copied int
 <h2>Confirm your Finora account</h2>
 <p>Hi {{ .Data.full_name }},</p>
 <p>Tap the button to activate your account:</p>
-<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/today">Confirm email</a></p>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup&next=/today">Confirm email</a></p>
 <p>Or enter this code in the app: <strong>{{ .Token }}</strong></p>
 <p>If you didn't create a Finora account, you can ignore this email.</p>
 ```

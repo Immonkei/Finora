@@ -62,7 +62,7 @@ Respond ONLY with valid, raw JSON with this exact schema:
   "recommendations": ["...", "..."]
 }`;
 
-        const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
+        const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         const res = await fetch(url, {
           method: "POST",
