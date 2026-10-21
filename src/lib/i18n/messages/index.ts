@@ -17,6 +17,7 @@ import { pwa } from "./pwa";
 import { ai } from "./ai";
 import { auth } from "./auth";
 import { landing } from "./landing";
+import { accounts } from "./accounts";
 
 export const MESSAGES = {
   common,
@@ -38,6 +39,7 @@ export const MESSAGES = {
   ai,
   auth,
   landing,
+  accounts,
 };
 
 export type Namespace = keyof typeof MESSAGES;

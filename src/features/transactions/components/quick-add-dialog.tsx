@@ -31,6 +31,8 @@ import { toast } from "sonner";
 import { CATEGORY_ICONS } from "@/features/categories/components/category-manager";
 import { DEFAULT_USD_TO_KHR_RATE } from "@/lib/money";
 import { useT } from "@/lib/i18n";
+import { useAccounts } from "@/features/accounts/use-accounts";
+import { AccountChips } from "@/features/accounts/components/account-chips";
 import type { txDialogs } from "@/lib/i18n/messages/txDialogs";
 
 interface QuickAddDialogProps {
@@ -49,6 +51,8 @@ interface QuickAddCategory {
   /** Translated label for the built-in fallback categories; user categories show their own name */
   labelKey?: keyof typeof txDialogs.en;
 }
+
+const LAST_ACCOUNT_KEY = "finora-last-account";
 
 const DEFAULT_CATEGORIES: QuickAddCategory[] = [
   { id: "cat-1", name: "Food & Drinks", color: "#EF4444", icon: Utensils, labelKey: "catFood" },
@@ -86,6 +90,36 @@ export function QuickAddDialog({
   const [amountStr, setAmountStr] = React.useState("");
   const [currency, setCurrency] = React.useState<"USD" | "KHR">("USD");
   const [selectedCategory, setSelectedCategory] = React.useState<string>(DEFAULT_CATEGORIES[0].id);
+
+  // Accounts: default to the last one used on this device, then the oldest account
+  const tAcc = useT("accounts");
+  const { accounts } = useAccounts({ withBalances: false, enabled: isOpen });
+  const [chosenAccountId, setChosenAccountId] = React.useState<string | null>(null);
+  const [chosenToAccountId, setChosenToAccountId] = React.useState<string | null>(null);
+  const [lastUsedAccountId] = React.useState<string | null>(() => {
+    try {
+      return typeof window === "undefined" ? null : window.localStorage.getItem(LAST_ACCOUNT_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const accountId =
+    accounts.find((a) => a.id === chosenAccountId)?.id ??
+    accounts.find((a) => a.id === lastUsedAccountId)?.id ??
+    accounts[0]?.id ??
+    null;
+  const toAccountId =
+    accounts.find((a) => a.id === chosenToAccountId && a.id !== accountId)?.id ??
+    accounts.find((a) => a.id !== accountId)?.id ??
+    null;
+  const rememberAccount = (id: string | null) => {
+    if (!id) return;
+    try {
+      window.localStorage.setItem(LAST_ACCOUNT_KEY, id);
+    } catch {
+      // storage unavailable; default falls back to the first account
+    }
+  };
   const [note, setNote] = React.useState("");
   const [receiptImage, setReceiptImage] = React.useState<string | null>(null);
   const [remoteReceiptUrl, setRemoteReceiptUrl] = React.useState<string | null>(null);
@@ -346,6 +380,8 @@ export function QuickAddDialog({
         type,
         amount: finalAmount,
         currency: finalCurrency,
+        account_id: accountId ?? undefined,
+        to_account_id: type === "transfer" ? toAccountId ?? undefined : undefined,
         category_id: type === "expense" ? selectedCategory : undefined,
         note: finalNote.trim() || undefined,
         occurred_at: new Date().toISOString(),
@@ -376,7 +412,8 @@ export function QuickAddDialog({
         type,
         amount: finalAmount,
         currency: finalCurrency,
-        account_id: "00000000-0000-0000-0000-000000000001",
+        account_id: accountId ?? "00000000-0000-0000-0000-000000000001",
+        to_account_id: type === "transfer" ? toAccountId : undefined,
         category_id: type === "expense" ? selectedCategory : undefined,
         note: finalNote.trim() || undefined,
         receipt_url: remoteReceiptUrl || undefined,
@@ -386,6 +423,7 @@ export function QuickAddDialog({
       setIsSubmitting(false);
 
       if (res.success) {
+        rememberAccount(accountId);
         toast.success(
           type === "expense"
             ? t("expenseRecorded")
@@ -417,6 +455,8 @@ export function QuickAddDialog({
         type,
         amount: finalAmount,
         currency: finalCurrency,
+        account_id: accountId ?? undefined,
+        to_account_id: type === "transfer" ? toAccountId ?? undefined : undefined,
         category_id: type === "expense" ? selectedCategory : undefined,
         note: finalNote.trim() || undefined,
         occurred_at: new Date().toISOString(),
@@ -791,6 +831,30 @@ export function QuickAddDialog({
                   ? "Gemini AI"
                   : t("smartOcr")}
               </Badge>
+            </div>
+          )}
+
+          {/* Account picker: which wallet/bank this hits (and where a transfer goes) */}
+          {accounts.length > 0 && (
+            <div className="space-y-1.5">
+              <AccountChips
+                label={type === "transfer" ? tAcc("from") : tAcc("account")}
+                accounts={accounts}
+                value={accountId}
+                onChange={setChosenAccountId}
+              />
+              {type === "transfer" &&
+                (accounts.length > 1 ? (
+                  <AccountChips
+                    label={tAcc("to")}
+                    accounts={accounts}
+                    value={toAccountId}
+                    onChange={setChosenToAccountId}
+                    disabledId={accountId}
+                  />
+                ) : (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400">{tAcc("noOtherAccount")}</p>
+                ))}
             </div>
           )}
 

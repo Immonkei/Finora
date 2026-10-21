@@ -48,6 +48,10 @@ export type Database = {
           user_id: string;
           name: string;
           currency: string;
+          kind: "cash" | "bank" | "ewallet" | "other";
+          opening_balance: number;
+          color: string | null;
+          archived_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -55,6 +59,10 @@ export type Database = {
           user_id?: string;
           name: string;
           currency?: string;
+          kind?: "cash" | "bank" | "ewallet" | "other";
+          opening_balance?: number;
+          color?: string | null;
+          archived_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -62,6 +70,10 @@ export type Database = {
           user_id?: string;
           name?: string;
           currency?: string;
+          kind?: "cash" | "bank" | "ewallet" | "other";
+          opening_balance?: number;
+          color?: string | null;
+          archived_at?: string | null;
           created_at?: string;
         };
         Relationships: [];

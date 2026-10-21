@@ -12,6 +12,7 @@ const PRECACHE_URLS = [
   "/week",
   "/month",
   "/settings",
+  "/accounts",
   "/manifest.json",
   "/icon.png",
   "/pwa-icon-192.png",

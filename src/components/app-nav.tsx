@@ -14,6 +14,7 @@ import {
   Repeat,
   Sparkles,
   LayoutGrid,
+  Wallet,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { href: "/goals", labelKey: "goals", icon: Target },
   { href: "/recurring", labelKey: "recurring", icon: Repeat },
   { href: "/transactions", labelKey: "activity", icon: ArrowLeftRight },
+  { href: "/accounts", labelKey: "accounts", icon: Wallet },
   { href: "/settings", labelKey: "settings", icon: Settings },
 ] as const;
 

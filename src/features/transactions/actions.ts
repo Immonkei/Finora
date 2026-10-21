@@ -9,7 +9,7 @@ import {
   type CreateTransactionInput,
   type UpdateTransactionInput,
 } from "./schema";
-import { toMinorUnits } from "@/lib/money";
+import { DEFAULT_USD_TO_KHR_RATE, toMinorUnits } from "@/lib/money";
 
 export interface ActionResult<T = unknown> {
   success: boolean;
@@ -49,7 +49,7 @@ export async function createTransaction(
 
       // In production, query exchange_rates table if currency != user profile main currency
       if (data.currency === "KHR") {
-        exchangeRate = 0.00025; // 4,000 KHR = 1 USD
+        exchangeRate = 1 / DEFAULT_USD_TO_KHR_RATE; // same rate as the rest of the app
         baseAmount = BigInt(Math.round(Number(minorAmount) * exchangeRate * 100)); // convert to USD cents
       }
 
@@ -58,7 +58,9 @@ export async function createTransaction(
       const { data: userAccounts } = await supabase
         .from("accounts")
         .select("id")
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .is("archived_at", null)
+        .order("created_at", { ascending: true });
 
       if (userAccounts && userAccounts.length > 0) {
         const found = userAccounts.find((a) => a.id === validAccountId);
@@ -66,7 +68,7 @@ export async function createTransaction(
       } else {
         const { data: newAccount } = await supabase
           .from("accounts")
-          .insert({ user_id: user.id, name: "Cash", currency: data.currency })
+          .insert({ user_id: user.id, name: "Cash", kind: "cash", currency: data.currency })
           .select("id")
           .maybeSingle();
         if (newAccount) {
@@ -128,7 +130,7 @@ export async function createTransaction(
           } else {
             const { data: bankAcc } = await supabase
               .from("accounts")
-              .insert({ user_id: user.id, name: "Bank", currency: data.currency })
+              .insert({ user_id: user.id, name: "Bank", kind: "bank", currency: data.currency })
               .select("id")
               .maybeSingle();
             validToAccountId = bankAcc?.id || null;
@@ -417,7 +419,7 @@ export async function updateTransaction(
       let exchangeRate = 1.0;
       let baseAmount = minorAmount;
       if (resolvedCurrency === "KHR") {
-        exchangeRate = 0.00025;
+        exchangeRate = 1 / DEFAULT_USD_TO_KHR_RATE;
         baseAmount = BigInt(Math.round(Number(minorAmount) * exchangeRate * 100));
       }
       updatePayload.exchange_rate = exchangeRate;

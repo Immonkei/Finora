@@ -263,11 +263,10 @@ export default function InsightsPage() {
       ? Math.abs(Math.round(Number((monthlySavingsMinor * 100n) / lastMonthSpent)))
       : 0;
 
-  // Currency multiplier (1 USD = 4,000 KHR)
+  // Shared USD -> KHR rate (riel per dollar)
   const formatInsightMoney = (minorUnits: bigint) => {
     if (currencyMode === "KHR") {
-      // Convert USD cents to KHR riel (x40)
-      const khrRiel = minorUnits * 40n;
+      const khrRiel = convertUsdToKhrMinor(minorUnits);
       return formatMoney(khrRiel, "KHR");
     }
     return formatMoney(minorUnits, "USD");
