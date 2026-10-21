@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, Sparkles } from "lucide-react";
 import { MonthlyStatementModal } from "@/features/reports/components/monthly-statement-modal";
 import {
@@ -34,6 +35,36 @@ interface CatBudgetItem {
   limitMinor: bigint;
   percent: number;
   color?: string | null;
+}
+
+function MonthSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-6 animate-pulse">
+      <div className="flex justify-between items-center">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-8 w-48" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-28 rounded-xl" />
+          <Skeleton className="h-9 w-32 rounded-xl" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Skeleton className="h-36 w-full rounded-2xl" />
+        <Skeleton className="h-36 w-full rounded-2xl" />
+        <Skeleton className="h-36 w-full rounded-2xl" />
+      </div>
+
+      <Skeleton className="h-64 w-full rounded-2xl" />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Skeleton className="h-72 w-full rounded-2xl" />
+        <Skeleton className="h-72 w-full rounded-2xl" />
+      </div>
+    </div>
+  );
 }
 
 export default function MonthPage() {
@@ -182,6 +213,10 @@ export default function MonthPage() {
     })),
     "USD"
   );
+
+  if (!liveData) {
+    return <MonthSkeleton />;
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
