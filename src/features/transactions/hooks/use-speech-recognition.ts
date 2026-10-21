@@ -1,6 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { useT } from "@/lib/i18n";
+import type { txDialogs } from "@/lib/i18n/messages/txDialogs";
+
+type SpeechErrorState =
+  | { key: keyof typeof txDialogs.en; values?: Record<string, string> }
+  | { raw: string };
 
 export interface SpeechRecognitionResultState {
   transcript: string;
@@ -70,7 +76,13 @@ function getServerSnapshot(): boolean {
 export function useSpeechRecognition(): SpeechRecognitionResultState {
   const [transcript, setTranscript] = React.useState("");
   const [isListening, setIsListening] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const t = useT("txDialogs");
+  const [errorState, setError] = React.useState<SpeechErrorState | null>(null);
+  const error = errorState
+    ? "raw" in errorState
+      ? errorState.raw
+      : t(errorState.key, errorState.values)
+    : null;
 
   const isSupported = React.useSyncExternalStore(
     emptySubscribe,
@@ -114,7 +126,7 @@ export function useSpeechRecognition(): SpeechRecognitionResultState {
         win.SpeechRecognition || win.webkitSpeechRecognition;
 
       if (!SpeechRecognitionClass) {
-        setError("Voice recognition is not supported in this browser.");
+        setError({ key: "speechNotSupported" });
         return;
       }
 
@@ -161,11 +173,11 @@ export function useSpeechRecognition(): SpeechRecognitionResultState {
         recognition.onerror = (event: SpeechRecognitionErrorPayload) => {
           const errCode = event.error || "unknown";
           if (errCode === "not-allowed" || errCode === "permission-denied") {
-            setError("Microphone access was denied. Please allow microphone permissions.");
+            setError({ key: "micDenied" });
           } else if (errCode === "no-speech") {
-            setError("No speech was detected. Please try speaking again.");
+            setError({ key: "noSpeech" });
           } else if (errCode !== "aborted") {
-            setError(`Voice recognition error: ${errCode}`);
+            setError({ key: "speechError", values: { code: errCode } });
           }
           setIsListening(false);
         };
@@ -177,8 +189,11 @@ export function useSpeechRecognition(): SpeechRecognitionResultState {
         recognitionRef.current = recognition;
         recognition.start();
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Failed to start voice recognition.";
-        setError(message);
+        setError(
+          err instanceof Error && err.message
+            ? { raw: err.message }
+            : { key: "speechStartFailed" }
+        );
         setIsListening(false);
       }
     },

@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Activity, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 interface FinancialHealthCardProps {
   health: HealthScoreResult;
@@ -13,7 +14,8 @@ interface FinancialHealthCardProps {
 }
 
 export function FinancialHealthCard({ health, className }: FinancialHealthCardProps) {
-  const { score, grade, title, breakdown, insights, pacingStatus } = health;
+  const t = useT("reports");
+  const { score, grade, titleCode, breakdown, insightCodes, pacingStatus } = health;
 
   // Grade color
   const gradeColor =
@@ -33,18 +35,18 @@ export function FinancialHealthCard({ health, className }: FinancialHealthCardPr
   return (
     <Card className={cn("border-zinc-200/80 dark:border-zinc-800/80 shadow-xs", className)}>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <CardTitle className="text-base flex items-center gap-2">
               <Activity className="h-4 w-4 text-brand-600 dark:text-accent-400" />
-              Financial Health Score
+              {t("healthTitle")}
             </CardTitle>
             <CardDescription>
-              Real-time rating of your cash flow discipline and saving habits
+              {t("healthSubtitle")}
             </CardDescription>
           </div>
-          <Badge variant="outline" className={cn("text-xs font-bold px-2.5 py-0.5", gradeColor)}>
-            Grade {grade}
+          <Badge variant="outline" className={cn("text-xs font-bold px-2.5 py-0.5 shrink-0 whitespace-nowrap", gradeColor)}>
+            {t("grade", { grade })}
           </Badge>
         </div>
       </CardHeader>
@@ -88,22 +90,22 @@ export function FinancialHealthCard({ health, className }: FinancialHealthCardPr
 
           {/* Title and 4 Pillar Progress Bars */}
           <div className="flex-1 w-full space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">{title}</h4>
-              <span className="text-xs font-semibold capitalize text-zinc-500">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="font-bold text-sm text-zinc-900 dark:text-zinc-100 min-w-0">{t(titleCode)}</h4>
+              <span className="text-xs font-semibold capitalize text-zinc-500 shrink-0 whitespace-nowrap">
                 {pacingStatus === "under_budget"
-                  ? "Under Budget"
+                  ? t("pacingUnder")
                   : pacingStatus === "on_track"
-                  ? "On Track"
-                  : "Over Pace"}
+                  ? t("pacingOnTrack")
+                  : t("pacingOver")}
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
               {/* Pillar 1 */}
               <div>
-                <div className="flex justify-between text-[11px] text-zinc-500 mb-1">
-                  <span>Budget Pacing</span>
+                <div className="flex justify-between gap-1 text-[11px] text-zinc-500 mb-1">
+                  <span className="truncate">{t("pillarBudget")}</span>
                   <span className="font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">
                     {breakdown.budgetPacing}/40
                   </span>
@@ -118,8 +120,8 @@ export function FinancialHealthCard({ health, className }: FinancialHealthCardPr
 
               {/* Pillar 2 */}
               <div>
-                <div className="flex justify-between text-[11px] text-zinc-500 mb-1">
-                  <span>Leak Control</span>
+                <div className="flex justify-between gap-1 text-[11px] text-zinc-500 mb-1">
+                  <span className="truncate">{t("pillarLeaks")}</span>
                   <span className="font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">
                     {breakdown.leakControl}/25
                   </span>
@@ -134,8 +136,8 @@ export function FinancialHealthCard({ health, className }: FinancialHealthCardPr
 
               {/* Pillar 3 */}
               <div>
-                <div className="flex justify-between text-[11px] text-zinc-500 mb-1">
-                  <span>Savings Momentum</span>
+                <div className="flex justify-between gap-1 text-[11px] text-zinc-500 mb-1">
+                  <span className="truncate">{t("pillarSavings")}</span>
                   <span className="font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">
                     {breakdown.savingsMomentum}/20
                   </span>
@@ -150,8 +152,8 @@ export function FinancialHealthCard({ health, className }: FinancialHealthCardPr
 
               {/* Pillar 4 */}
               <div>
-                <div className="flex justify-between text-[11px] text-zinc-500 mb-1">
-                  <span>Consistency</span>
+                <div className="flex justify-between gap-1 text-[11px] text-zinc-500 mb-1">
+                  <span className="truncate">{t("pillarConsistency")}</span>
                   <span className="font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">
                     {breakdown.consistency}/15
                   </span>
@@ -168,13 +170,13 @@ export function FinancialHealthCard({ health, className }: FinancialHealthCardPr
         </div>
 
         {/* Personalized Insight Chips */}
-        {insights.length > 0 && (
+        {insightCodes.length > 0 && (
           <div className="space-y-1.5">
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              Diagnostic Insights
+              {t("diagnosticInsights")}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {insights.map((insight, idx) => (
+              {insightCodes.map((insight, idx) => (
                 <div
                   key={idx}
                   className="flex items-center gap-2 p-2 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800/60 text-xs text-zinc-700 dark:text-zinc-300"
@@ -184,7 +186,9 @@ export function FinancialHealthCard({ health, className }: FinancialHealthCardPr
                   ) : (
                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                   )}
-                  <span className="truncate">{insight}</span>
+                  <span className="truncate" title={t(insight.code, insight.values)}>
+                    {t(insight.code, insight.values)}
+                  </span>
                 </div>
               ))}
             </div>

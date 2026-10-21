@@ -10,9 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { FinoraLogo } from "@/components/finora-logo";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { LanguageToggle } from "@/components/language-toggle";
+import { useT } from "@/lib/i18n";
+import { describeUnknownError, translateAuthError } from "../auth-i18n";
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useT("auth");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -29,18 +33,16 @@ export default function LoginPage() {
       });
 
       if (error) {
-        toast.error("Sign in failed", { description: error.message });
+        toast.error(t("signInFailed"), { description: translateAuthError(t, error.message) });
         setLoading(false);
         return;
       }
 
-      toast.success("Welcome back!");
+      toast.success(t("welcomeBack"));
       router.push("/today");
       router.refresh();
     } catch (err) {
-      toast.error("An unexpected error occurred", {
-        description: err instanceof Error ? err.message : "Please try again",
-      });
+      toast.error(t("unexpectedError"), { description: describeUnknownError(t, err) });
       setLoading(false);
     }
   };
@@ -55,17 +57,18 @@ export default function LoginPage() {
         },
       });
       if (error) {
-        toast.error("Google sign in failed", { description: error.message });
+        toast.error(t("googleSignInFailed"), { description: translateAuthError(t, error.message) });
       }
     } catch (err) {
-      toast.error("Failed to initialize Google login", {
-        description: err instanceof Error ? err.message : "Please try again",
-      });
+      toast.error(t("googleInitFailed"), { description: describeUnknownError(t, err) });
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-zinc-50/70 dark:bg-[#090E15]">
+    <div className="relative min-h-screen flex items-center justify-center p-4 bg-zinc-50/70 dark:bg-[#090E15]">
+      <div className="absolute top-3 right-3">
+        <LanguageToggle />
+      </div>
       <div className="w-full max-w-md space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-3">
@@ -73,28 +76,28 @@ export default function LoginPage() {
             <FinoraLogo variant="full" size="lg" priority />
           </Link>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Sign in to manage your budget and daily allowance
+            {t("loginTagline")}
           </p>
         </div>
 
         <Card className="border border-zinc-200/80 dark:border-zinc-800/80 shadow-md bg-white dark:bg-[#0F1822]">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-lg">Sign in</CardTitle>
+            <CardTitle className="text-lg">{t("signInTitle")}</CardTitle>
             <CardDescription>
-              Enter your email and password to access your account
+              {t("signInDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                  Email
+                  {t("email")}
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-zinc-400" />
                   <Input
                     type="email"
-                    placeholder="you@example.com"
+                    placeholder={t("emailPlaceholder")}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -106,13 +109,13 @@ export default function LoginPage() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                    Password
+                    {t("password")}
                   </label>
                   <Link
                     href="/reset-password"
                     className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-accent-400"
                   >
-                    Forgot password?
+                    {t("forgotPassword")}
                   </Link>
                 </div>
                 <div className="relative">
@@ -129,7 +132,7 @@ export default function LoginPage() {
               </div>
 
               <Button type="submit" size="lg" className="w-full mt-2" disabled={loading}>
-                {loading ? "Signing in..." : "Sign in"}
+                {loading ? t("signingIn") : t("signIn")}
               </Button>
             </form>
 
@@ -139,7 +142,7 @@ export default function LoginPage() {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-white dark:bg-[#0F1822] px-2 text-zinc-500">
-                  Or continue with
+                  {t("orContinueWith")}
                 </span>
               </div>
             </div>
@@ -168,18 +171,18 @@ export default function LoginPage() {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                 />
               </svg>
-              Continue with Google
+              {t("continueWithGoogle")}
             </Button>
           </CardContent>
         </Card>
 
         <p className="text-center text-xs text-zinc-500">
-          Don&apos;t have an account?{" "}
+          {t("noAccount")}{" "}
           <Link
             href="/register"
             className="font-semibold text-brand-600 hover:text-brand-700 dark:text-accent-400"
           >
-            Create one
+            {t("createOne")}
           </Link>
         </p>
       </div>

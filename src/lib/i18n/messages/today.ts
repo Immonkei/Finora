@@ -46,9 +46,9 @@ export const today = defineMessages({
     emptyTitle: "មិនទាន់មានការចំណាយថ្ងៃនេះទេ។",
     emptyHint: "ចុចប៊ូតុង + ដើម្បីកត់ត្រាការចំណាយរបស់អ្នក។",
     editTransaction: "កែប្រែប្រតិបត្តិការ",
-    deleteTransaction: "លុបប្រតិបត្តិការ (អាចមិនធ្វើវិញក្នុង ១០ វិនាទី)",
+    deleteTransaction: "លុបប្រតិបត្តិការ (អាចមិនធ្វើវិញក្នុង 10 វិនាទី)",
     deletedToast: "បានលុបប្រតិបត្តិការ",
-    deletedDescription: "{note} • {amount} (អាចមិនធ្វើវិញក្នុង ១០ វិនាទី)",
+    deletedDescription: "{note} • {amount} (អាចមិនធ្វើវិញក្នុង 10 វិនាទី)",
     restoredToast: "បានស្ដារប្រតិបត្តិការវិញ!",
   },
 });

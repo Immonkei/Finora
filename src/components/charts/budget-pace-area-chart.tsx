@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { formatMoney, type CurrencyCode } from "@/lib/money";
 import { useMounted } from "@/lib/hooks";
+import { useT } from "@/lib/i18n";
 import type { BudgetPacePoint } from "./chart-data";
 
 interface BudgetPaceAreaChartProps {
@@ -28,6 +29,8 @@ interface CustomPaceTooltipProps {
 }
 
 function CustomPaceTooltip({ active, payload, currency = "USD" }: CustomPaceTooltipProps) {
+  const t = useT("charts");
+  const tc = useT("common");
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -48,7 +51,7 @@ function CustomPaceTooltip({ active, payload, currency = "USD" }: CustomPaceTool
         </span>
         {point.isToday && (
           <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-bold text-brand-600 dark:bg-accent-950/60 dark:text-accent-300">
-            Today
+            {tc("today")}
           </span>
         )}
       </div>
@@ -58,7 +61,7 @@ function CustomPaceTooltip({ active, payload, currency = "USD" }: CustomPaceTool
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-accent-500" />
-              <span className="text-zinc-600 dark:text-zinc-400">Actual Spend</span>
+              <span className="text-zinc-600 dark:text-zinc-400">{t("actualSpend")}</span>
             </div>
             <span className="font-bold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight">
               {formatMoney(Math.round(actual * 100), currency)}
@@ -69,7 +72,7 @@ function CustomPaceTooltip({ active, payload, currency = "USD" }: CustomPaceTool
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-zinc-400 dark:bg-zinc-500" />
-            <span className="text-zinc-600 dark:text-zinc-400">Budget Target</span>
+            <span className="text-zinc-600 dark:text-zinc-400">{t("budgetTarget")}</span>
           </div>
           <span className="font-semibold text-zinc-700 dark:text-zinc-300 tabular-nums tracking-tight">
             {formatMoney(Math.round(pace * 100), currency)}
@@ -80,7 +83,7 @@ function CustomPaceTooltip({ active, payload, currency = "USD" }: CustomPaceTool
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-amber-400" />
-              <span className="text-zinc-600 dark:text-zinc-400">Projected</span>
+              <span className="text-zinc-600 dark:text-zinc-400">{t("projected")}</span>
             </div>
             <span className="font-semibold text-amber-600 dark:text-amber-400 tabular-nums tracking-tight">
               {formatMoney(Math.round(point.projectedSpent * 100), currency)}
@@ -90,7 +93,7 @@ function CustomPaceTooltip({ active, payload, currency = "USD" }: CustomPaceTool
 
         {variance !== null && (
           <div className="mt-1 pt-1.5 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between">
-            <span className="text-[11px] text-zinc-500 dark:text-zinc-400">Pace Status</span>
+            <span className="text-[11px] text-zinc-500 dark:text-zinc-400">{t("paceStatus")}</span>
             <span
               className={`text-[11px] font-bold tabular-nums ${
                 isUnder
@@ -99,8 +102,10 @@ function CustomPaceTooltip({ active, payload, currency = "USD" }: CustomPaceTool
               }`}
             >
               {isUnder
-                ? `Under pace by ${formatMoney(Math.round(Math.abs(variance) * 100), currency)}`
-                : `Over pace by ${formatMoney(Math.round(variance * 100), currency)}`}
+                ? t("underPaceBy", {
+                    amount: formatMoney(Math.round(Math.abs(variance) * 100), currency),
+                  })
+                : t("overPaceBy", { amount: formatMoney(Math.round(variance * 100), currency) })}
             </span>
           </div>
         )}
@@ -123,13 +128,14 @@ export function BudgetPaceAreaChart({
   className = "",
 }: BudgetPaceAreaChartProps) {
   const isMounted = useMounted();
+  const t = useT("charts");
 
   if (!isMounted) {
     return (
       <div
         className={`flex h-64 sm:h-72 items-center justify-center rounded-2xl border border-zinc-200/60 bg-zinc-50/50 dark:border-zinc-800/60 dark:bg-zinc-900/30 ${className}`}
       >
-        <span className="text-xs text-zinc-400 animate-pulse">Loading pace chart...</span>
+        <span className="text-xs text-zinc-400 animate-pulse">{t("loadingPace")}</span>
       </div>
     );
   }
@@ -142,19 +148,19 @@ export function BudgetPaceAreaChart({
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-3 rounded-xs bg-accent-500" />
             <span className="font-medium text-zinc-700 dark:text-zinc-300">
-              Actual Spend
+              {t("actualSpend")}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-0.5 w-3 border-t-2 border-dashed border-zinc-400 dark:border-zinc-500" />
             <span className="font-medium text-zinc-500 dark:text-zinc-400">
-              Ideal Pace
+              {t("idealPace")}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-0.5 w-3 border-t-2 border-dotted border-amber-500 dark:border-amber-400" />
             <span className="font-medium text-zinc-500 dark:text-zinc-400">
-              Forecast
+              {t("forecast")}
             </span>
           </div>
         </div>
@@ -211,7 +217,7 @@ export function BudgetPaceAreaChart({
             <Line
               type="linear"
               dataKey="budgetPace"
-              name="Ideal Pace"
+              name={t("idealPace")}
               stroke="#94a3b8"
               strokeWidth={1.75}
               strokeDasharray="4 4"
@@ -223,7 +229,7 @@ export function BudgetPaceAreaChart({
             <Line
               type="monotone"
               dataKey="projectedSpent"
-              name="Forecast"
+              name={t("forecast")}
               stroke="#f59e0b"
               strokeWidth={1.75}
               strokeDasharray="3 3"
@@ -235,7 +241,7 @@ export function BudgetPaceAreaChart({
             <Area
               type="monotone"
               dataKey="actualSpent"
-              name="Actual Spend"
+              name={t("actualSpend")}
               stroke="#1b4d72"
               strokeWidth={2.5}
               fill="url(#actualSpendGradient)"

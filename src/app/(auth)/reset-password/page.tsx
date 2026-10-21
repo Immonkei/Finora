@@ -9,8 +9,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { FinoraLogo } from "@/components/finora-logo";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { LanguageToggle } from "@/components/language-toggle";
+import { useT } from "@/lib/i18n";
+import { describeUnknownError, translateAuthError } from "../auth-i18n";
 
 export default function ResetPasswordPage() {
+  const t = useT("auth");
   const [email, setEmail] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [submitted, setSubmitted] = React.useState(false);
@@ -26,34 +30,35 @@ export default function ResetPasswordPage() {
       });
 
       if (error) {
-        toast.error("Failed to send reset link", { description: error.message });
+        toast.error(t("resetFailed"), { description: translateAuthError(t, error.message) });
         setLoading(false);
         return;
       }
 
       setSubmitted(true);
-      toast.success("Password reset email sent!");
+      toast.success(t("resetSent"));
     } catch (err) {
-      toast.error("An unexpected error occurred", {
-        description: err instanceof Error ? err.message : "Please try again",
-      });
+      toast.error(t("unexpectedError"), { description: describeUnknownError(t, err) });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-zinc-50/70 dark:bg-[#090E15]">
+    <div className="relative min-h-screen flex items-center justify-center p-4 bg-zinc-50/70 dark:bg-[#090E15]">
+      <div className="absolute top-3 right-3">
+        <LanguageToggle />
+      </div>
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-3">
           <Link href="/" className="inline-block transition-transform hover:scale-[1.02]">
             <FinoraLogo variant="full" size="lg" priority />
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Reset Password
+            {t("resetTitle")}
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            We will email you a secure link to reset your password
+            {t("resetTagline")}
           </p>
         </div>
 
@@ -64,14 +69,14 @@ export default function ResetPasswordPage() {
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-100 dark:bg-accent-950/60 text-accent-700 dark:text-accent-300">
                   <CheckCircle2 className="h-6 w-6" />
                 </div>
-                <h3 className="text-base font-semibold">Check your inbox</h3>
+                <h3 className="text-base font-semibold">{t("checkInbox")}</h3>
                 <p className="text-xs text-zinc-500">
-                  We sent a password reset link to <span className="font-semibold text-zinc-800 dark:text-zinc-200">{email}</span>.
+                  {t("resetSentTo")} <span className="font-semibold text-zinc-800 dark:text-zinc-200">{email}</span>
                 </p>
                 <div className="pt-2">
                   <Link href="/login">
                     <Button variant="outline" size="sm" className="w-full">
-                      Back to Sign in
+                      {t("backToSignIn")}
                     </Button>
                   </Link>
                 </div>
@@ -80,13 +85,13 @@ export default function ResetPasswordPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                    Email address
+                    {t("emailAddress")}
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-zinc-400" />
                     <Input
                       type="email"
-                      placeholder="you@example.com"
+                      placeholder={t("emailPlaceholder")}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -96,7 +101,7 @@ export default function ResetPasswordPage() {
                 </div>
 
                 <Button type="submit" size="lg" className="w-full mt-2" disabled={loading}>
-                  {loading ? "Sending..." : "Send Reset Link"}
+                  {loading ? t("sending") : t("sendResetLink")}
                 </Button>
               </form>
             )}
@@ -108,7 +113,7 @@ export default function ResetPasswordPage() {
             href="/login"
             className="inline-flex items-center text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 gap-1.5 transition-colors"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Back to sign in
+            <ArrowLeft className="h-3.5 w-3.5" /> {t("backToSignIn")}
           </Link>
         </div>
       </div>

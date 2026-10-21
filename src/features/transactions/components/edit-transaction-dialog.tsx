@@ -21,6 +21,8 @@ import { updateTransaction } from "../actions";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useT } from "@/lib/i18n";
+import type { txDialogs } from "@/lib/i18n/messages/txDialogs";
 
 export interface EditableTransaction {
   id: string;
@@ -39,15 +41,17 @@ interface CategoryOption {
   name: string;
   color: string;
   icon: typeof Utensils | typeof Sparkles;
+  /** Translated label for the built-in fallback categories; user categories show their own name */
+  labelKey?: keyof typeof txDialogs.en;
 }
 
 const DEFAULT_CATEGORIES: CategoryOption[] = [
-  { id: "cat-1", name: "Food & Drinks", color: "#EF4444", icon: Utensils },
-  { id: "cat-2", name: "Groceries", color: "#F59E0B", icon: ShoppingCart },
-  { id: "cat-3", name: "Transport", color: "#3B82F6", icon: Car },
-  { id: "cat-4", name: "Housing & Bills", color: "#8B5CF6", icon: Home },
-  { id: "cat-5", name: "Entertainment", color: "#EC4899", icon: Tv },
-  { id: "cat-6", name: "Shopping", color: "#10B981", icon: ShoppingBag },
+  { id: "cat-1", name: "Food & Drinks", color: "#EF4444", icon: Utensils, labelKey: "catFood" },
+  { id: "cat-2", name: "Groceries", color: "#F59E0B", icon: ShoppingCart, labelKey: "catGroceries" },
+  { id: "cat-3", name: "Transport", color: "#3B82F6", icon: Car, labelKey: "catTransport" },
+  { id: "cat-4", name: "Housing & Bills", color: "#8B5CF6", icon: Home, labelKey: "catHousing" },
+  { id: "cat-5", name: "Entertainment", color: "#EC4899", icon: Tv, labelKey: "catEntertainment" },
+  { id: "cat-6", name: "Shopping", color: "#10B981", icon: ShoppingBag, labelKey: "catShopping" },
 ];
 
 interface EditTransactionFormProps {
@@ -65,6 +69,8 @@ function EditTransactionForm({
   onSuccess,
   onDelete,
 }: EditTransactionFormProps) {
+  const t = useT("txDialogs");
+  const tc = useT("common");
   const [type, setType] = React.useState<"expense" | "income" | "transfer">(transaction.type);
   const [amountStr, setAmountStr] = React.useState(transaction.amount.toString());
   const [currency, setCurrency] = React.useState<"USD" | "KHR">(transaction.currency);
@@ -100,7 +106,7 @@ function EditTransactionForm({
     e.preventDefault();
     const val = parseFloat(amountStr);
     if (isNaN(val) || val <= 0) {
-      toast.error("Please enter a valid amount greater than 0");
+      toast.error(t("invalidAmount"));
       return;
     }
 
@@ -118,15 +124,15 @@ function EditTransactionForm({
       });
 
       if (res.success) {
-        toast.success("Transaction updated!");
+        toast.success(t("updated"));
         onSuccess?.();
         onClose();
       } else {
-        toast.error("Failed to update transaction", { description: res.error });
+        toast.error(t("updateFailed"), { description: res.error });
       }
     } catch (err) {
-      toast.error("Could not save changes", {
-        description: err instanceof Error ? err.message : "Network error",
+      toast.error(t("couldNotSaveChanges"), {
+        description: err instanceof Error ? err.message : t("networkError"),
       });
     } finally {
       setIsSaving(false);
@@ -146,10 +152,11 @@ function EditTransactionForm({
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
         <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-          Edit Transaction
+          {t("editTitle")}
         </h2>
         <button
           onClick={onClose}
+          aria-label={tc("close")}
           className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
         >
           <X className="h-5 w-5" />
@@ -158,19 +165,19 @@ function EditTransactionForm({
 
       {/* Type Segmented Buttons */}
       <div className="flex rounded-xl bg-zinc-100 dark:bg-zinc-800 p-1">
-        {(["expense", "income", "transfer"] as const).map((t) => (
+        {(["expense", "income", "transfer"] as const).map((txType) => (
           <button
-            key={t}
+            key={txType}
             type="button"
-            onClick={() => setType(t)}
+            onClick={() => setType(txType)}
             className={cn(
-              "flex-1 py-1.5 text-xs font-semibold rounded-lg capitalize transition-all",
-              type === t
+              "flex-1 min-w-0 truncate py-1.5 text-xs font-semibold rounded-lg capitalize transition-all",
+              type === txType
                 ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm"
                 : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
             )}
           >
-            {t}
+            {tc(txType)}
           </button>
         ))}
       </div>
@@ -183,7 +190,7 @@ function EditTransactionForm({
               type="button"
               onClick={() => setCurrency(currency === "USD" ? "KHR" : "USD")}
               className="text-2xl font-bold text-zinc-400 hover:text-brand-600 dark:hover:text-accent-400 transition-colors select-none"
-              title="Tap to switch currency"
+              title={t("switchCurrency")}
             >
               {currency === "USD" ? "$" : "៛"}
             </button>
@@ -210,7 +217,7 @@ function EditTransactionForm({
         {type === "expense" && (
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              Category
+              {tc("category")}
             </label>
             <div className="grid grid-cols-3 gap-2">
               {categoriesList.map((cat) => {
@@ -234,7 +241,7 @@ function EditTransactionForm({
                     >
                       <Icon className="h-3 w-3" />
                     </span>
-                    <span className="truncate text-[11px]">{cat.name}</span>
+                    <span className="truncate text-[11px]">{cat.labelKey ? t(cat.labelKey) : cat.name}</span>
                   </button>
                 );
               })}
@@ -245,10 +252,10 @@ function EditTransactionForm({
         {/* Note Input */}
         <div className="space-y-1">
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-            Note
+            {tc("note")}
           </label>
           <Input
-            placeholder="e.g. Starbucks Latte"
+            placeholder={t("notePlaceholderExample")}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             className="text-sm"
@@ -259,7 +266,7 @@ function EditTransactionForm({
         {/* Date Picker */}
         <div className="space-y-1">
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-            <Calendar className="h-3.5 w-3.5" /> Date
+            <Calendar className="h-3.5 w-3.5" /> {tc("date")}
           </label>
           <Input
             type="date"
@@ -279,14 +286,14 @@ function EditTransactionForm({
               className="flex items-center gap-1.5 text-brand-600 dark:text-accent-400 font-semibold hover:underline truncate"
             >
               <ImageIcon className="h-4 w-4 shrink-0" />
-              View Receipt Image
+              {t("viewReceiptImage")}
             </a>
             <button
               type="button"
               onClick={() => setReceiptUrl(null)}
               className="text-rose-500 hover:text-rose-700 text-xs font-semibold px-1"
             >
-              Remove
+              {t("remove")}
             </button>
           </div>
         )}
@@ -299,16 +306,16 @@ function EditTransactionForm({
             onClick={handleDeleteClick}
             className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 gap-1.5 text-xs font-semibold"
           >
-            <Trash2 className="h-4 w-4" /> Delete
+            <Trash2 className="h-4 w-4" /> {tc("delete")}
           </Button>
 
           <div className="flex items-center gap-2">
             <Button type="button" variant="outline" onClick={onClose} size="sm">
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button type="submit" disabled={isSaving} size="sm" className="gap-1.5">
               <Check className="h-4 w-4" />
-              {isSaving ? "Saving..." : "Save Changes"}
+              {isSaving ? tc("saving") : t("saveChanges")}
             </Button>
           </div>
         </div>

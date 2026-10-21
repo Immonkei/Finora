@@ -229,7 +229,7 @@ export default function TodayPage() {
               <span className="text-brand-100/90 text-[11px] font-bold uppercase tracking-wider">
                 {t("dailyAllowance")}
               </span>
-              <Badge variant="outline" className="border-accent-300/40 bg-accent-500/15 text-accent-100 text-xs font-semibold backdrop-blur-xs">
+              <Badge variant="outline" className="border-accent-300/40 bg-accent-500/15 text-accent-100 text-xs font-semibold backdrop-blur-xs whitespace-nowrap">
                 {t("daysLeft", { count: daysLeft })}
               </Badge>
             </div>
@@ -261,7 +261,7 @@ export default function TodayPage() {
               <span className="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold uppercase tracking-wider">
                 {t("totalSpentToday")}
               </span>
-              <Badge variant="secondary" className="text-xs font-semibold">
+              <Badge variant="secondary" className="text-xs font-semibold whitespace-nowrap">
                 {t("items", { count: todayTransactions.length })}
               </Badge>
             </div>
@@ -290,14 +290,14 @@ export default function TodayPage() {
 
       {/* Today's Transactions List */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between py-4">
-          <div>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 py-4">
+          <div className="min-w-0">
             <CardTitle className="text-base font-semibold">{t("activityTitle")}</CardTitle>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               {t("activitySubtitle")}
             </p>
           </div>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs whitespace-nowrap shrink-0">
             {t("logged", { count: todayTransactions.length })}
           </Badge>
         </CardHeader>

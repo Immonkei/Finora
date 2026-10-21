@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { formatMoney, fromMinorUnits, type CurrencyCode } from "@/lib/money";
 import { useMounted } from "@/lib/hooks";
+import { useT } from "@/lib/i18n";
 import type { WeeklyBarPoint } from "./chart-data";
 
 interface WeeklyBarChartProps {
@@ -37,6 +38,8 @@ function CustomBarTooltip({
   dailyAvg,
   currency = "USD",
 }: CustomBarTooltipProps) {
+  const t = useT("charts");
+  const tc = useT("common");
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -55,19 +58,19 @@ function CustomBarTooltip({
         </span>
         {point.isToday && (
           <span className="rounded bg-accent-100 px-1.5 py-0.2 text-[10px] font-bold text-accent-700 dark:bg-accent-950 dark:text-accent-300">
-            Today
+            {tc("today")}
           </span>
         )}
         {point.isHighest && !point.isToday && (
           <span className="rounded bg-amber-100 px-1.5 py-0.2 text-[10px] font-bold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-            Peak Day
+            {t("peakDay")}
           </span>
         )}
       </div>
 
       <div className="mt-2 space-y-1">
         <div className="flex items-center justify-between gap-4">
-          <span className="text-zinc-500 dark:text-zinc-400">Total Spent</span>
+          <span className="text-zinc-500 dark:text-zinc-400">{t("totalSpent")}</span>
           <span className="font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight text-sm">
             {formatMoney(point.amountMinor, currency)}
           </span>
@@ -75,7 +78,7 @@ function CustomBarTooltip({
 
         {diffFromAvg !== null && Math.abs(diffFromAvg) > 0.1 && (
           <div className="flex items-center justify-between gap-4 text-[11px] pt-1 border-t border-zinc-100 dark:border-zinc-800/60">
-            <span className="text-zinc-500 dark:text-zinc-400">vs Daily Avg</span>
+            <span className="text-zinc-500 dark:text-zinc-400">{t("vsDailyAvg")}</span>
             <span
               className={`font-semibold tabular-nums ${
                 isAboveAvg
@@ -106,6 +109,7 @@ export function WeeklyBarChart({
   onSelectDay,
 }: WeeklyBarChartProps) {
   const isMounted = useMounted();
+  const t = useT("charts");
   const [activeDayIndex, setActiveDayIndex] = React.useState<number | null>(null);
 
   if (!isMounted) {
@@ -113,7 +117,7 @@ export function WeeklyBarChart({
       <div
         className={`flex h-48 sm:h-56 items-center justify-center rounded-2xl border border-zinc-200/60 bg-zinc-50/50 dark:border-zinc-800/60 dark:bg-zinc-900/30 ${className}`}
       >
-        <span className="text-xs text-zinc-400 animate-pulse">Loading weekly chart...</span>
+        <span className="text-xs text-zinc-400 animate-pulse">{t("loadingWeekly")}</span>
       </div>
     );
   }
@@ -126,11 +130,11 @@ export function WeeklyBarChart({
     <div className={`space-y-3 ${className}`}>
       {dailyAverageMinor !== undefined && (
         <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
-          <span className="font-medium">Day-by-day distribution</span>
+          <span className="font-medium">{t("dayByDay")}</span>
           <div className="flex items-center gap-2">
             <span className="h-0.5 w-3 border-t-2 border-dashed border-zinc-400 dark:border-zinc-500" />
             <span className="tabular-nums">
-              Avg: {formatMoney(dailyAverageMinor, currency)}/day
+              {t("avgPerDay", { amount: formatMoney(dailyAverageMinor, currency) })}
             </span>
           </div>
         </div>

@@ -19,10 +19,46 @@ export interface HealthScoreInput {
   completedGoalsCount: number;
 }
 
+/**
+ * Stable codes for the title and insights so the UI can translate them.
+ * They match keys in the `reports` i18n namespace; the English `title` and
+ * `insights` strings are kept for non-UI callers and tests.
+ */
+export type HealthTitleCode =
+  | "titleElite"
+  | "titleExcellent"
+  | "titleGood"
+  | "titleFair"
+  | "titleAttention";
+
+export type HealthInsightCode =
+  | "insightPacingUnder"
+  | "insightPacingOnTrack"
+  | "insightPacingSlightlyOver"
+  | "insightPacingOver20"
+  | "insightPacingOverBudget"
+  | "insightNoBudget"
+  | "insightNoLeaks"
+  | "insightOneLeak"
+  | "insightFewLeaks"
+  | "insightManyLeaks"
+  | "insightGoalsCompleted"
+  | "insightMultipleGoals"
+  | "insightOneGoal"
+  | "insightNoGoals"
+  | "insightStrongStreak"
+  | "insightActiveStreak";
+
+export interface HealthInsight {
+  code: HealthInsightCode;
+  values?: Record<string, number>;
+}
+
 export interface HealthScoreResult {
   score: number; // 0 - 100
   grade: "A+" | "A" | "B" | "C" | "D";
   title: string;
+  titleCode: HealthTitleCode;
   pacingStatus: "under_budget" | "on_track" | "over_budget";
   breakdown: {
     budgetPacing: number; // / 40
@@ -31,6 +67,7 @@ export interface HealthScoreResult {
     consistency: number; // / 15
   };
   insights: string[];
+  insightCodes: HealthInsight[];
 }
 
 export function calculateFinancialHealthScore(
@@ -49,6 +86,15 @@ export function calculateFinancialHealthScore(
   } = input;
 
   const insights: string[] = [];
+  const insightCodes: HealthInsight[] = [];
+  const addInsight = (
+    text: string,
+    code: HealthInsightCode,
+    values?: Record<string, number>
+  ) => {
+    insights.push(text);
+    insightCodes.push(values ? { code, values } : { code });
+  };
 
   // Pillar 1: Budget Adherence (40 pts)
   let budgetScore = 30; // default baseline if no budget configured
@@ -65,69 +111,79 @@ export function calculateFinancialHealthScore(
       if (pacingRatio <= 0.8) {
         budgetScore = 40;
         pacingStatus = "under_budget";
-        insights.push("Spending is well under your monthly budget pace");
+        addInsight("Spending is well under your monthly budget pace", "insightPacingUnder");
       } else if (pacingRatio <= 1.0) {
         budgetScore = 36;
         pacingStatus = "on_track";
-        insights.push("Spending is strictly on track with monthly allowance");
+        addInsight("Spending is strictly on track with monthly allowance", "insightPacingOnTrack");
       } else if (pacingRatio <= 1.2) {
         budgetScore = 22;
         pacingStatus = "over_budget";
-        insights.push("Trending slightly ahead of daily budget pace");
+        addInsight("Trending slightly ahead of daily budget pace", "insightPacingSlightlyOver");
       } else if (pacingRatio <= 1.5) {
         budgetScore = 14;
         pacingStatus = "over_budget";
-        insights.push("Pacing 20%+ over monthly allowance");
+        addInsight("Pacing 20%+ over monthly allowance", "insightPacingOver20");
       } else {
         budgetScore = 6;
         pacingStatus = "over_budget";
-        insights.push("Over-budget: adjust discretionary spending to recover");
+        addInsight("Over-budget: adjust discretionary spending to recover", "insightPacingOverBudget");
       }
     }
   } else {
-    insights.push("Set a monthly budget to unlock 40-point pacing accuracy");
+    addInsight("Set a monthly budget to unlock 40-point pacing accuracy", "insightNoBudget");
   }
 
   // Pillar 2: Leak Control (25 pts)
   let leakScore = 25;
   if (leaksCount === 0) {
     leakScore = 25;
-    insights.push("Zero repetitive micro-spending leaks detected");
+    addInsight("Zero repetitive micro-spending leaks detected", "insightNoLeaks");
   } else if (leaksCount === 1) {
     leakScore = 20;
-    insights.push("Only 1 repetitive leak detected");
+    addInsight("Only 1 repetitive leak detected", "insightOneLeak");
   } else if (leaksCount <= 3) {
     leakScore = 14;
-    insights.push(`${leaksCount} frequent spending leaks found`);
+    addInsight(`${leaksCount} frequent spending leaks found`, "insightFewLeaks", {
+      count: leaksCount,
+    });
   } else {
     leakScore = 8;
-    insights.push(`${leaksCount} spending leaks draining monthly cash flow`);
+    addInsight(`${leaksCount} spending leaks draining monthly cash flow`, "insightManyLeaks", {
+      count: leaksCount,
+    });
   }
 
   // Pillar 3: Savings Momentum (20 pts)
   let savingsScore = 10;
   if (completedGoalsCount > 0) {
     savingsScore = 20;
-    insights.push(`${completedGoalsCount} savings goals conquered`);
+    addInsight(`${completedGoalsCount} savings goals conquered`, "insightGoalsCompleted", {
+      count: completedGoalsCount,
+    });
   } else if (activeGoalsCount >= 2) {
     savingsScore = 18;
-    insights.push("Actively funding multiple savings targets");
+    addInsight("Actively funding multiple savings targets", "insightMultipleGoals");
   } else if (activeGoalsCount === 1) {
     savingsScore = 14;
-    insights.push("Active savings goal in progress");
+    addInsight("Active savings goal in progress", "insightOneGoal");
   } else {
     savingsScore = 8;
-    insights.push("Create a savings goal to boost your financial score");
+    addInsight("Create a savings goal to boost your financial score", "insightNoGoals");
   }
 
   // Pillar 4: Tracking Consistency & Streaks (15 pts)
   let consistencyScore = 6;
   if (currentStreakDays >= 7 || noSpendDaysCount >= 3) {
     consistencyScore = 15;
-    insights.push(`Strong ${currentStreakDays}-day budget discipline streak`);
+    addInsight(`Strong ${currentStreakDays}-day budget discipline streak`, "insightStrongStreak", {
+      days: currentStreakDays,
+    });
   } else if (currentStreakDays >= 3 || noSpendDaysCount >= 1) {
     consistencyScore = 12;
-    insights.push(`${currentStreakDays}-day active tracking streak`);
+    addInsight(`${currentStreakDays}-day active tracking streak`, "insightActiveStreak", {
+      days: currentStreakDays,
+    });
   } else if (currentStreakDays >= 1) {
     consistencyScore = 9;
   }
@@ -137,28 +193,35 @@ export function calculateFinancialHealthScore(
 
   let grade: "A+" | "A" | "B" | "C" | "D" = "B";
   let title = "Good Discipline";
+  let titleCode: HealthTitleCode = "titleGood";
 
   if (score >= 90) {
     grade = "A+";
     title = "Elite Financial Health";
+    titleCode = "titleElite";
   } else if (score >= 80) {
     grade = "A";
     title = "Excellent Financial Health";
+    titleCode = "titleExcellent";
   } else if (score >= 70) {
     grade = "B";
     title = "Good Financial Discipline";
+    titleCode = "titleGood";
   } else if (score >= 60) {
     grade = "C";
     title = "Fair — Room for Improvement";
+    titleCode = "titleFair";
   } else {
     grade = "D";
     title = "Needs Immediate Attention";
+    titleCode = "titleAttention";
   }
 
   return {
     score,
     grade,
     title,
+    titleCode,
     pacingStatus,
     breakdown: {
       budgetPacing: budgetScore,
@@ -167,5 +230,6 @@ export function calculateFinancialHealthScore(
       consistency: consistencyScore,
     },
     insights: insights.slice(0, 4),
+    insightCodes: insightCodes.slice(0, 4),
   };
 }

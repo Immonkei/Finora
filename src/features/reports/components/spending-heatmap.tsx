@@ -3,7 +3,9 @@
 import * as React from "react";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import { useMounted } from "@/lib/hooks";
+import { useLocale, useT } from "@/lib/i18n";
 
 export interface DaySpendingData {
   date: string; // "YYYY-MM-DD"
@@ -25,12 +27,7 @@ interface HeatmapDay {
   level: 0 | 1 | 2 | 3 | 4;
 }
 
-const MONTH_NAMES = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-];
-
-const DAY_LABELS = ["Mon", "Wed", "Fri", "Sun"];
+const DAY_LABEL_KEYS = ["dayMon", "dayWed", "dayFri", "daySun"] as const;
 
 export function SpendingHeatmap({
   data,
@@ -38,6 +35,8 @@ export function SpendingHeatmap({
   className,
 }: SpendingHeatmapProps) {
   const isMounted = useMounted();
+  const t = useT("charts");
+  const { dateLocale } = useLocale();
   const [hoveredDay, setHoveredDay] = React.useState<HeatmapDay | null>(null);
 
   // Generate 52 weeks (364 days) ending on today
@@ -64,7 +63,7 @@ export function SpendingHeatmap({
 
     const weeksList: HeatmapDay[][] = [];
     let currentWeek: HeatmapDay[] = [];
-    const months: { name: string; colIndex: number }[] = [];
+    const months: { month: number; colIndex: number }[] = [];
 
     let lastMonth = -1;
     let runningTotalMinor = 0n;
@@ -110,7 +109,7 @@ export function SpendingHeatmap({
       // Track Month headers
       const currentMonth = cursor.getUTCMonth();
       if (currentMonth !== lastMonth && currentWeek.length === 1) {
-        months.push({ name: MONTH_NAMES[currentMonth], colIndex: colIdx });
+        months.push({ month: currentMonth, colIndex: colIdx });
         lastMonth = currentMonth;
       }
 
@@ -157,19 +156,19 @@ export function SpendingHeatmap({
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-4">
           <span className="text-zinc-600 dark:text-zinc-300">
-            Total 365-Day Logged:{" "}
+            {t("totalLogged")}{" "}
             <strong className="text-zinc-900 dark:text-zinc-100 tabular-nums">
               {formatDaySpend(totalSpentMinor)}
             </strong>
           </span>
           <span className="text-zinc-600 dark:text-zinc-300">
-            Active Days:{" "}
+            {t("activeDays")}{" "}
             <strong className="text-brand-600 dark:text-accent-400 tabular-nums">
               {activeDays}
             </strong>
           </span>
           <span className="text-zinc-600 dark:text-zinc-300">
-            Zero-Spend Days:{" "}
+            {t("zeroSpendDays")}{" "}
             <strong className="text-emerald-600 dark:text-emerald-400 tabular-nums">
               {noSpendDays}
             </strong>
@@ -178,13 +177,13 @@ export function SpendingHeatmap({
 
         {/* Legend */}
         <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-          <span>Less</span>
+          <span>{t("less")}</span>
           <span className="w-2.5 h-2.5 rounded-[2px] bg-zinc-100 dark:bg-zinc-800" />
           <span className="w-2.5 h-2.5 rounded-[2px] bg-emerald-200 dark:bg-emerald-950" />
           <span className="w-2.5 h-2.5 rounded-[2px] bg-emerald-300 dark:bg-emerald-800" />
           <span className="w-2.5 h-2.5 rounded-[2px] bg-emerald-500 dark:bg-emerald-600" />
           <span className="w-2.5 h-2.5 rounded-[2px] bg-emerald-600 dark:bg-emerald-400" />
-          <span>More</span>
+          <span>{t("more")}</span>
         </div>
       </div>
 
@@ -197,7 +196,7 @@ export function SpendingHeatmap({
               const month = monthLabels.find((m) => m.colIndex === colIndex);
               return (
                 <div key={colIndex} className="w-[13px] text-left shrink-0">
-                  {month ? month.name : ""}
+                  {month ? format(new Date(2000, month.month, 1), "MMM", { locale: dateLocale }) : ""}
                 </div>
               );
             })}
@@ -207,8 +206,8 @@ export function SpendingHeatmap({
           <div className="flex">
             {/* Day of Week Labels */}
             <div className="flex flex-col justify-between text-[9px] text-zinc-400 font-medium pr-2 w-7 shrink-0 h-[88px]">
-              {DAY_LABELS.map((day) => (
-                <span key={day}>{day}</span>
+              {DAY_LABEL_KEYS.map((key) => (
+                <span key={key}>{t(key)}</span>
               ))}
             </div>
 
@@ -233,7 +232,11 @@ export function SpendingHeatmap({
                           day.level === 4 && "bg-emerald-600 dark:bg-emerald-400 hover:ring-1 hover:ring-emerald-200",
                           isSelected && "ring-2 ring-brand-500 dark:ring-accent-400 scale-125 z-10"
                         )}
-                        title={`${day.date}: ${formatDaySpend(day.spentMinor)} (${day.count} expenses)`}
+                        title={t("cellTitle", {
+                          date: day.date,
+                          amount: formatDaySpend(day.spentMinor),
+                          count: day.count,
+                        })}
                       />
                     );
                   })}
@@ -252,11 +255,13 @@ export function SpendingHeatmap({
               {hoveredDay.date}
             </span>{" "}
             <span className="text-zinc-500">
-              • {hoveredDay.count > 0 ? `${hoveredDay.count} transaction(s)` : "No expenses logged"}
+              • {hoveredDay.count > 0
+                ? t("transactionsCount", { count: hoveredDay.count })
+                : t("noExpensesLogged")}
             </span>
           </div>
           <div>
-            <span className="text-zinc-500 mr-1.5">Spent:</span>
+            <span className="text-zinc-500 mr-1.5">{t("spent")}</span>
             <strong className="text-zinc-900 dark:text-zinc-100 tabular-nums">
               {formatDaySpend(hoveredDay.spentMinor)}
             </strong>
