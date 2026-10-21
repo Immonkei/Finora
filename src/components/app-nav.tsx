@@ -13,6 +13,8 @@ import {
   Plus,
   Repeat,
   Sparkles,
+  LayoutGrid,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuickAddDialog } from "@/features/transactions/components/quick-add-dialog";
@@ -29,39 +31,51 @@ const NAV_ITEMS = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+const MOBILE_PRIMARY_HREFS = ["/today", "/week", "/month"];
+const MOBILE_MORE_ITEMS = NAV_ITEMS.filter(
+  (item) => !MOBILE_PRIMARY_HREFS.includes(item.href)
+);
+
+function MobileTab({
+  href,
+  label,
+  icon: Icon,
+  isActive,
+}: {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  isActive: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={isActive ? "page" : undefined}
+      className={cn(
+        "flex flex-1 flex-col items-center justify-center gap-0.5 py-1 text-[11px] font-medium transition-colors",
+        isActive
+          ? "text-brand-600 dark:text-accent-400 font-semibold"
+          : "text-zinc-500 active:text-zinc-800 dark:text-zinc-400"
+      )}
+    >
+      <Icon className="h-5 w-5" />
+      <span>{label}</span>
+    </Link>
+  );
+}
+
 export function MobileNavBar() {
   const pathname = usePathname();
   const [isAddOpen, setIsAddOpen] = React.useState(false);
+  const [isMoreOpen, setIsMoreOpen] = React.useState(false);
+  const isMoreActive = MOBILE_MORE_ITEMS.some((item) => item.href === pathname);
 
   return (
     <>
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-zinc-200/80 bg-white/90 backdrop-blur-lg dark:border-zinc-800/80 dark:bg-[#0c131c]/90 md:hidden safe-area-pb">
         <div className="flex h-16 items-center justify-around px-2 relative">
-          <Link
-            href="/today"
-            className={cn(
-              "flex flex-1 flex-col items-center justify-center py-1 text-xs font-medium transition-colors",
-              pathname === "/today"
-                ? "text-brand-600 dark:text-accent-400 font-semibold"
-                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
-            )}
-          >
-            <CalendarDays className="h-5 w-5 mb-1" />
-            <span>Today</span>
-          </Link>
-
-          <Link
-            href="/week"
-            className={cn(
-              "flex flex-1 flex-col items-center justify-center py-1 text-xs font-medium transition-colors",
-              pathname === "/week"
-                ? "text-brand-600 dark:text-accent-400 font-semibold"
-                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
-            )}
-          >
-            <BarChart3 className="h-5 w-5 mb-1" />
-            <span>Week</span>
-          </Link>
+          <MobileTab href="/today" label="Today" icon={CalendarDays} isActive={pathname === "/today"} />
+          <MobileTab href="/week" label="Week" icon={BarChart3} isActive={pathname === "/week"} />
 
           {/* Quick-Add Center Action Button */}
           <div className="flex flex-1 items-center justify-center -mt-5">
@@ -74,33 +88,76 @@ export function MobileNavBar() {
             </button>
           </div>
 
-          <Link
-            href="/month"
-            className={cn(
-              "flex flex-1 flex-col items-center justify-center py-1 text-xs font-medium transition-colors",
-              pathname === "/month"
-                ? "text-brand-600 dark:text-accent-400 font-semibold"
-                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
-            )}
-          >
-            <PieChart className="h-5 w-5 mb-1" />
-            <span>Month</span>
-          </Link>
+          <MobileTab href="/month" label="Month" icon={PieChart} isActive={pathname === "/month"} />
 
-          <Link
-            href="/settings"
+          <button
+            type="button"
+            onClick={() => setIsMoreOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={isMoreOpen}
             className={cn(
-              "flex flex-1 flex-col items-center justify-center py-1 text-xs font-medium transition-colors",
-              pathname === "/settings"
+              "flex flex-1 flex-col items-center justify-center gap-0.5 py-1 text-[11px] font-medium transition-colors",
+              isMoreActive || isMoreOpen
                 ? "text-brand-600 dark:text-accent-400 font-semibold"
-                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
+                : "text-zinc-500 active:text-zinc-800 dark:text-zinc-400"
             )}
           >
-            <Settings className="h-5 w-5 mb-1" />
-            <span>Settings</span>
-          </Link>
+            <LayoutGrid className="h-5 w-5" />
+            <span>More</span>
+          </button>
         </div>
       </nav>
+
+      {/* More Sheet: remaining destinations as an app-style launcher grid */}
+      {isMoreOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/50 backdrop-blur-sm animate-in fade-in duration-150 md:hidden"
+          onClick={() => setIsMoreOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-label="More pages"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full rounded-t-[28px] border-t border-zinc-200/80 bg-white px-4 pt-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl dark:border-zinc-800 dark:bg-zinc-900 animate-in slide-in-from-bottom duration-200"
+          >
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+            <div className="flex items-center justify-between px-1 pb-3">
+              <p className="text-sm font-bold text-zinc-900 dark:text-zinc-50">More</p>
+              <button
+                type="button"
+                onClick={() => setIsMoreOpen(false)}
+                className="rounded-full p-1.5 text-zinc-500 active:bg-zinc-100 dark:active:bg-zinc-800"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2.5">
+              {MOBILE_MORE_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsMoreOpen(false)}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 py-3.5 text-xs font-semibold transition-all active:scale-95",
+                      isActive
+                        ? "border-brand-600 bg-brand-600 text-white"
+                        : "border-zinc-200/80 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-300"
+                    )}
+                  >
+                    <Icon className={cn("h-5 w-5", isActive ? "text-accent-300" : "text-brand-600 dark:text-accent-400")} />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       <QuickAddDialog
         isOpen={isAddOpen}

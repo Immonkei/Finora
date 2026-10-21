@@ -209,18 +209,18 @@ export default function RecurringPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
             Subscriptions & Bills
           </p>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             Recurring Expenses
           </h1>
         </div>
-        <div className="flex gap-2">
+        <div className="mobile-scroll-x flex gap-2">
           <Button
             variant="outline"
             onClick={handleProcessDue}
@@ -237,7 +237,7 @@ export default function RecurringPage() {
       </div>
 
       {/* Top Banner Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="mobile-carousel grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card className="bg-gradient-to-br from-brand-900 via-[#0e2a3e] to-[#081420] text-white border border-brand-800/60 shadow-lg">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -246,7 +246,7 @@ export default function RecurringPage() {
               </span>
               <Repeat className="h-4 w-4 text-accent-300" />
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
+            <CardTitle className="text-2xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
               {formatMoney(totalMonthlyObligation, "USD")}
             </CardTitle>
           </CardHeader>
@@ -377,8 +377,8 @@ export default function RecurringPage() {
 
       {/* Add Rule Dialog */}
       {isDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="mobile-sheet w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-5 sm:p-6 space-y-4">
             <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
               New Recurring Rule
             </h2>

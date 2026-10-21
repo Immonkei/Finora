@@ -187,12 +187,12 @@ export default function TransactionsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
         <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
           Ledger
         </p>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           All Transactions
         </h1>
       </div>
@@ -209,7 +209,7 @@ export default function TransactionsPage() {
               className="pl-10"
             />
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
             {["all", "expense", "income", "transfer"].map((type) => (
               <Button
                 key={type}
@@ -225,7 +225,7 @@ export default function TransactionsPage() {
         </div>
 
         {/* Spec FR-T8: Date Range, Category, and Account Filters */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+        <div className="mobile-scroll-x flex flex-wrap items-center gap-2 pt-1 text-xs">
           <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800">
             <span className="text-zinc-500 font-medium">Category:</span>
             <select

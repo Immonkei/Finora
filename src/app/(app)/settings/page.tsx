@@ -210,19 +210,19 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-4 sm:space-y-6 max-w-4xl">
       {/* Header */}
       <div>
         <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
           Preferences &amp; System
         </p>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           Settings
         </h1>
       </div>
 
       {/* Segmented Settings Navigation Tabs */}
-      <div className="flex items-center gap-1.5 p-1 bg-zinc-200/70 dark:bg-zinc-900 rounded-xl overflow-x-auto text-xs font-semibold">
+      <div className="flex items-center gap-1.5 p-1 bg-zinc-200/70 dark:bg-zinc-900 rounded-xl overflow-x-auto no-scrollbar text-xs font-semibold">
         <button
           type="button"
           onClick={() => handleTabChange("categories")}
@@ -584,7 +584,7 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <p className="text-xs text-zinc-500">
                   Exports all non-deleted transactions including base amounts, exchange rates, categories, and timestamps.
                 </p>

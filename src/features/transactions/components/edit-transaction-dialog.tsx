@@ -140,7 +140,7 @@ function EditTransactionForm({
 
   return (
     <div
-      className="w-full max-w-lg rounded-t-3xl sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 space-y-4 animate-in slide-in-from-bottom duration-200"
+      className="mobile-sheet w-full max-w-lg rounded-t-3xl sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 space-y-4 animate-in slide-in-from-bottom duration-200"
       role="dialog"
     >
       {/* Header */}

@@ -1,4 +1,4 @@
-const CACHE_NAME = "finora-pwa-v1.2.0";
+const CACHE_NAME = "finora-pwa-v1.2.1";
 const PRECACHE_URLS = [
   "/",
   "/today",
@@ -11,6 +11,9 @@ const PRECACHE_URLS = [
   "/settings",
   "/manifest.json",
   "/icon.png",
+  "/pwa-icon-192.png",
+  "/pwa-icon-512.png",
+  "/pwa-icon-maskable-512.png",
   "/apple-icon.png",
   "/finora-icon.png",
   "/finora-full.png",

@@ -418,7 +418,7 @@ export function QuickAddDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
       <div
-        className="w-full max-w-lg rounded-t-[28px] sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-2xl p-4 sm:p-6 space-y-3.5 max-h-[92vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200"
+        className="mobile-sheet w-full max-w-lg rounded-t-[28px] sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-2xl p-4 sm:p-6 space-y-3.5 max-h-[92dvh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200"
         role="dialog"
       >
         {/* Mobile Pull Handle Bar */}

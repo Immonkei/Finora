@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import {
   Sparkles,
   X,
@@ -184,37 +185,27 @@ export function AIChatDrawer() {
 
   return (
     <>
-      {/* Floating Action Button (Clean Finora Primary Color) */}
-      <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40">
-        <button
-          type="button"
-          onClick={() => setIsOpen((prev) => !prev)}
-          className={cn(
-            "relative group flex items-center gap-2 p-3 sm:px-4 sm:py-3 rounded-full text-white shadow-xl transition-all duration-200 cursor-pointer active:scale-95",
-            isOpen
-              ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 shadow-zinc-900/30"
-              : "bg-brand-600 hover:bg-brand-700 active:bg-brand-800 shadow-lg shadow-brand-600/35 ring-4 ring-white dark:ring-zinc-950 hover:scale-105"
-          )}
-          aria-label={isOpen ? "Close AI chat" : "Open Finora AI chat"}
-        >
-          {isOpen ? (
-            <X className="h-5 w-5" />
-          ) : (
-            <>
-              <Sparkles className="h-5 w-5 text-accent-300 animate-pulse" />
-              <span className="hidden sm:inline text-xs font-bold tracking-wide">
-                Ask Finora AI
-              </span>
-            </>
-          )}
-        </button>
-      </div>
+      {/* Header trigger: AI is occasional, so it lives in the top bar instead of a floating button */}
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={cn(
+          "relative flex items-center gap-1.5 rounded-xl p-2 text-sm font-semibold transition-colors cursor-pointer",
+          isOpen
+            ? "bg-brand-50 text-brand-700 dark:bg-zinc-800 dark:text-accent-300"
+            : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800"
+        )}
+        aria-label={isOpen ? "Close AI chat" : "Open Finora AI chat"}
+      >
+        <Sparkles className="h-5 w-5 text-brand-600 dark:text-accent-400" />
+        <span className="hidden md:inline text-xs">Ask AI</span>
+      </button>
 
-      {/* Slide-Over Drawer / Modal */}
-      {isOpen && (
+      {/* Slide-Over Drawer / Modal (portaled so the blurred header doesn't clip it) */}
+      {isOpen && createPortal(
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-end p-0 sm:p-6 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
           <div
-            className="w-full sm:w-[440px] h-[85vh] sm:h-[640px] rounded-t-[28px] sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 sm:slide-in-from-right-5 duration-200"
+            className="w-full sm:w-[440px] h-[85dvh] sm:h-[640px] rounded-t-[28px] sm:rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 sm:slide-in-from-right-5 duration-200"
             role="dialog"
             aria-label="Finora AI Financial Assistant"
           >
@@ -412,7 +403,8 @@ export function AIChatDrawer() {
               </form>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

@@ -288,19 +288,19 @@ export default function InsightsPage() {
   }, [leaks, currencyMode]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
             Trends &amp; Analytics
           </p>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             Spending Insights
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+        <div className="mobile-scroll-x flex items-center gap-2 self-start sm:self-auto flex-wrap">
           {/* Multi-Currency Toggle (Spec 3.3 #19) */}
           <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
             <button
@@ -339,7 +339,7 @@ export default function InsightsPage() {
       </div>
 
       {/* Streaks Banner (Spec 3.3 #20) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="mobile-carousel grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 text-white border-0 shadow-lg relative overflow-hidden">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -348,7 +348,7 @@ export default function InsightsPage() {
               </span>
               <Flame className="h-5 w-5 text-amber-200" />
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
+            <CardTitle className="text-2xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
               {streakStats.currentUnderBudgetStreak} Days
             </CardTitle>
           </CardHeader>
@@ -365,7 +365,7 @@ export default function InsightsPage() {
               <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">No-Spend Days</CardDescription>
               <Award className="h-5 w-5 text-accent-500" />
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
+            <CardTitle className="text-2xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
               {streakStats.noSpendDaysCount} Days
             </CardTitle>
           </CardHeader>
@@ -394,7 +394,7 @@ export default function InsightsPage() {
                 </Badge>
               )}
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
+            <CardTitle className="text-2xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
               {formatInsightMoney(monthlySavingsMinor >= 0n ? monthlySavingsMinor : -monthlySavingsMinor)}
             </CardTitle>
           </CardHeader>

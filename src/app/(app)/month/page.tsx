@@ -180,18 +180,18 @@ export default function MonthPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
             Monthly Analytics & Budgets
           </p>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             This Month
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="mobile-scroll-x flex items-center gap-2 flex-wrap">
           <Link href="/settings#categories">
             <Button
               variant="outline"
@@ -216,11 +216,11 @@ export default function MonthPage() {
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="mobile-carousel grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
             <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Spent So Far</CardDescription>
-            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
+            <CardTitle className="text-xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(spentThisMonthMinor, "USD")}
             </CardTitle>
             <p className="text-[11px] text-zinc-400 tabular-nums">
@@ -237,7 +237,7 @@ export default function MonthPage() {
         <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="pb-2">
             <CardDescription className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Daily Average</CardDescription>
-            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
+            <CardTitle className="text-xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(averagePerDayMinor, "USD")}
             </CardTitle>
             <p className="text-[11px] text-zinc-400 tabular-nums">
@@ -261,7 +261,7 @@ export default function MonthPage() {
                 <Badge variant="default" className="text-[10px] font-semibold bg-emerald-600 hover:bg-emerald-700">On Track</Badge>
               )}
             </div>
-            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
+            <CardTitle className="text-xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tabular-nums tracking-tight mt-1">
               {formatMoney(forecastMinor, "USD")}
             </CardTitle>
             <p className="text-[11px] text-zinc-400 tabular-nums">

@@ -75,6 +75,88 @@ body {
   color: inherit;
 }
 
+/* Native-app feel for the installed PWA */
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  overscroll-behavior-y: none;
+}
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+/* Safe-area helpers (require viewport-fit=cover) */
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Hide scrollbars on swipeable rows while keeping them scrollable */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Mobile layout patterns (below Tailwind's `sm` breakpoint).
+ * Unlayered rules win over Tailwind utilities, so these override the
+ * grid / flex-wrap classes they sit next to only on small screens.
+ */
+@media (max-width: 639.98px) {
+  /* Stat card grids become a swipeable, snapping card row */
+  .mobile-carousel {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 1rem;
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-carousel::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-carousel > * {
+    flex: 0 0 84%;
+    scroll-snap-align: start;
+  }
+
+  /* Action / filter rows scroll sideways instead of wrapping */
+  .mobile-scroll-x {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+    scrollbar-width: none;
+    align-self: stretch;
+  }
+  .mobile-scroll-x::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-scroll-x > * {
+    flex-shrink: 0;
+  }
+
+  /* Bottom sheets: scroll inside and clear the home indicator */
+  .mobile-sheet {
+    max-height: 92dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  }
+}
+
 /* Polished Tabular Numbers for Currency and Metrics */
 .tabular-nums {
   font-variant-numeric: tabular-nums;

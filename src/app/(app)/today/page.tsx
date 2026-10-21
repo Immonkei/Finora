@@ -1,13 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { Plus, ArrowDownLeft, Sparkles, TrendingUp, Wallet, Pencil, Trash2 } from "lucide-react";
+import { ArrowDownLeft, Sparkles, TrendingUp, Wallet, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney, calculateDailyAllowance } from "@/lib/money";
 import { formatDisplayDate, getDaysLeftInMonth } from "@/lib/dates";
-import { QuickAddDialog } from "@/features/transactions/components/quick-add-dialog";
 import { useMounted } from "@/lib/hooks";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeTable } from "@/lib/supabase/realtime";
@@ -29,7 +28,6 @@ interface DisplayTx {
 }
 
 export default function TodayPage() {
-  const [isAddOpen, setIsAddOpen] = React.useState(false);
   const [editingTx, setEditingTx] = React.useState<EditableTransaction | null>(null);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const isMounted = useMounted();
@@ -204,29 +202,19 @@ export default function TodayPage() {
     : "Today";
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
-            {displayDateStr}
-          </p>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Today&apos;s Spending
-          </h1>
-        </div>
-        <Button
-          size="lg"
-          onClick={() => setIsAddOpen(true)}
-          className="w-full sm:w-auto shadow-md shadow-brand-500/20"
-        >
-          <Plus className="h-5 w-5 mr-1" />
-          Log Expense
-        </Button>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Page Header (logging lives in the thumb-reachable + button in the bottom bar / sidebar) */}
+      <div>
+        <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
+          {displayDateStr}
+        </p>
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          Today&apos;s Spending
+        </h1>
       </div>
 
       {/* Hero Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="mobile-carousel grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Daily Allowance Card */}
         <Card className="bg-gradient-to-br from-brand-600 via-[#164366] to-[#0a1e2f] text-white border border-brand-500/30 shadow-xl shadow-brand-950/20 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
@@ -241,7 +229,7 @@ export default function TodayPage() {
                 {daysLeft} days left
               </Badge>
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
+            <CardTitle className="text-2xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
               {formatMoney(dailyAllowanceMinor, "USD")}
             </CardTitle>
           </CardHeader>
@@ -273,7 +261,7 @@ export default function TodayPage() {
                 {todayTransactions.length} items
               </Badge>
             </div>
-            <CardTitle className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
+            <CardTitle className="text-2xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
               {formatMoney(spentTodayMinor, "USD")}
             </CardTitle>
           </CardHeader>
@@ -316,7 +304,7 @@ export default function TodayPage() {
                 No expenses logged today.
               </p>
               <p className="text-xs text-zinc-400">
-                Tap &quot;Log Expense&quot; above or Quick Add below to record your spending.
+                Tap the + button to record your spending.
               </p>
             </div>
           ) : (
@@ -377,12 +365,6 @@ export default function TodayPage() {
         )}
         </CardContent>
       </Card>
-
-      <QuickAddDialog
-        isOpen={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
-        onSuccess={loadTodayData}
-      />
 
       <EditTransactionDialog
         isOpen={isEditOpen}
