@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, fromMinorUnits, type CurrencyCode } from "@/lib/money";
 import { formatDisplayDate } from "@/lib/dates";
 import { useLocale, useT } from "@/lib/i18n";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ interface TxItem {
   categoryColor: string;
   account: string;
   amountMinor: bigint;
+  currency: CurrencyCode;
   type: "expense" | "income" | "transfer";
   rawDate: string;
   receiptUrl?: string | null;
@@ -80,6 +81,7 @@ export default function TransactionsPage() {
             categoryColor: cat?.color || (row.type === "transfer" ? "#64748B" : "#10B981"),
             account: acc?.name || "",
             amountMinor: BigInt(row.amount),
+            currency: (row.currency as CurrencyCode) || "USD",
             type: row.type as "expense" | "income" | "transfer",
             rawDate: row.occurred_at,
             receiptUrl,
@@ -114,7 +116,7 @@ export default function TransactionsPage() {
     toast(t("deletedToast"), {
       description: t("deletedDescription", {
         note: noteLabel(tx),
-        amount: formatMoney(tx.amountMinor, "USD"),
+        amount: formatMoney(tx.amountMinor, tx.currency),
       }),
       duration: 10000,
       action: {
@@ -137,8 +139,8 @@ export default function TransactionsPage() {
     setEditingTx({
       id: tx.id,
       note: tx.note,
-      amount: Number(tx.amountMinor) / 100,
-      currency: "USD",
+      amount: fromMinorUnits(tx.amountMinor, tx.currency),
+      currency: tx.currency,
       category: tx.category,
       type: tx.type,
       date: tx.rawDate,
@@ -377,7 +379,7 @@ export default function TransactionsPage() {
                       }`}
                     >
                       {tx.type === "income" ? "+" : "-"}
-                      {formatMoney(tx.amountMinor, "USD")}
+                      {formatMoney(tx.amountMinor, tx.currency)}
                     </p>
                     <Badge variant="secondary" className="text-[10px] uppercase font-semibold whitespace-nowrap">
                       {tc(tx.type)}

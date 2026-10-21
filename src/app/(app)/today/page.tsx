@@ -5,7 +5,7 @@ import { ArrowDownLeft, Sparkles, TrendingUp, Wallet, Pencil, Trash2 } from "luc
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatMoney, calculateDailyAllowance } from "@/lib/money";
+import { formatMoney, fromMinorUnits, calculateDailyAllowance, type CurrencyCode } from "@/lib/money";
 import { formatDisplayDate, getDaysLeftInMonth } from "@/lib/dates";
 import { useMounted } from "@/lib/hooks";
 import { useLocale, useT } from "@/lib/i18n";
@@ -25,6 +25,7 @@ interface DisplayTx {
   category: string;
   categoryColor: string;
   amountMinor: bigint;
+  currency: CurrencyCode;
   type: "expense" | "income" | "transfer";
   time: string;
 }
@@ -103,6 +104,7 @@ export default function TodayPage() {
           category: cat?.name || "Uncategorized",
           categoryColor: cat?.color || "#10B981",
           amountMinor: BigInt(t.amount),
+          currency: (t.currency as CurrencyCode) || "USD",
           type: t.type as "expense" | "income" | "transfer",
           time: new Date(t.occurred_at).toLocaleTimeString([], {
             hour: "2-digit",
@@ -158,7 +160,7 @@ export default function TodayPage() {
     await deleteTransaction(tx.id);
 
     toast(t("deletedToast"), {
-      description: t("deletedDescription", { note: tx.note, amount: formatMoney(tx.amountMinor, "USD") }),
+      description: t("deletedDescription", { note: tx.note, amount: formatMoney(tx.amountMinor, tx.currency) }),
       duration: 10000,
       action: {
         label: tc("undo"),
@@ -175,8 +177,8 @@ export default function TodayPage() {
     setEditingTx({
       id: tx.id,
       note: tx.note,
-      amount: Number(tx.amountMinor) / 100,
-      currency: "USD",
+      amount: fromMinorUnits(tx.amountMinor, tx.currency),
+      currency: tx.currency,
       category: tx.category,
       type: tx.type,
       date: new Date().toISOString(),
@@ -351,7 +353,8 @@ export default function TodayPage() {
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 tabular-nums tracking-tight">
-                    -{formatMoney(tx.amountMinor, "USD")}
+                    {tx.type === "income" ? "+" : "-"}
+                    {formatMoney(tx.amountMinor, tx.currency)}
                   </p>
                 </div>
                 <div className="flex items-center gap-0.5">
