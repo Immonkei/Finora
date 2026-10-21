@@ -65,6 +65,7 @@ export const auth = defineMessages({
     errWeakPassword: "Password is too weak. Please choose a stronger one.",
     errInvalidEmail: "Please enter a valid email address.",
     errRateLimit: "Too many attempts. Please wait a moment and try again.",
+    errEmailDelivery: "Email delivery failed. The hourly rate limit was reached or custom SMTP is required in Supabase.",
     errNetwork: "Network error. Check your connection and try again.",
 
     // Register: profile & password quality
@@ -170,6 +171,7 @@ export const auth = defineMessages({
     errWeakPassword: "ពាក្យសម្ងាត់ខ្សោយពេក។ សូមជ្រើសរើសពាក្យសម្ងាត់ដែលរឹងមាំជាងនេះ។",
     errInvalidEmail: "សូមបញ្ចូលអាសយដ្ឋានអ៊ីមែលឱ្យបានត្រឹមត្រូវ។",
     errRateLimit: "ព្យាយាមច្រើនដងពេក។ សូមរង់ចាំបន្តិច រួចព្យាយាមម្ដងទៀត។",
+    errEmailDelivery: "ការផ្ញើអ៊ីមែលបានបរាជ័យ។ បានលើសកំណត់អ៊ីមែលប្រចាំម៉ោង ឬត្រូវការកំណត់ SMTP ក្នុង Supabase។",
     errNetwork: "បញ្ហាបណ្ដាញ។ សូមពិនិត្យការតភ្ជាប់ រួចព្យាយាមម្ដងទៀត។",
 
     // Register: profile & password quality

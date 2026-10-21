@@ -10,6 +10,7 @@ const KNOWN_ERRORS: Array<[RegExp, AuthKey]> = [
   [/password should|weak password|password is too weak/i, "errWeakPassword"],
   [/invalid format|valid email|email address .* is invalid/i, "errInvalidEmail"],
   [/rate limit|too many requests|for security purposes/i, "errRateLimit"],
+  [/error sending (confirmation|recovery) email/i, "errEmailDelivery"],
   [/failed to fetch|network/i, "errNetwork"],
 ];
 
