@@ -64,7 +64,7 @@ export function GoogleButton() {
   );
 }
 
-export function AuthDivider() {
+export function AuthDivider({ label }: { label?: string } = {}) {
   const t = useT("auth");
   return (
     <div className="relative my-1">
@@ -72,7 +72,7 @@ export function AuthDivider() {
         <span className="w-full border-t border-zinc-200 dark:border-zinc-800" />
       </div>
       <div className="relative flex justify-center text-xs uppercase">
-        <span className="bg-white dark:bg-[#0F1822] px-2 text-zinc-500">{t("orUseEmail")}</span>
+        <span className="bg-white dark:bg-[#0F1822] px-2 text-zinc-500">{label ?? t("orContinueWith")}</span>
       </div>
     </div>
   );

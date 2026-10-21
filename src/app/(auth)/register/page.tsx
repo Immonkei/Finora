@@ -113,8 +113,6 @@ export default function RegisterPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <GoogleButton />
-            <AuthDivider />
 
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div className="space-y-1.5">
@@ -210,6 +208,9 @@ export default function RegisterPage() {
                 {loading ? t("creatingAccount") : t("createAccount")}
               </Button>
             </form>
+
+            <AuthDivider />
+            <GoogleButton />
           </CardContent>
         </Card>
 

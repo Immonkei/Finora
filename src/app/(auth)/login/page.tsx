@@ -93,9 +93,6 @@ export default function LoginPage() {
               </div>
             )}
 
-            <GoogleButton />
-            <AuthDivider />
-
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <label htmlFor="email" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
@@ -152,6 +149,9 @@ export default function LoginPage() {
                 {loading ? t("signingIn") : t("signIn")}
               </Button>
             </form>
+
+            <AuthDivider />
+            <GoogleButton />
 
           </CardContent>
         </Card>
