@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney, fromMinorUnits, type CurrencyCode } from "@/lib/money";
 import { formatDisplayDate } from "@/lib/dates";
 import { useLocale, useT } from "@/lib/i18n";
@@ -17,6 +18,11 @@ import {
   EditTransactionDialog,
   type EditableTransaction,
 } from "@/features/transactions/components/edit-transaction-dialog";
+import {
+  subscribeOptimisticTxCreated,
+  subscribeOptimisticTxUpdated,
+  subscribeOptimisticTxDeleted,
+} from "@/lib/optimistic-events";
 
 interface TxItem {
   id: string;
@@ -31,7 +37,58 @@ interface TxItem {
   receiptUrl?: string | null;
 }
 
+type OptimisticTxAction =
+  | { type: "add"; tx: TxItem }
+  | { type: "delete"; id: string }
+  | { type: "restore"; tx: TxItem }
+  | { type: "update"; tx: Partial<TxItem> & { id: string } };
+
 const TYPE_FILTERS = ["all", "expense", "income", "transfer"] as const;
+
+function TransactionsSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-6 animate-pulse">
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-8 w-48" />
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Skeleton className="h-10 flex-1 rounded-xl" />
+          <div className="flex gap-2">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-9 w-20 rounded-xl" />
+            ))}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-8 w-28 rounded-lg" />
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3.5">
+              <Skeleton className="h-10 w-10 rounded-xl" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+            </div>
+            <div className="space-y-1.5 text-right">
+              <Skeleton className="h-4 w-20 ml-auto" />
+              <Skeleton className="h-3 w-12 ml-auto" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function TransactionsPage() {
   const t = useT("transactions");
@@ -47,6 +104,27 @@ export default function TransactionsPage() {
   const [isEditOpen, setIsEditOpen] = React.useState(false);
 
   const [transactions, setTransactions] = React.useState<TxItem[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  // React 19 native useOptimistic
+  const [optimisticTransactions, dispatchOptimisticTxs] = React.useOptimistic<
+    TxItem[],
+    OptimisticTxAction
+  >(transactions, (current, action) => {
+    if (action.type === "add") {
+      return [action.tx, ...current.filter((t) => t.id !== action.tx.id)];
+    }
+    if (action.type === "delete") {
+      return current.filter((t) => t.id !== action.id);
+    }
+    if (action.type === "restore") {
+      return [action.tx, ...current.filter((t) => t.id !== action.tx.id)];
+    }
+    if (action.type === "update") {
+      return current.map((t) => (t.id === action.tx.id ? { ...t, ...action.tx } : t));
+    }
+    return current;
+  });
 
   const loadTransactions = React.useCallback(async () => {
     try {
@@ -54,7 +132,10 @@ export default function TransactionsPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
 
       const { data: txs } = await supabase
         .from("transactions")
@@ -67,7 +148,6 @@ export default function TransactionsPage() {
         const formatted: TxItem[] = txs.map((row) => {
           const cat = Array.isArray(row.categories) ? row.categories[0] : row.categories;
           const acc = Array.isArray(row.accounts) ? row.accounts[0] : row.accounts;
-          // Empty note / category / account are filled with translated fallbacks at render time
           const rawNote = row.note || "";
           const match = rawNote.match(/\[receipt:(https?:\/\/[^\]]+)\]/);
           const cleanNote = rawNote.replace(/\[receipt:[^\]]+\]/, "").trim();
@@ -91,6 +171,8 @@ export default function TransactionsPage() {
       }
     } catch {
       // Fallback
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -101,6 +183,50 @@ export default function TransactionsPage() {
     return () => clearTimeout(timer);
   }, [loadTransactions]);
 
+  // Subscribe to optimistic cross-dialog updates for 0ms latency
+  React.useEffect(() => {
+    const unsubCreate = subscribeOptimisticTxCreated((payload) => {
+      React.startTransition(() => {
+        dispatchOptimisticTxs({
+          type: "add",
+          tx: {
+            id: payload.id,
+            note: payload.note,
+            category: payload.category,
+            categoryColor: payload.categoryColor,
+            account: payload.account,
+            amountMinor: payload.amountMinor,
+            currency: payload.currency,
+            type: payload.type,
+            rawDate: payload.rawDate,
+            receiptUrl: payload.receiptUrl,
+          },
+        });
+      });
+      loadTransactions();
+    });
+
+    const unsubUpdate = subscribeOptimisticTxUpdated((payload) => {
+      React.startTransition(() => {
+        dispatchOptimisticTxs({ type: "update", tx: payload });
+      });
+      loadTransactions();
+    });
+
+    const unsubDelete = subscribeOptimisticTxDeleted((id) => {
+      React.startTransition(() => {
+        dispatchOptimisticTxs({ type: "delete", id });
+      });
+      loadTransactions();
+    });
+
+    return () => {
+      unsubCreate();
+      unsubUpdate();
+      unsubDelete();
+    };
+  }, [dispatchOptimisticTxs, loadTransactions]);
+
   // Supabase Realtime: sync live transactions across tabs & devices
   useRealtimeTable({
     table: "transactions",
@@ -109,7 +235,15 @@ export default function TransactionsPage() {
     },
   });
 
+  const noteLabel = (tx: TxItem) => tx.note || t("untitled");
+  const categoryLabel = (tx: TxItem) =>
+    tx.category || (tx.type === "transfer" ? tc("transfer") : t("uncategorized"));
+  const accountLabel = (account: string) => account || t("cash");
+
   const handleDelete = async (tx: TxItem) => {
+    React.startTransition(() => {
+      dispatchOptimisticTxs({ type: "delete", id: tx.id });
+    });
     setTransactions((prev) => prev.filter((item) => item.id !== tx.id));
     await deleteTransaction(tx.id);
 
@@ -122,6 +256,9 @@ export default function TransactionsPage() {
       action: {
         label: tc("undo"),
         onClick: async () => {
+          React.startTransition(() => {
+            dispatchOptimisticTxs({ type: "restore", tx });
+          });
           await restoreTransaction(tx.id);
           setTransactions((prev) => [tx, ...prev]);
           toast.success(t("restoredToast"));
@@ -129,11 +266,6 @@ export default function TransactionsPage() {
       },
     });
   };
-
-  const noteLabel = (tx: TxItem) => tx.note || t("untitled");
-  const categoryLabel = (tx: TxItem) =>
-    tx.category || (tx.type === "transfer" ? tc("transfer") : t("uncategorized"));
-  const accountLabel = (account: string) => account || t("cash");
 
   const handleEditClick = (tx: TxItem) => {
     setEditingTx({
@@ -150,14 +282,14 @@ export default function TransactionsPage() {
   };
 
   const uniqueCategories = React.useMemo(() => {
-    return Array.from(new Set(transactions.map((tx) => tx.category)));
-  }, [transactions]);
+    return Array.from(new Set(optimisticTransactions.map((tx) => tx.category))).filter(Boolean);
+  }, [optimisticTransactions]);
 
   const uniqueAccounts = React.useMemo(() => {
-    return Array.from(new Set(transactions.map((tx) => tx.account)));
-  }, [transactions]);
+    return Array.from(new Set(optimisticTransactions.map((tx) => tx.account))).filter(Boolean);
+  }, [optimisticTransactions]);
 
-  const filtered = transactions.filter((tx) => {
+  const filtered = optimisticTransactions.filter((tx) => {
     const query = search.toLowerCase();
     const matchesSearch =
       noteLabel(tx).toLowerCase().includes(query) ||
@@ -202,6 +334,10 @@ export default function TransactionsPage() {
     setEndDate("");
   };
 
+  if (isLoading && transactions.length === 0) {
+    return <TransactionsSkeleton />;
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
@@ -240,7 +376,7 @@ export default function TransactionsPage() {
           </div>
         </div>
 
-        {/* Spec FR-T8: Date Range, Category, and Account Filters */}
+        {/* Date Range, Category, and Account Filters */}
         <div className="mobile-scroll-x flex flex-wrap items-center gap-2 pt-1 text-xs">
           <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800">
             <span className="text-zinc-500 font-medium whitespace-nowrap">{t("categoryLabel")}</span>
@@ -316,9 +452,7 @@ export default function TransactionsPage() {
                 {hasActiveFilters ? t("noMatchTitle") : t("emptyTitle")}
               </p>
               <p className="text-xs text-zinc-400">
-                {hasActiveFilters
-                  ? t("noMatchHint")
-                  : t("emptyHint")}
+                {hasActiveFilters ? t("noMatchHint") : t("emptyHint")}
               </p>
             </div>
           ) : (

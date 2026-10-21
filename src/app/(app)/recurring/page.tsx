@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/money";
 import { toast } from "sonner";
 import {
@@ -61,6 +62,53 @@ interface RecurringRuleItem {
   active: boolean;
 }
 
+type OptimisticRuleAction =
+  | { type: "create"; rule: RecurringRuleItem }
+  | { type: "toggle"; id: string; active: boolean }
+  | { type: "delete"; id: string };
+
+function RecurringSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-6 animate-pulse">
+      <div className="flex justify-between items-center">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-8 w-52" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-28 rounded-xl" />
+          <Skeleton className="h-9 w-24 rounded-xl" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Skeleton className="h-36 w-full rounded-2xl" />
+        <Skeleton className="h-36 w-full rounded-2xl" />
+      </div>
+
+      <Skeleton className="h-48 w-full rounded-2xl" />
+
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 space-y-4 bg-white dark:bg-zinc-900">
+        <Skeleton className="h-6 w-36" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex justify-between items-center py-2">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-xl" />
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+              <Skeleton className="h-5 w-20" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RecurringPage() {
   const t = useT("recurring");
   const tc = useT("common");
@@ -75,6 +123,26 @@ export default function RecurringPage() {
   const [category, setCategory] = React.useState("Housing & Bills");
 
   const [rules, setRules] = React.useState<RecurringRuleItem[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  // React 19 native useOptimistic
+  const [optimisticRules, dispatchOptimisticRules] = React.useOptimistic<
+    RecurringRuleItem[],
+    OptimisticRuleAction
+  >(rules, (current, action) => {
+    if (action.type === "create") {
+      return [action.rule, ...current];
+    }
+    if (action.type === "toggle") {
+      return current.map((r) =>
+        r.id === action.id ? { ...r, active: action.active } : r
+      );
+    }
+    if (action.type === "delete") {
+      return current.filter((r) => r.id !== action.id);
+    }
+    return current;
+  });
 
   const loadRules = React.useCallback(async () => {
     try {
@@ -108,6 +176,8 @@ export default function RecurringPage() {
       }
     } catch {
       // Fallback
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -127,7 +197,7 @@ export default function RecurringPage() {
   });
 
   const isMounted = useMounted();
-  const activeRules = rules.filter((r) => r.active);
+  const activeRules = optimisticRules.filter((r) => r.active);
   const totalMonthlyObligation = activeRules.reduce(
     (acc, r) => acc + r.amountMinor,
     BigInt(0)
@@ -136,7 +206,7 @@ export default function RecurringPage() {
   const upcomingCharges = React.useMemo(() => {
     if (!isMounted) return [];
     return projectUpcomingCharges(
-      rules.map((r) => ({
+      optimisticRules.map((r) => ({
         id: r.id,
         name: r.name || t("defaultName"),
         amountMinor: r.amountMinor,
@@ -147,9 +217,12 @@ export default function RecurringPage() {
         active: r.active,
       }))
     );
-  }, [rules, isMounted, t]);
+  }, [optimisticRules, isMounted, t]);
 
   const handleToggle = async (id: string, currentState: boolean) => {
+    React.startTransition(() => {
+      dispatchOptimisticRules({ type: "toggle", id, active: !currentState });
+    });
     setRules((prev) =>
       prev.map((r) => (r.id === id ? { ...r, active: !currentState } : r))
     );
@@ -167,6 +240,9 @@ export default function RecurringPage() {
     try {
       const res = await deleteRecurringRule(id);
       if (res.success) {
+        React.startTransition(() => {
+          dispatchOptimisticRules({ type: "delete", id });
+        });
         setRules((prev) => prev.filter((r) => r.id !== id));
         toast.success(t("deletedToast", { name: ruleName }));
       } else {
@@ -201,6 +277,21 @@ export default function RecurringPage() {
     }
 
     const todayStr = new Date().toISOString().slice(0, 10);
+    const newRule: RecurringRuleItem = {
+      id: crypto.randomUUID(),
+      name: name || "Subscription",
+      amountMinor: BigInt(Math.round(num * 100)),
+      currency: "USD",
+      frequency,
+      category,
+      rawNextRun: todayStr,
+      active: true,
+    };
+    React.startTransition(() => {
+      dispatchOptimisticRules({ type: "create", rule: newRule });
+    });
+    setRules((prev) => [newRule, ...prev]);
+
     const res = await createRecurringRule({
       type: "expense",
       amount: num,
@@ -223,6 +314,10 @@ export default function RecurringPage() {
       toast.error(t("createFailed"), { description: res.error });
     }
   };
+
+  if (isLoading && rules.length === 0) {
+    return <RecurringSkeleton />;
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -313,7 +408,7 @@ export default function RecurringPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="divide-y divide-zinc-100 dark:divide-zinc-800 p-0">
-          {rules.length === 0 ? (
+          {optimisticRules.length === 0 ? (
             <div className="p-12 text-center text-sm text-zinc-500 space-y-2">
               <p className="font-medium text-zinc-700 dark:text-zinc-300">
                 {t("emptyTitle")}

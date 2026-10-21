@@ -18,6 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { updateTransaction } from "../actions";
+import { toMinorUnits } from "@/lib/money";
+import { emitOptimisticTxUpdated, emitOptimisticTxDeleted } from "@/lib/optimistic-events";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -125,6 +127,14 @@ function EditTransactionForm({
 
       if (res.success) {
         toast.success(t("updated"));
+        emitOptimisticTxUpdated({
+          id: transaction.id,
+          note: note.trim() || undefined,
+          amountMinor: toMinorUnits(val, currency),
+          currency,
+          type,
+          receiptUrl,
+        });
         onSuccess?.();
         onClose();
       } else {
@@ -140,6 +150,7 @@ function EditTransactionForm({
   };
 
   const handleDeleteClick = () => {
+    emitOptimisticTxDeleted(transaction.id);
     onDelete?.(transaction);
     onClose();
   };

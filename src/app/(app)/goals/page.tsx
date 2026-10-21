@@ -5,6 +5,7 @@ import { Target, Plus, Calendar, Trash2, TrendingUp, Trophy } from "lucide-react
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/money";
 import { formatDisplayDate } from "@/lib/dates";
 import { toast } from "sonner";
@@ -26,11 +27,79 @@ interface GoalItem {
   weeklyNeededMinor: bigint;
 }
 
+type OptimisticGoalAction =
+  | { type: "create"; goal: GoalItem }
+  | { type: "contribute"; id: string; amountMinor: bigint }
+  | { type: "delete"; id: string };
+
+function GoalsSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-6 animate-pulse">
+      <div className="flex justify-between items-center">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-44" />
+        </div>
+        <Skeleton className="h-10 w-32 rounded-xl" />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 space-y-4 bg-white dark:bg-zinc-900">
+            <div className="flex justify-between items-start">
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+              <Skeleton className="h-14 w-14 rounded-full" />
+            </div>
+            <Skeleton className="h-2 w-full rounded-full" />
+            <div className="flex justify-between pt-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-8 w-24 rounded-lg" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function GoalsPage() {
   const t = useT("goals");
   const tc = useT("common");
   const { dateLocale } = useLocale();
   const [goals, setGoals] = React.useState<GoalItem[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  // React 19 native useOptimistic
+  const [optimisticGoals, dispatchOptimisticGoals] = React.useOptimistic<
+    GoalItem[],
+    OptimisticGoalAction
+  >(goals, (current, action) => {
+    if (action.type === "create") {
+      return [action.goal, ...current];
+    }
+    if (action.type === "contribute") {
+      return current.map((g) => {
+        if (g.id !== action.id) return g;
+        const newSaved = g.savedAmountMinor + action.amountMinor;
+        return {
+          ...g,
+          savedAmountMinor: newSaved,
+          weeklyNeededMinor: computeWeeklyNeeded(
+            Number(g.targetAmountMinor),
+            Number(newSaved),
+            g.deadline
+          ),
+        };
+      });
+    }
+    if (action.type === "delete") {
+      return current.filter((g) => g.id !== action.id);
+    }
+    return current;
+  });
 
   // Dialog states
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
@@ -92,6 +161,8 @@ export default function GoalsPage() {
       }
     } catch {
       // Fallback
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -152,6 +223,9 @@ export default function GoalsPage() {
       weeklyNeededMinor: computeWeeklyNeeded(Number(targetMinor), 0, deadlineStr),
     };
 
+    React.startTransition(() => {
+      dispatchOptimisticGoals({ type: "create", goal: newGoal });
+    });
     setGoals([...goals, newGoal]);
     setIsCreateOpen(false);
     setGoalName("");
@@ -199,6 +273,13 @@ export default function GoalsPage() {
       return;
     }
 
+    React.startTransition(() => {
+      dispatchOptimisticGoals({
+        type: "contribute",
+        id: contributeGoal.id,
+        amountMinor: contributionMinor,
+      });
+    });
     setGoals((prev) =>
       prev.map((g) =>
         g.id === contributeGoal.id
@@ -238,6 +319,9 @@ export default function GoalsPage() {
     try {
       const res = await deleteSavingsGoal({ goal_id: id });
       if (res.success) {
+        React.startTransition(() => {
+          dispatchOptimisticGoals({ type: "delete", id });
+        });
         setGoals((prev) => prev.filter((g) => g.id !== id));
         toast.success(t("deletedToast", { name }));
       } else {
@@ -247,6 +331,10 @@ export default function GoalsPage() {
       toast.error(t("deleteError"));
     }
   };
+
+  if (isLoading && goals.length === 0) {
+    return <GoalsSkeleton />;
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -269,7 +357,7 @@ export default function GoalsPage() {
         </Button>
       </div>
 
-      {goals.length === 0 ? (
+      {optimisticGoals.length === 0 ? (
         <Card className="p-12 text-center border-dashed border-zinc-200 dark:border-zinc-800">
           <div className="flex flex-col items-center justify-center space-y-3">
             <span className="p-3 rounded-2xl bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-accent-400">
@@ -288,7 +376,7 @@ export default function GoalsPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {goals.map((g) => {
+        {optimisticGoals.map((g) => {
           const percent = Math.min(
             100,
             Math.round(Number((g.savedAmountMinor * 100n) / g.targetAmountMinor))

@@ -29,7 +29,8 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CATEGORY_ICONS } from "@/features/categories/components/category-manager";
-import { DEFAULT_USD_TO_KHR_RATE } from "@/lib/money";
+import { DEFAULT_USD_TO_KHR_RATE, toMinorUnits } from "@/lib/money";
+import { emitOptimisticTxCreated } from "@/lib/optimistic-events";
 import { useT } from "@/lib/i18n";
 import { useAccounts } from "@/features/accounts/use-accounts";
 import { AccountChips } from "@/features/accounts/components/account-chips";
@@ -373,6 +374,24 @@ export function QuickAddDialog({
 
     setIsSubmitting(true);
     setErrorMessage(null);
+
+    // Instantly emit optimistic event for zero-latency UI updates
+    const nowIso = new Date().toISOString();
+    const catObj = categoriesList.find((c) => c.id === selectedCategory);
+    const accObj = accounts.find((a) => a.id === accountId);
+    emitOptimisticTxCreated({
+      id: `opt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      note: finalNote.trim() || (type === "expense" ? "Expense" : type === "income" ? "Income" : "Transfer"),
+      category: catObj?.name || (type === "transfer" ? "Transfer" : "Uncategorized"),
+      categoryColor: catObj?.color || (type === "transfer" ? "#64748B" : "#10B981"),
+      account: accObj?.name || "Cash",
+      amountMinor: toMinorUnits(finalAmount, finalCurrency),
+      currency: finalCurrency,
+      type,
+      rawDate: nowIso,
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      receiptUrl: receiptImage || remoteReceiptUrl || null,
+    });
 
     // If client is currently offline, queue transaction locally
     if (isOffline) {

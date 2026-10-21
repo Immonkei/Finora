@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatMoney, fromMinorUnits, type CurrencyCode } from "@/lib/money";
 import { useT } from "@/lib/i18n";
@@ -41,12 +42,55 @@ const EMPTY_FORM: FormState = {
   color: ACCOUNT_COLORS[0],
 };
 
+type OptimisticAccountAction =
+  | { type: "create"; account: AccountWithBalance }
+  | { type: "update"; account: Partial<AccountWithBalance> & { id: string } }
+  | { type: "archive"; id: string };
+
+function AccountsSkeleton() {
+  return (
+    <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden bg-white dark:bg-zinc-900 animate-pulse">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-10 w-10 rounded-xl" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          </div>
+          <Skeleton className="h-5 w-20" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AccountsPage() {
   const t = useT("accounts");
   const tc = useT("common");
   const { accounts, netWorthUsd, isLoading, reload } = useAccounts();
   const [form, setForm] = React.useState<FormState | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+
+  // React 19 native useOptimistic
+  const [optimisticAccounts, dispatchOptimisticAccounts] = React.useOptimistic<
+    AccountWithBalance[],
+    OptimisticAccountAction
+  >(accounts, (current, action) => {
+    if (action.type === "create") {
+      return [...current, action.account];
+    }
+    if (action.type === "update") {
+      return current.map((a) =>
+        a.id === action.account.id ? { ...a, ...action.account } : a
+      );
+    }
+    if (action.type === "archive") {
+      return current.filter((a) => a.id !== action.id);
+    }
+    return current;
+  });
 
   const openEdit = (a: AccountWithBalance) =>
     setForm({
@@ -66,13 +110,32 @@ export default function AccountsPage() {
       return;
     }
     setIsSaving(true);
+    const balanceNum = parseFloat(form.openingBalance) || 0;
     const payload = {
       name: form.name.trim(),
       kind: form.kind,
       currency: form.currency,
-      opening_balance: parseFloat(form.openingBalance) || 0,
+      opening_balance: balanceNum,
       color: form.color,
     };
+
+    if (form.id) {
+      React.startTransition(() => {
+        dispatchOptimisticAccounts({
+          type: "update",
+          account: {
+            id: form.id!,
+            name: form.name.trim(),
+            kind: form.kind,
+            currency: form.currency,
+            color: form.color,
+          },
+        });
+      });
+    }
+
+    setForm(null);
+
     const res = form.id
       ? await updateAccount({ id: form.id, ...payload })
       : await createAccount(payload);
@@ -80,15 +143,18 @@ export default function AccountsPage() {
 
     if (res.success) {
       toast.success(form.id ? t("saved") : t("created"));
-      setForm(null);
       reload();
     } else {
       toast.error(t("saveFailed"), { description: res.error });
+      reload();
     }
   };
 
   const handleArchive = async (a: AccountWithBalance) => {
     if (!window.confirm(t("archiveConfirm", { name: a.name }))) return;
+    React.startTransition(() => {
+      dispatchOptimisticAccounts({ type: "archive", id: a.id });
+    });
     const res = await archiveAccount({ id: a.id });
     if (res.success) {
       toast.success(t("archived"));
@@ -141,9 +207,9 @@ export default function AccountsPage() {
       </Card>
 
       {/* Account list */}
-      {isLoading ? (
-        <p className="py-10 text-center text-sm text-zinc-500">{t("loading")}</p>
-      ) : accounts.length === 0 ? (
+      {isLoading && accounts.length === 0 ? (
+        <AccountsSkeleton />
+      ) : optimisticAccounts.length === 0 ? (
         <Card className="p-10 text-center border-dashed border-zinc-200 dark:border-zinc-800">
           <div className="flex flex-col items-center gap-3">
             <span className="p-3 rounded-2xl bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-accent-400">
@@ -158,7 +224,7 @@ export default function AccountsPage() {
         </Card>
       ) : (
         <Card className="divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
-          {accounts.map((a) => {
+          {optimisticAccounts.map((a) => {
             const Icon = ACCOUNT_KIND_ICONS[a.kind];
             return (
               <button

@@ -5,6 +5,7 @@ import { ArrowDownLeft, Sparkles, TrendingUp, Wallet, Pencil, Trash2 } from "luc
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney, fromMinorUnits, calculateDailyAllowance, type CurrencyCode } from "@/lib/money";
 import { formatDisplayDate, getDaysLeftInMonth } from "@/lib/dates";
 import { useMounted } from "@/lib/hooks";
@@ -18,6 +19,11 @@ import {
   EditTransactionDialog,
   type EditableTransaction,
 } from "@/features/transactions/components/edit-transaction-dialog";
+import {
+  subscribeOptimisticTxCreated,
+  subscribeOptimisticTxUpdated,
+  subscribeOptimisticTxDeleted,
+} from "@/lib/optimistic-events";
 
 interface DisplayTx {
   id: string;
@@ -28,6 +34,57 @@ interface DisplayTx {
   currency: CurrencyCode;
   type: "expense" | "income" | "transfer";
   time: string;
+}
+
+interface TodayData {
+  transactions: DisplayTx[];
+  spentTodayMinor: bigint;
+  monthlyBudgetMinor: bigint;
+  monthlySpentMinor: bigint;
+}
+
+type OptimisticAction =
+  | { type: "add"; tx: DisplayTx }
+  | { type: "delete"; id: string }
+  | { type: "restore"; tx: DisplayTx }
+  | { type: "update"; tx: Partial<DisplayTx> & { id: string } };
+
+function TodaySkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-6 animate-pulse">
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-4 w-40" />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Skeleton className="h-44 sm:h-48 w-full rounded-2xl" />
+        <Skeleton className="h-44 sm:h-48 w-full rounded-2xl" />
+      </div>
+
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 space-y-4">
+        <div className="flex justify-between items-center pb-2">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-5 w-16" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-xl" />
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+              <Skeleton className="h-4 w-16" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function TodayPage() {
@@ -41,12 +98,60 @@ export default function TodayPage() {
   const currentDate = isMounted ? new Date() : null;
   const daysLeft = currentDate ? getDaysLeftInMonth(currentDate) : 23;
 
-  const [liveData, setLiveData] = React.useState<{
-    transactions: DisplayTx[];
-    spentTodayMinor: bigint;
-    monthlyBudgetMinor: bigint;
-    monthlySpentMinor: bigint;
-  } | null>(null);
+  const [liveData, setLiveData] = React.useState<TodayData | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  // React 19 native optimistic UI state
+  const [optimisticData, dispatchOptimistic] = React.useOptimistic<TodayData | null, OptimisticAction>(
+    liveData,
+    (state, action) => {
+      if (!state) return state;
+      if (action.type === "add") {
+        const isExpense = action.tx.type === "expense";
+        return {
+          ...state,
+          transactions: [action.tx, ...state.transactions.filter((t) => t.id !== action.tx.id)],
+          spentTodayMinor: isExpense ? state.spentTodayMinor + action.tx.amountMinor : state.spentTodayMinor,
+          monthlySpentMinor: isExpense ? state.monthlySpentMinor + action.tx.amountMinor : state.monthlySpentMinor,
+        };
+      }
+      if (action.type === "delete") {
+        const target = state.transactions.find((t) => t.id === action.id);
+        const isExpense = target?.type === "expense";
+        const deduction = target?.amountMinor ?? 0n;
+        return {
+          ...state,
+          transactions: state.transactions.filter((t) => t.id !== action.id),
+          spentTodayMinor:
+            isExpense && state.spentTodayMinor >= deduction
+              ? state.spentTodayMinor - deduction
+              : state.spentTodayMinor,
+          monthlySpentMinor:
+            isExpense && state.monthlySpentMinor >= deduction
+              ? state.monthlySpentMinor - deduction
+              : state.monthlySpentMinor,
+        };
+      }
+      if (action.type === "restore") {
+        const isExpense = action.tx.type === "expense";
+        return {
+          ...state,
+          transactions: [action.tx, ...state.transactions.filter((t) => t.id !== action.tx.id)],
+          spentTodayMinor: isExpense ? state.spentTodayMinor + action.tx.amountMinor : state.spentTodayMinor,
+          monthlySpentMinor: isExpense ? state.monthlySpentMinor + action.tx.amountMinor : state.monthlySpentMinor,
+        };
+      }
+      if (action.type === "update") {
+        return {
+          ...state,
+          transactions: state.transactions.map((t) =>
+            t.id === action.tx.id ? { ...t, ...action.tx } : t
+          ),
+        };
+      }
+      return state;
+    }
+  );
 
   const loadTodayData = React.useCallback(async () => {
     try {
@@ -54,7 +159,10 @@ export default function TodayPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
 
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
@@ -128,6 +236,8 @@ export default function TodayPage() {
       });
     } catch {
       // Fallback
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -138,6 +248,56 @@ export default function TodayPage() {
     return () => clearTimeout(timer);
   }, [loadTodayData]);
 
+  // Subscribe to optimistic cross-dialog updates for 0ms latency
+  React.useEffect(() => {
+    const unsubCreate = subscribeOptimisticTxCreated((payload) => {
+      const txDate = new Date(payload.rawDate);
+      const today = new Date();
+      if (
+        txDate.getFullYear() === today.getFullYear() &&
+        txDate.getMonth() === today.getMonth() &&
+        txDate.getDate() === today.getDate()
+      ) {
+        React.startTransition(() => {
+          dispatchOptimistic({
+            type: "add",
+            tx: {
+              id: payload.id,
+              note: payload.note,
+              category: payload.category,
+              categoryColor: payload.categoryColor,
+              amountMinor: payload.amountMinor,
+              currency: payload.currency,
+              type: payload.type,
+              time: payload.time,
+            },
+          });
+        });
+        loadTodayData();
+      }
+    });
+
+    const unsubUpdate = subscribeOptimisticTxUpdated((payload) => {
+      React.startTransition(() => {
+        dispatchOptimistic({ type: "update", tx: payload });
+      });
+      loadTodayData();
+    });
+
+    const unsubDelete = subscribeOptimisticTxDeleted((id) => {
+      React.startTransition(() => {
+        dispatchOptimistic({ type: "delete", id });
+      });
+      loadTodayData();
+    });
+
+    return () => {
+      unsubCreate();
+      unsubUpdate();
+      unsubDelete();
+    };
+  }, [dispatchOptimistic, loadTodayData]);
+
   // Supabase Realtime: sync live transactions across tabs & devices instantly
   useRealtimeTable({
     table: "transactions",
@@ -146,25 +306,39 @@ export default function TodayPage() {
     },
   });
 
+  const effectiveData = optimisticData ?? liveData;
+
   const handleDelete = async (tx: DisplayTx) => {
+    // Optimistic deletion
+    React.startTransition(() => {
+      dispatchOptimistic({ type: "delete", id: tx.id });
+    });
+
     if (liveData) {
       setLiveData({
         ...liveData,
         transactions: liveData.transactions.filter((item) => item.id !== tx.id),
         spentTodayMinor:
-          tx.type === "expense"
+          tx.type === "expense" && liveData.spentTodayMinor >= tx.amountMinor
             ? liveData.spentTodayMinor - tx.amountMinor
             : liveData.spentTodayMinor,
       });
     }
+
     await deleteTransaction(tx.id);
 
     toast(t("deletedToast"), {
-      description: t("deletedDescription", { note: tx.note, amount: formatMoney(tx.amountMinor, tx.currency) }),
+      description: t("deletedDescription", {
+        note: tx.note,
+        amount: formatMoney(tx.amountMinor, tx.currency),
+      }),
       duration: 10000,
       action: {
         label: tc("undo"),
         onClick: async () => {
+          React.startTransition(() => {
+            dispatchOptimistic({ type: "restore", tx });
+          });
           await restoreTransaction(tx.id);
           loadTodayData();
           toast.success(t("restoredToast"));
@@ -186,14 +360,18 @@ export default function TodayPage() {
     setIsEditOpen(true);
   };
 
-  const monthlyBudgetMinor = liveData ? liveData.monthlyBudgetMinor : 0n;
-  const monthlySpentMinor = liveData ? liveData.monthlySpentMinor : 0n;
+  if (isLoading && !effectiveData) {
+    return <TodaySkeleton />;
+  }
+
+  const monthlyBudgetMinor = effectiveData ? effectiveData.monthlyBudgetMinor : 0n;
+  const monthlySpentMinor = effectiveData ? effectiveData.monthlySpentMinor : 0n;
   const remainingBudgetMinor =
     monthlyBudgetMinor > monthlySpentMinor ? monthlyBudgetMinor - monthlySpentMinor : 0n;
   const dailyAllowanceMinor =
     monthlyBudgetMinor > 0n ? calculateDailyAllowance(remainingBudgetMinor, daysLeft) : 0n;
-  const spentTodayMinor = liveData ? liveData.spentTodayMinor : 0n;
-  const todayTransactions = liveData ? liveData.transactions : [];
+  const spentTodayMinor = effectiveData ? effectiveData.spentTodayMinor : 0n;
+  const todayTransactions = effectiveData ? effectiveData.transactions : [];
 
   const allowanceUsedPercent =
     dailyAllowanceMinor > 0n
@@ -202,13 +380,17 @@ export default function TodayPage() {
 
   const monthStatusText =
     monthlyBudgetMinor > 0n
-      ? t("percentUsed", { percent: Math.round(Number((monthlySpentMinor * 100n) / monthlyBudgetMinor)) })
+      ? t("percentUsed", {
+          percent: Math.round(Number((monthlySpentMinor * 100n) / monthlyBudgetMinor)),
+        })
       : t("noLimitSet");
 
   const name = firstName(profile?.fullName);
   const hour = currentDate?.getHours() ?? 9;
   const greeting = name
-    ? t(hour < 12 ? "greetingMorning" : hour < 18 ? "greetingAfternoon" : "greetingEvening", { name })
+    ? t(hour < 12 ? "greetingMorning" : hour < 18 ? "greetingAfternoon" : "greetingEvening", {
+        name,
+      })
     : null;
 
   const displayDateStr = currentDate
@@ -217,7 +399,7 @@ export default function TodayPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Page Header (logging lives in the thumb-reachable + button in the bottom bar / sidebar) */}
+      {/* Page Header */}
       <div>
         <p className="text-xs font-semibold tracking-wider text-brand-600 dark:text-accent-400 uppercase">
           {displayDateStr}
@@ -242,7 +424,10 @@ export default function TodayPage() {
               <span className="text-brand-100/90 text-[11px] font-bold uppercase tracking-wider">
                 {t("dailyAllowance")}
               </span>
-              <Badge variant="outline" className="border-accent-300/40 bg-accent-500/15 text-accent-100 text-xs font-semibold backdrop-blur-xs whitespace-nowrap">
+              <Badge
+                variant="outline"
+                className="border-accent-300/40 bg-accent-500/15 text-accent-100 text-xs font-semibold backdrop-blur-xs whitespace-nowrap"
+              >
                 {t("daysLeft", { count: daysLeft })}
               </Badge>
             </div>
@@ -252,7 +437,10 @@ export default function TodayPage() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-brand-100/80 mb-3 tabular-nums">
-              {t("remainingThisMonth")} <span className="font-semibold text-white">{formatMoney(remainingBudgetMinor, "USD")}</span>
+              {t("remainingThisMonth")}{" "}
+              <span className="font-semibold text-white">
+                {formatMoney(remainingBudgetMinor, "USD")}
+              </span>
             </p>
             <div className="w-full bg-brand-950/70 rounded-full h-2 overflow-hidden ring-1 ring-white/10">
               <div
@@ -261,8 +449,12 @@ export default function TodayPage() {
               />
             </div>
             <div className="flex justify-between text-[11px] text-brand-100/80 mt-2 font-medium">
-              <span className="tabular-nums">{t("spentToday", { amount: formatMoney(spentTodayMinor, "USD") })}</span>
-              <span className="tabular-nums">{t("percentOfDailyBudget", { percent: allowanceUsedPercent })}</span>
+              <span className="tabular-nums">
+                {t("spentToday", { amount: formatMoney(spentTodayMinor, "USD") })}
+              </span>
+              <span className="tabular-nums">
+                {t("percentOfDailyBudget", { percent: allowanceUsedPercent })}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -326,61 +518,61 @@ export default function TodayPage() {
             </div>
           ) : (
             todayTransactions.map((tx) => (
-            <div
-              key={tx.id}
-              className="flex items-center justify-between p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors"
-            >
-              <div className="flex items-center gap-3.5">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-sm"
-                  style={{ backgroundColor: tx.categoryColor }}
-                >
-                  <ArrowDownLeft className="h-5 w-5" />
+              <div
+                key={tx.id}
+                className="flex items-center justify-between p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-sm"
+                    style={{ backgroundColor: tx.categoryColor }}
+                  >
+                    <ArrowDownLeft className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">
+                      {tx.note}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {tx.category}
+                      </span>
+                      <span className="text-zinc-300 dark:text-zinc-700">•</span>
+                      <span className="text-xs text-zinc-400">{tx.time}</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">
-                    {tx.note}
-                  </p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {tx.category}
-                    </span>
-                    <span className="text-zinc-300 dark:text-zinc-700">•</span>
-                    <span className="text-xs text-zinc-400">{tx.time}</span>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 tabular-nums tracking-tight">
+                      {tx.type === "income" ? "+" : "-"}
+                      {formatMoney(tx.amountMinor, tx.currency)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditClick(tx)}
+                      className="h-8 w-8 text-zinc-400 hover:text-brand-600 hover:bg-brand-50/60 dark:text-zinc-500 dark:hover:text-accent-400 dark:hover:bg-zinc-800/60"
+                      title={t("editTransaction")}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(tx)}
+                      className="h-8 w-8 text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 dark:text-zinc-500 dark:hover:text-rose-400 dark:hover:bg-rose-500/20"
+                      title={t("deleteTransaction")}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 tabular-nums tracking-tight">
-                    {tx.type === "income" ? "+" : "-"}
-                    {formatMoney(tx.amountMinor, tx.currency)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-0.5">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleEditClick(tx)}
-                    className="h-8 w-8 text-zinc-400 hover:text-brand-600 hover:bg-brand-50/60 dark:text-zinc-500 dark:hover:text-accent-400 dark:hover:bg-zinc-800/60"
-                    title={t("editTransaction")}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(tx)}
-                    className="h-8 w-8 text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 dark:text-zinc-500 dark:hover:text-rose-400 dark:hover:bg-rose-500/20"
-                    title={t("deleteTransaction")}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
+            ))
+          )}
         </CardContent>
       </Card>
 

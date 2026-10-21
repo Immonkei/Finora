@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney, fromMinorUnits } from "@/lib/money";
 import { generateWeeklyAiReport, type WeeklyAiReport } from "@/features/reports/ai-weekly-report";
 import { toast } from "sonner";
@@ -43,6 +44,28 @@ interface CatItem {
   totalMinor: bigint;
   percent: number;
   color: string;
+}
+
+function WeekSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-6 animate-pulse">
+      <div className="flex justify-between items-center">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-8 w-48" />
+        </div>
+        <Skeleton className="h-10 w-36 rounded-xl" />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Skeleton className="h-36 w-full rounded-2xl" />
+        <Skeleton className="h-36 w-full rounded-2xl" />
+      </div>
+
+      <Skeleton className="h-64 w-full rounded-2xl" />
+      <Skeleton className="h-48 w-full rounded-2xl" />
+    </div>
+  );
 }
 
 export default function WeekPage() {
@@ -281,6 +304,10 @@ export default function WeekPage() {
       setIsGenerating(false);
     }
   };
+
+  if (liveWeekSpent === null) {
+    return <WeekSkeleton />;
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
