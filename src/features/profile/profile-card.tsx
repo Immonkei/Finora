@@ -44,15 +44,15 @@ export function ProfileCard() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
+    <Card className="p-3.5 sm:p-5">
+      <CardHeader className="pb-2.5">
+        <CardTitle className="text-sm sm:text-base flex items-center gap-2">
           <User className="h-4 w-4 text-brand-600 dark:text-accent-400" /> {t("profileTitle")}
         </CardTitle>
-        <CardDescription>{t("profileDescription")}</CardDescription>
+        <CardDescription className="text-xs">{t("profileDescription")}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/60 dark:border-zinc-700/60">
+      <CardContent className="space-y-3 pt-0">
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/60 dark:border-zinc-700/60">
           {profile?.avatarUrl ? (
             // Google profile photos are on an external host; a plain img avoids image-domain config
             // eslint-disable-next-line @next/next/no-img-element
@@ -60,10 +60,10 @@ export function ProfileCard() {
               src={profile.avatarUrl}
               alt=""
               referrerPolicy="no-referrer"
-              className="h-12 w-12 shrink-0 rounded-full object-cover"
+              className="h-11 w-11 shrink-0 rounded-full object-cover"
             />
           ) : (
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-600 text-base font-bold text-white">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">
               {initials(profile?.fullName, profile?.email)}
             </span>
           )}
@@ -78,20 +78,20 @@ export function ProfileCard() {
                   onChange={(e) => setDraft(e.target.value)}
                   maxLength={60}
                   aria-label={t("displayName")}
-                  className="h-9 min-w-0 flex-1"
+                  className="h-8 text-xs min-w-0 flex-1"
                 />
-                <Button type="submit" size="icon" disabled={saving} className="h-9 w-9 shrink-0" aria-label={tc("save")}>
-                  <Check className="h-4 w-4" />
+                <Button type="submit" size="icon" disabled={saving} className="h-8 w-8 shrink-0" aria-label={tc("save")}>
+                  <Check className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   type="button"
                   size="icon"
                   variant="ghost"
                   onClick={() => setEditing(false)}
-                  className="h-9 w-9 shrink-0"
+                  className="h-8 w-8 shrink-0"
                   aria-label={tc("cancel")}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </Button>
               </form>
             ) : (
@@ -102,13 +102,13 @@ export function ProfileCard() {
                 className="group flex max-w-full items-center gap-1.5 text-left cursor-pointer"
                 aria-label={t("editName")}
               >
-                <span className="truncate text-base font-bold text-zinc-900 dark:text-zinc-50">
+                <span className="truncate text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-50">
                   {profile ? profile.fullName || t("noNameYet") : tc("loading")}
                 </span>
                 <Pencil className="h-3.5 w-3.5 shrink-0 text-zinc-400 group-hover:text-brand-600" />
               </button>
             )}
-            <p className="mt-0.5 truncate font-mono text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="mt-0.5 truncate font-mono text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">
               {profile?.email ?? ""}
             </p>
           </div>
@@ -124,9 +124,9 @@ export function ProfileCard() {
           {profile && (
             <Badge
               variant={profile.emailVerified ? "brand" : "outline"}
-              className="gap-1 whitespace-nowrap text-xs"
+              className="gap-1 whitespace-nowrap text-[11px] py-0.5"
             >
-              {profile.emailVerified && <BadgeCheck className="h-3.5 w-3.5" />}
+              {profile.emailVerified && <BadgeCheck className="h-3 w-3" />}
               {profile.emailVerified ? t("emailVerified") : t("emailUnverified")}
             </Badge>
           )}

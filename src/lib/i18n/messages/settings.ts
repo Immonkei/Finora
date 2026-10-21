@@ -10,6 +10,11 @@ export const settings = defineMessages({
     tabSystem: "Cloud & System",
     tabAccount: "Account & Security",
 
+    tabCategoriesShort: "Categories",
+    tabPreferencesShort: "Preferences",
+    tabSystemShort: "System",
+    tabAccountShort: "Account",
+
     languageTitle: "Language",
     languageDescription: "Choose the app language. Saved on this device and applied instantly.",
     languageAria: "App language",
@@ -125,6 +130,11 @@ export const settings = defineMessages({
     tabPreferences: "ចំណូលចិត្ត និងការជូនដំណឹង",
     tabSystem: "Cloud និងប្រព័ន្ធ",
     tabAccount: "គណនី និងសុវត្ថិភាព",
+
+    tabCategoriesShort: "ប្រភេទ",
+    tabPreferencesShort: "ចំណូលចិត្ត",
+    tabSystemShort: "ប្រព័ន្ធ",
+    tabAccountShort: "គណនី",
 
     languageTitle: "ភាសា",
     languageDescription: "ជ្រើសរើសភាសាកម្មវិធី។ រក្សាទុកនៅលើឧបករណ៍នេះ ហើយប្ដូរភ្លាមៗ។",
