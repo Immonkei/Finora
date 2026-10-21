@@ -3,6 +3,7 @@ import { NotificationBell } from "@/components/notification-bell";
 import { FinoraLogo } from "@/components/finora-logo";
 import { AIChatDrawer } from "@/components/ai-chat-drawer";
 import { LanguageToggle } from "@/components/language-toggle";
+import { ShareTargetLauncher } from "@/features/transactions/components/share-target-launcher";
 import Link from "next/link";
 
 export default function AppLayout({
@@ -36,6 +37,7 @@ export default function AppLayout({
         </main>
       </div>
       <MobileNavBar />
+      <ShareTargetLauncher />
     </div>
   );
 }

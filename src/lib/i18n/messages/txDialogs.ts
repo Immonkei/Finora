@@ -2,6 +2,7 @@ import { defineMessages } from "../define";
 
 export const txDialogs = defineMessages({
   en: {
+    sharedImageMissing: "Couldn't read the shared image. Try attaching it instead.",
     // Default category labels (shown only before the user's own categories load)
     catFood: "Food & Drinks",
     catGroceries: "Groceries",
@@ -99,6 +100,7 @@ export const txDialogs = defineMessages({
     speechStartFailed: "Failed to start voice recognition.",
   },
   km: {
+    sharedImageMissing: "មិនអាចអានរូបភាពដែលបានចែករំលែកទេ។ សូមភ្ជាប់រូបភាពម្ដងទៀត។",
     catFood: "អាហារ និងភេសជ្ជៈ",
     catGroceries: "គ្រឿងទេស",
     catTransport: "ការធ្វើដំណើរ",

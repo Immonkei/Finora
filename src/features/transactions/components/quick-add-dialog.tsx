@@ -37,6 +37,8 @@ interface QuickAddDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  /** Image shared into the app (e.g. an ABA/KHQR slip); scanned as soon as the dialog opens */
+  initialFile?: File | null;
 }
 
 interface QuickAddCategory {
@@ -61,6 +63,7 @@ export function QuickAddDialog({
   isOpen,
   onClose,
   onSuccess,
+  initialFile = null,
 }: QuickAddDialogProps) {
   const t = useT("txDialogs");
   const tc = useT("common");
@@ -155,65 +158,9 @@ export function QuickAddDialog({
   const nlpInputRef = React.useRef<HTMLInputElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Auto-focus when dialog opens (Spec FR-T4)
-  React.useEffect(() => {
-    if (isOpen) {
-      const timer = setTimeout(() => {
-        if (entryMode === "keypad") {
-          inputRef.current?.focus();
-        } else if (entryMode === "nlp") {
-          nlpInputRef.current?.focus();
-        }
-        setErrorMessage(null);
-      }, 60);
-      return () => clearTimeout(timer);
-    } else {
-      if (isListening) stopListening();
-    }
-  }, [isOpen, entryMode, isListening, stopListening]);
-
-  if (!isOpen) return null;
-
-  // Handle Natural Language Parse on change
-  const handleNlpChange = (text: string) => {
-    setNlpText(text);
-    const parsed = parseNaturalLanguageInput(text);
-    if (parsed) {
-      setAmountStr(parsed.amount.toString());
-      setCurrency(parsed.currency);
-      setNote(parsed.note);
-      const matchedCat = categoriesList.find(
-        (c) => c.name.toLowerCase() === parsed.categoryName.toLowerCase()
-      );
-      if (matchedCat) {
-        setSelectedCategory(matchedCat.id);
-      }
-    }
-  };
-
-  // Handle Voice Parse on speech recognition result
-  const handleVoiceTranscript = (spokenText: string) => {
-    if (!spokenText.trim()) return;
-    const parsed = parseVoiceExpense(spokenText);
-    if (parsed) {
-      setAmountStr(parsed.amount.toString());
-      setCurrency(parsed.currency);
-      setNote(parsed.note);
-      const matchedCat = categoriesList.find(
-        (c) => c.name.toLowerCase() === parsed.categoryName.toLowerCase()
-      );
-      if (matchedCat) {
-        setSelectedCategory(matchedCat.id);
-      }
-      toast.success(t("voiceLogged"), {
-        description: `${parsed.note} • ${parsed.currency === "USD" ? "$" : "៛"}${parsed.amount}`,
-      });
-    }
-  };
-
-  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  // Shared by the camera/attach buttons and images shared into the app
+  const scanFile = React.useCallback(
+    async (file: File) => {
       const localUrl = URL.createObjectURL(file);
       setReceiptImage(localUrl);
 
@@ -288,7 +235,78 @@ export function QuickAddDialog({
       } else {
         toast.info(t("attachedOffline"));
       }
+    },
+    [isOffline, t, categoriesList]
+  );
+
+  // An image shared into Finora (Web Share Target) is scanned once on open
+  const scannedInitialFileRef = React.useRef<File | null>(null);
+  React.useEffect(() => {
+    if (isOpen && initialFile && scannedInitialFileRef.current !== initialFile) {
+      scannedInitialFileRef.current = initialFile;
+      void scanFile(initialFile);
     }
+  }, [isOpen, initialFile, scanFile]);
+
+  // Auto-focus when dialog opens (Spec FR-T4)
+  React.useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        if (entryMode === "keypad") {
+          inputRef.current?.focus();
+        } else if (entryMode === "nlp") {
+          nlpInputRef.current?.focus();
+        }
+        setErrorMessage(null);
+      }, 60);
+      return () => clearTimeout(timer);
+    } else {
+      if (isListening) stopListening();
+    }
+  }, [isOpen, entryMode, isListening, stopListening]);
+
+  if (!isOpen) return null;
+
+  // Handle Natural Language Parse on change
+  const handleNlpChange = (text: string) => {
+    setNlpText(text);
+    const parsed = parseNaturalLanguageInput(text);
+    if (parsed) {
+      setAmountStr(parsed.amount.toString());
+      setCurrency(parsed.currency);
+      setNote(parsed.note);
+      const matchedCat = categoriesList.find(
+        (c) => c.name.toLowerCase() === parsed.categoryName.toLowerCase()
+      );
+      if (matchedCat) {
+        setSelectedCategory(matchedCat.id);
+      }
+    }
+  };
+
+  // Handle Voice Parse on speech recognition result
+  const handleVoiceTranscript = (spokenText: string) => {
+    if (!spokenText.trim()) return;
+    const parsed = parseVoiceExpense(spokenText);
+    if (parsed) {
+      setAmountStr(parsed.amount.toString());
+      setCurrency(parsed.currency);
+      setNote(parsed.note);
+      const matchedCat = categoriesList.find(
+        (c) => c.name.toLowerCase() === parsed.categoryName.toLowerCase()
+      );
+      if (matchedCat) {
+        setSelectedCategory(matchedCat.id);
+      }
+      toast.success(t("voiceLogged"), {
+        description: `${parsed.note} • ${parsed.currency === "USD" ? "$" : "៛"}${parsed.amount}`,
+      });
+    }
+  };
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void scanFile(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
