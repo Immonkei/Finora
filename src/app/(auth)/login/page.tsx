@@ -64,7 +64,7 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 bg-zinc-50/70 dark:bg-[#090E15]">
-      <div className="absolute top-3 right-3">
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20">
         <LanguageToggle />
       </div>
       <div className="w-full max-w-md space-y-6">

@@ -24,7 +24,7 @@ export default function AppLayout({
             <div className="hidden md:block">
               {/* Subtle branding anchor or breadcrumb */}
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <LanguageToggle />
               <AIChatDrawer />
               <NotificationBell />
