@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/today";
+  const nextParam = searchParams.get("next");
+  // Only allow same-site relative redirects
+  const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/today";
 
   if (code) {
     const supabase = await createClient();
@@ -22,6 +24,7 @@ export async function GET(request: Request) {
     }
   }
 
-  // If error exchanging code, redirect to login with error parameter
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
+  // Provider cancelled (e.g. Google consent closed) vs. an expired/used email link
+  const reason = searchParams.get("error") ? "oauth_failed" : "link_expired";
+  return NextResponse.redirect(`${origin}/login?error=${reason}`);
 }

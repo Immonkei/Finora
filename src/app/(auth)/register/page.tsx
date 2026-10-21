@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lock, Mail, ShieldCheck } from "lucide-react";
+import { Mail, ShieldCheck, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -13,18 +13,38 @@ import { toast } from "sonner";
 import { LanguageToggle } from "@/components/language-toggle";
 import { useT } from "@/lib/i18n";
 import { describeUnknownError, translateAuthError } from "../auth-i18n";
+import { AuthDivider, GoogleButton } from "../google-button";
+import { PasswordInput, PasswordStrengthMeter } from "../password-input";
 
 export default function RegisterPage() {
   const router = useRouter();
   const t = useT("auth");
+  const [fullName, setFullName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [agreed, setAgreed] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+
+  const passwordsMismatch = confirmPassword.length > 0 && confirmPassword !== password;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const name = fullName.trim().replace(/\s+/g, " ");
+    if (name.length < 2) {
+      toast.error(t("nameRequired"));
+      return;
+    }
     if (password.length < 8) {
       toast.error(t("passwordTooShort"), { description: t("passwordTooShortDesc") });
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error(t("passwordsDontMatch"));
+      return;
+    }
+    if (!agreed) {
+      toast.error(t("mustAgree"));
       return;
     }
 
@@ -32,11 +52,14 @@ export default function RegisterPage() {
 
     try {
       const supabase = createClient();
+      const normalizedEmail = email.trim().toLowerCase();
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          // Saved to user metadata and copied into profiles.full_name by the new-user trigger
+          data: { full_name: name },
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/today`,
         },
       });
 
@@ -46,34 +69,24 @@ export default function RegisterPage() {
         return;
       }
 
+      // Supabase returns a user with no identities when the email is already registered
+      if (data.user && data.user.identities?.length === 0) {
+        toast.error(t("signUpFailed"), { description: t("errUserExists") });
+        setLoading(false);
+        return;
+      }
+
       if (data?.session) {
-        toast.success(t("accountCreated"));
+        // Email confirmation is disabled on this Supabase project
+        toast.success(t("welcomeName", { name: name.split(" ")[0] }));
         router.push("/today");
         router.refresh();
       } else {
-        toast.success(t("checkEmailToConfirm"), { description: t("checkEmailToConfirmDesc") });
-        router.push("/login");
+        router.push(`/verify-email?email=${encodeURIComponent(normalizedEmail)}`);
       }
     } catch (err) {
       toast.error(t("unexpectedError"), { description: describeUnknownError(t, err) });
       setLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      if (error) {
-        toast.error(t("googleSignInFailed"), { description: translateAuthError(t, error.message) });
-      }
-    } catch (err) {
-      toast.error(t("googleInitFailed"), { description: describeUnknownError(t, err) });
     }
   };
 
@@ -100,15 +113,40 @@ export default function RegisterPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <GoogleButton />
+            <AuthDivider />
+
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                <label htmlFor="full-name" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  {t("fullName")}
+                </label>
+                <div className="relative">
+                  <UserRound className="absolute left-3.5 top-3.5 h-4 w-4 text-zinc-400" />
+                  <Input
+                    id="full-name"
+                    autoComplete="name"
+                    placeholder={t("fullNamePlaceholder")}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    maxLength={60}
+                    required
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="email" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                   {t("email")}
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-zinc-400" />
                   <Input
+                    id="email"
                     type="email"
+                    autoComplete="email"
+                    inputMode="email"
                     placeholder={t("emailPlaceholder")}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -119,72 +157,59 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                  {t("passwordMin")}
+                <label htmlFor="password" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  {t("password")}
                 </label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-zinc-400" />
-                  <Input
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={8}
-                    className="pl-10"
-                  />
-                </div>
+                <PasswordInput
+                  id="password"
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={8}
+                />
+                <PasswordStrengthMeter password={password} />
               </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="confirm-password" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  {t("confirmPassword")}
+                </label>
+                <PasswordInput
+                  id="confirm-password"
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  aria-invalid={passwordsMismatch}
+                  className={passwordsMismatch ? "border-rose-400 focus-visible:ring-rose-400" : undefined}
+                />
+                {passwordsMismatch && (
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400">{t("passwordsDontMatch")}</p>
+                )}
+              </div>
+
+              <label className="flex items-start gap-2.5 text-xs text-zinc-600 dark:text-zinc-400 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-zinc-300 accent-brand-600"
+                />
+                <span>{t("agreeTerms")}</span>
+              </label>
 
               <div className="p-3 bg-brand-50/80 dark:bg-brand-950/40 border border-brand-200/50 dark:border-brand-800/40 rounded-xl text-xs text-brand-800 dark:text-brand-200 flex items-start gap-2">
                 <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5 text-accent-500" />
-                <span>
-                  {t("privacyNote")}
-                </span>
+                <span>{t("privacyNote")}</span>
               </div>
 
-              <Button type="submit" size="lg" className="w-full mt-2" disabled={loading}>
+              <Button type="submit" size="lg" className="w-full" disabled={loading}>
                 {loading ? t("creatingAccount") : t("createAccount")}
               </Button>
             </form>
-
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-zinc-200 dark:border-zinc-800" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white dark:bg-[#0F1822] px-2 text-zinc-500">
-                  {t("orContinueWith")}
-                </span>
-              </div>
-            </div>
-
-            <Button
-              variant="outline"
-              type="button"
-              className="w-full gap-2 font-medium"
-              onClick={handleGoogleSignIn}
-            >
-              <svg className="h-4 w-4" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                />
-              </svg>
-              {t("continueWithGoogle")}
-            </Button>
           </CardContent>
         </Card>
 

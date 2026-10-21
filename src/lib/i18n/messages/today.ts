@@ -3,6 +3,9 @@ import { defineMessages } from "../define";
 export const today = defineMessages({
   en: {
     title: "Today's Spending",
+    greetingMorning: "Good morning, {name}",
+    greetingAfternoon: "Good afternoon, {name}",
+    greetingEvening: "Good evening, {name}",
     dailyAllowance: "Daily Allowance",
     daysLeft: "{count} days left",
     remainingThisMonth: "Remaining this month:",
@@ -28,6 +31,9 @@ export const today = defineMessages({
   },
   km: {
     title: "ការចំណាយថ្ងៃនេះ",
+    greetingMorning: "អរុណសួស្តី {name}",
+    greetingAfternoon: "ទិវាសួស្តី {name}",
+    greetingEvening: "សាយណ្ហសួស្តី {name}",
     dailyAllowance: "ថវិកាប្រចាំថ្ងៃ",
     daysLeft: "នៅសល់ {count} ថ្ងៃ",
     remainingThisMonth: "នៅសល់ខែនេះ៖",

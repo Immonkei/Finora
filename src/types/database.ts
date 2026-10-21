@@ -19,11 +19,15 @@ export type Database = {
           timezone: string;
           week_starts_on: number;
           reminder_time: string | null;
+          full_name: string | null;
+          avatar_url: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id: string;
+          full_name?: string | null;
+          avatar_url?: string | null;
           main_currency?: string;
           timezone?: string;
           week_starts_on?: number;
@@ -33,6 +37,8 @@ export type Database = {
         };
         Update: {
           id?: string;
+          full_name?: string | null;
+          avatar_url?: string | null;
           main_currency?: string;
           timezone?: string;
           week_starts_on?: number;

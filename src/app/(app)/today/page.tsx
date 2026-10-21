@@ -9,6 +9,7 @@ import { formatMoney, calculateDailyAllowance } from "@/lib/money";
 import { formatDisplayDate, getDaysLeftInMonth } from "@/lib/dates";
 import { useMounted } from "@/lib/hooks";
 import { useLocale, useT } from "@/lib/i18n";
+import { firstName, useProfile } from "@/features/profile/use-profile";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeTable } from "@/lib/supabase/realtime";
 import { toast } from "sonner";
@@ -32,6 +33,7 @@ export default function TodayPage() {
   const t = useT("today");
   const tc = useT("common");
   const { dateLocale } = useLocale();
+  const { profile } = useProfile();
   const [editingTx, setEditingTx] = React.useState<EditableTransaction | null>(null);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const isMounted = useMounted();
@@ -201,6 +203,12 @@ export default function TodayPage() {
       ? t("percentUsed", { percent: Math.round(Number((monthlySpentMinor * 100n) / monthlyBudgetMinor)) })
       : t("noLimitSet");
 
+  const name = firstName(profile?.fullName);
+  const hour = currentDate?.getHours() ?? 9;
+  const greeting = name
+    ? t(hour < 12 ? "greetingMorning" : hour < 18 ? "greetingAfternoon" : "greetingEvening", { name })
+    : null;
+
   const displayDateStr = currentDate
     ? formatDisplayDate(currentDate, "EEEE, MMMM d", dateLocale)
     : tc("today");
@@ -215,6 +223,9 @@ export default function TodayPage() {
         <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           {t("title")}
         </h1>
+        {greeting && (
+          <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">{greeting}</p>
+        )}
       </div>
 
       {/* Hero Stats */}
