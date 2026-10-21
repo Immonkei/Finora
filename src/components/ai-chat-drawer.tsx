@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 interface ChatMessage {
   id: string;
@@ -100,6 +101,7 @@ const INITIAL_MESSAGE: ChatMessage = {
 };
 
 export function AIChatDrawer() {
+  const tNav = useT("nav");
   const [isOpen, setIsOpen] = React.useState(false);
   const [messages, setMessages] = React.useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [input, setInput] = React.useState("");
@@ -195,10 +197,10 @@ export function AIChatDrawer() {
             ? "bg-brand-50 text-brand-700 dark:bg-zinc-800 dark:text-accent-300"
             : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800"
         )}
-        aria-label={isOpen ? "Close AI chat" : "Open Finora AI chat"}
+        aria-label={isOpen ? tNav("closeAiChat") : tNav("openAiChat")}
       >
         <Sparkles className="h-5 w-5 text-brand-600 dark:text-accent-400" />
-        <span className="hidden md:inline text-xs">Ask AI</span>
+        <span className="hidden md:inline text-xs">{tNav("askAi")}</span>
       </button>
 
       {/* Slide-Over Drawer / Modal (portaled so the blurred header doesn't clip it) */}

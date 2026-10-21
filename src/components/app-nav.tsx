@@ -19,17 +19,18 @@ import {
 import { cn } from "@/lib/utils";
 import { QuickAddDialog } from "@/features/transactions/components/quick-add-dialog";
 import { FinoraLogo } from "@/components/finora-logo";
+import { useT } from "@/lib/i18n";
 
 const NAV_ITEMS = [
-  { href: "/today", label: "Today", icon: CalendarDays },
-  { href: "/week", label: "Week", icon: BarChart3 },
-  { href: "/month", label: "Month", icon: PieChart },
-  { href: "/insights", label: "Insights", icon: Sparkles },
-  { href: "/goals", label: "Goals", icon: Target },
-  { href: "/recurring", label: "Recurring", icon: Repeat },
-  { href: "/transactions", label: "Activity", icon: ArrowLeftRight },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
+  { href: "/today", labelKey: "today", icon: CalendarDays },
+  { href: "/week", labelKey: "week", icon: BarChart3 },
+  { href: "/month", labelKey: "month", icon: PieChart },
+  { href: "/insights", labelKey: "insights", icon: Sparkles },
+  { href: "/goals", labelKey: "goals", icon: Target },
+  { href: "/recurring", labelKey: "recurring", icon: Repeat },
+  { href: "/transactions", labelKey: "activity", icon: ArrowLeftRight },
+  { href: "/settings", labelKey: "settings", icon: Settings },
+] as const;
 
 const MOBILE_PRIMARY_HREFS = ["/today", "/week", "/month"];
 const MOBILE_MORE_ITEMS = NAV_ITEMS.filter(
@@ -65,6 +66,7 @@ function MobileTab({
 }
 
 export function MobileNavBar() {
+  const t = useT("nav");
   const pathname = usePathname();
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const [isMoreOpen, setIsMoreOpen] = React.useState(false);
@@ -74,21 +76,21 @@ export function MobileNavBar() {
     <>
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-zinc-200/80 bg-white/90 backdrop-blur-lg dark:border-zinc-800/80 dark:bg-[#0c131c]/90 md:hidden safe-area-pb">
         <div className="flex h-16 items-center justify-around px-2 relative">
-          <MobileTab href="/today" label="Today" icon={CalendarDays} isActive={pathname === "/today"} />
-          <MobileTab href="/week" label="Week" icon={BarChart3} isActive={pathname === "/week"} />
+          <MobileTab href="/today" label={t("today")} icon={CalendarDays} isActive={pathname === "/today"} />
+          <MobileTab href="/week" label={t("week")} icon={BarChart3} isActive={pathname === "/week"} />
 
           {/* Quick-Add Center Action Button */}
           <div className="flex flex-1 items-center justify-center -mt-5">
             <button
               onClick={() => setIsAddOpen(true)}
               className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-lg shadow-brand-600/35 hover:bg-brand-700 active:scale-95 transition-all ring-4 ring-white dark:ring-[#0c131c]"
-              aria-label="Add transaction"
+              aria-label={t("addTransaction")}
             >
               <Plus className="h-6 w-6 stroke-[2.5]" />
             </button>
           </div>
 
-          <MobileTab href="/month" label="Month" icon={PieChart} isActive={pathname === "/month"} />
+          <MobileTab href="/month" label={t("month")} icon={PieChart} isActive={pathname === "/month"} />
 
           <button
             type="button"
@@ -103,7 +105,7 @@ export function MobileNavBar() {
             )}
           >
             <LayoutGrid className="h-5 w-5" />
-            <span>More</span>
+            <span>{t("more")}</span>
           </button>
         </div>
       </nav>
@@ -116,18 +118,18 @@ export function MobileNavBar() {
         >
           <div
             role="dialog"
-            aria-label="More pages"
+            aria-label={t("morePages")}
             onClick={(e) => e.stopPropagation()}
             className="w-full rounded-t-[28px] border-t border-zinc-200/80 bg-white px-4 pt-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl dark:border-zinc-800 dark:bg-zinc-900 animate-in slide-in-from-bottom duration-200"
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-700" />
             <div className="flex items-center justify-between px-1 pb-3">
-              <p className="text-sm font-bold text-zinc-900 dark:text-zinc-50">More</p>
+              <p className="text-sm font-bold text-zinc-900 dark:text-zinc-50">{t("more")}</p>
               <button
                 type="button"
                 onClick={() => setIsMoreOpen(false)}
                 className="rounded-full p-1.5 text-zinc-500 active:bg-zinc-100 dark:active:bg-zinc-800"
-                aria-label="Close"
+                aria-label={t("close")}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -150,7 +152,7 @@ export function MobileNavBar() {
                     )}
                   >
                     <Icon className={cn("h-5 w-5", isActive ? "text-accent-300" : "text-brand-600 dark:text-accent-400")} />
-                    <span>{item.label}</span>
+                    <span>{t(item.labelKey)}</span>
                   </Link>
                 );
               })}
@@ -168,6 +170,7 @@ export function MobileNavBar() {
 }
 
 export function DesktopSidebar() {
+  const t = useT("nav");
   const pathname = usePathname();
   const [isAddOpen, setIsAddOpen] = React.useState(false);
 
@@ -194,7 +197,7 @@ export function DesktopSidebar() {
                 )}
               >
                 <Icon className={cn("h-4 w-4", isActive ? "text-accent-300" : "text-zinc-500 dark:text-zinc-400")} />
-                <span>{item.label}</span>
+                <span>{t(item.labelKey)}</span>
               </Link>
             );
           })}
@@ -206,7 +209,7 @@ export function DesktopSidebar() {
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-brand-600/25 hover:bg-brand-700 active:scale-[0.98] transition-all cursor-pointer"
           >
             <Plus className="h-4 w-4 stroke-[2.5]" />
-            Quick Add
+            {t("quickAdd")}
           </button>
           <div className="flex items-center justify-between px-1 text-[11px] text-zinc-400">
             <span>Finora App</span>

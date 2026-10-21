@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatMoney, calculateDailyAllowance } from "@/lib/money";
 import { formatDisplayDate, getDaysLeftInMonth } from "@/lib/dates";
 import { useMounted } from "@/lib/hooks";
+import { useLocale, useT } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { useRealtimeTable } from "@/lib/supabase/realtime";
 import { toast } from "sonner";
@@ -28,6 +29,9 @@ interface DisplayTx {
 }
 
 export default function TodayPage() {
+  const t = useT("today");
+  const tc = useT("common");
+  const { dateLocale } = useLocale();
   const [editingTx, setEditingTx] = React.useState<EditableTransaction | null>(null);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const isMounted = useMounted();
@@ -151,15 +155,15 @@ export default function TodayPage() {
     }
     await deleteTransaction(tx.id);
 
-    toast("Transaction deleted", {
-      description: `${tx.note} • ${formatMoney(tx.amountMinor, "USD")} (10s undo window)`,
+    toast(t("deletedToast"), {
+      description: t("deletedDescription", { note: tx.note, amount: formatMoney(tx.amountMinor, "USD") }),
       duration: 10000,
       action: {
-        label: "Undo",
+        label: tc("undo"),
         onClick: async () => {
           await restoreTransaction(tx.id);
           loadTodayData();
-          toast.success("Transaction restored!");
+          toast.success(t("restoredToast"));
         },
       },
     });
@@ -194,12 +198,12 @@ export default function TodayPage() {
 
   const monthStatusText =
     monthlyBudgetMinor > 0n
-      ? `${Math.round(Number((monthlySpentMinor * 100n) / monthlyBudgetMinor))}% used`
-      : "No limit set";
+      ? t("percentUsed", { percent: Math.round(Number((monthlySpentMinor * 100n) / monthlyBudgetMinor)) })
+      : t("noLimitSet");
 
   const displayDateStr = currentDate
-    ? formatDisplayDate(currentDate, "EEEE, MMMM d")
-    : "Today";
+    ? formatDisplayDate(currentDate, "EEEE, MMMM d", dateLocale)
+    : tc("today");
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -209,7 +213,7 @@ export default function TodayPage() {
           {displayDateStr}
         </p>
         <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Today&apos;s Spending
+          {t("title")}
         </h1>
       </div>
 
@@ -223,10 +227,10 @@ export default function TodayPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <span className="text-brand-100/90 text-[11px] font-bold uppercase tracking-wider">
-                Daily Allowance
+                {t("dailyAllowance")}
               </span>
               <Badge variant="outline" className="border-accent-300/40 bg-accent-500/15 text-accent-100 text-xs font-semibold backdrop-blur-xs">
-                {daysLeft} days left
+                {t("daysLeft", { count: daysLeft })}
               </Badge>
             </div>
             <CardTitle className="text-2xl sm:text-4xl font-extrabold text-white mt-1.5 tabular-nums tracking-tight">
@@ -235,7 +239,7 @@ export default function TodayPage() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-brand-100/80 mb-3 tabular-nums">
-              Remaining this month: <span className="font-semibold text-white">{formatMoney(remainingBudgetMinor, "USD")}</span>
+              {t("remainingThisMonth")} <span className="font-semibold text-white">{formatMoney(remainingBudgetMinor, "USD")}</span>
             </p>
             <div className="w-full bg-brand-950/70 rounded-full h-2 overflow-hidden ring-1 ring-white/10">
               <div
@@ -244,8 +248,8 @@ export default function TodayPage() {
               />
             </div>
             <div className="flex justify-between text-[11px] text-brand-100/80 mt-2 font-medium">
-              <span className="tabular-nums">Spent today: {formatMoney(spentTodayMinor, "USD")}</span>
-              <span className="tabular-nums">{allowanceUsedPercent}% of daily budget</span>
+              <span className="tabular-nums">{t("spentToday", { amount: formatMoney(spentTodayMinor, "USD") })}</span>
+              <span className="tabular-nums">{t("percentOfDailyBudget", { percent: allowanceUsedPercent })}</span>
             </div>
           </CardContent>
         </Card>
@@ -255,10 +259,10 @@ export default function TodayPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <span className="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold uppercase tracking-wider">
-                Total Spent Today
+                {t("totalSpentToday")}
               </span>
               <Badge variant="secondary" className="text-xs font-semibold">
-                {todayTransactions.length} items
+                {t("items", { count: todayTransactions.length })}
               </Badge>
             </div>
             <CardTitle className="text-2xl sm:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 mt-1.5 tabular-nums tracking-tight">
@@ -268,13 +272,13 @@ export default function TodayPage() {
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
               <span className="flex items-center gap-1.5">
-                <Wallet className="h-3.5 w-3.5 text-zinc-400" /> Primary Account
+                <Wallet className="h-3.5 w-3.5 text-zinc-400" /> {t("primaryAccount")}
               </span>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-100">Cash (USD)</span>
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100">{t("cashUsd")}</span>
             </div>
             <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
               <span className="flex items-center gap-1.5">
-                <TrendingUp className="h-3.5 w-3.5 text-zinc-400" /> Month Status
+                <TrendingUp className="h-3.5 w-3.5 text-zinc-400" /> {t("monthStatus")}
               </span>
               <span className="font-semibold text-brand-600 dark:text-accent-400">
                 {monthStatusText}
@@ -288,23 +292,23 @@ export default function TodayPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between py-4">
           <div>
-            <CardTitle className="text-base font-semibold">Today&apos;s Activity</CardTitle>
+            <CardTitle className="text-base font-semibold">{t("activityTitle")}</CardTitle>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Expenses and transfers logged today
+              {t("activitySubtitle")}
             </p>
           </div>
           <Badge variant="outline" className="text-xs">
-            {todayTransactions.length} logged
+            {t("logged", { count: todayTransactions.length })}
           </Badge>
         </CardHeader>
         <CardContent className="divide-y divide-zinc-100 dark:divide-zinc-800 p-0">
           {todayTransactions.length === 0 ? (
             <div className="p-10 text-center text-sm text-zinc-500 space-y-2">
               <p className="font-medium text-zinc-700 dark:text-zinc-300">
-                No expenses logged today.
+                {t("emptyTitle")}
               </p>
               <p className="text-xs text-zinc-400">
-                Tap the + button to record your spending.
+                {t("emptyHint")}
               </p>
             </div>
           ) : (
@@ -345,7 +349,7 @@ export default function TodayPage() {
                     size="icon"
                     onClick={() => handleEditClick(tx)}
                     className="h-8 w-8 text-zinc-400 hover:text-brand-600 hover:bg-brand-50/60 dark:text-zinc-500 dark:hover:text-accent-400 dark:hover:bg-zinc-800/60"
-                    title="Edit transaction"
+                    title={t("editTransaction")}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -354,7 +358,7 @@ export default function TodayPage() {
                     size="icon"
                     onClick={() => handleDelete(tx)}
                     className="h-8 w-8 text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 dark:text-zinc-500 dark:hover:text-rose-400 dark:hover:bg-rose-500/20"
-                    title="Delete transaction (10s undo window)"
+                    title={t("deleteTransaction")}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>

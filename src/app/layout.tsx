@@ -1,14 +1,24 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, JetBrains_Mono, Kantumruy_Pro } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { PWAProvider } from "@/components/pwa-provider";
+import { LocaleProvider } from "@/lib/i18n";
 
 const jakartaSans = Plus_Jakarta_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
   display: "swap",
   weight: ["400", "500", "600", "700", "800"],
+});
+
+// Khmer script fallback: Plus Jakarta Sans has no Khmer glyphs, so the
+// browser picks these up from Kantumruy Pro per character.
+const kantumruyPro = Kantumruy_Pro({
+  variable: "--font-khmer",
+  subsets: ["khmer"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -60,13 +70,15 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${jakartaSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${jakartaSans.variable} ${kantumruyPro.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
-        <PWAProvider>
-          {children}
-        </PWAProvider>
-        <Toaster />
+        <LocaleProvider>
+          <PWAProvider>
+            {children}
+          </PWAProvider>
+          <Toaster />
+        </LocaleProvider>
       </body>
     </html>
   );

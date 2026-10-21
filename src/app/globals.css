@@ -16,7 +16,7 @@
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-sans), var(--font-khmer), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   --color-brand-50: #f0f6fa;
@@ -73,6 +73,12 @@ body {
 ::selection {
   background-color: rgba(79, 163, 179, 0.28);
   color: inherit;
+}
+
+/* Khmer script needs room for stacked subscript consonants and no negative tracking */
+html:lang(km) body {
+  letter-spacing: 0;
+  line-height: 1.7;
 }
 
 /* Native-app feel for the installed PWA */

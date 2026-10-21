@@ -2,6 +2,7 @@ import { DesktopSidebar, MobileNavBar } from "@/components/app-nav";
 import { NotificationBell } from "@/components/notification-bell";
 import { FinoraLogo } from "@/components/finora-logo";
 import { AIChatDrawer } from "@/components/ai-chat-drawer";
+import { LanguageToggle } from "@/components/language-toggle";
 import Link from "next/link";
 
 export default function AppLayout({
@@ -23,6 +24,7 @@ export default function AppLayout({
               {/* Subtle branding anchor or breadcrumb */}
             </div>
             <div className="flex items-center gap-1">
+              <LanguageToggle />
               <AIChatDrawer />
               <NotificationBell />
             </div>
