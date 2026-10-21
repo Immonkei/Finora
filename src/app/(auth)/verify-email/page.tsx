@@ -59,7 +59,11 @@ export default function VerifyEmailPage() {
     if (!email || code.length !== 6) return;
     setVerifying(true);
     const supabase = createClient();
-    const { error } = await supabase.auth.verifyOtp({ email, token: code, type: "email" });
+    let { error } = await supabase.auth.verifyOtp({ email, token: code, type: "signup" });
+    if (error) {
+      const fb = await supabase.auth.verifyOtp({ email, token: code, type: "email" });
+      if (!fb.error) error = null;
+    }
     setVerifying(false);
     if (error) {
       toast.error(t("invalidCode"), { description: translateAuthError(t, error.message) });

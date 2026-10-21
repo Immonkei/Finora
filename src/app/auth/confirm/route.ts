@@ -16,9 +16,14 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get("type") as EmailOtpType | null;
   const next = safeNext(searchParams.get("next"));
 
-  if (tokenHash && type) {
+  const otpType = type || "email";
+  if (tokenHash) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+    let { error } = await supabase.auth.verifyOtp({ type: otpType, token_hash: tokenHash });
+    if (error && otpType !== "signup") {
+      const fb = await supabase.auth.verifyOtp({ type: "signup", token_hash: tokenHash });
+      if (!fb.error) error = null;
+    }
     if (!error) {
       return NextResponse.redirect(`${origin}${next}`);
     }
